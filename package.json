@@ -1,0 +1,26 @@
+{
+  "name": "trader-pro-xl-plus",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.2.20",
+  "workspaces": [
+    "packages/*",
+    "apps/*",
+    "strategies"
+  ],
+  "scripts": {
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "db:generate": "bun run --cwd packages/db generate",
+    "db:migrate": "bun run --cwd packages/db migrate",
+    "dev:server": "bun run --cwd apps/server dev",
+    "dev:web": "bun run --cwd apps/web dev",
+    "build": "bun run --cwd apps/web build",
+    "start": "bun run --cwd apps/server start",
+    "test": "bun test",
+    "typecheck": "bun run --filter '*' typecheck"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}

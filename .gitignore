@@ -1,0 +1,18 @@
+node_modules/
+dist/
+build/
+.env
+.env.local
+*.log
+.DS_Store
+
+# Market data (candles cache lives in PG; aggTrades/zips on disk)
+/data/
+
+# Backtest artifacts (equity curves, large result blobs)
+/artifacts/
+
+# Editor
+.idea/
+.vscode/*
+!.vscode/extensions.json
