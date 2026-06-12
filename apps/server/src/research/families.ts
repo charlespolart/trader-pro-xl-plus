@@ -6,6 +6,7 @@
  */
 import { crossover, crossunder, defineStrategy, ind, p, type StrategyDefinition } from '@tpx/core'
 import type { ParamValues } from '@tpx/shared'
+import { orderBlocks, type ObZone } from './orderblocks'
 
 export interface Family {
   key: string
@@ -43,10 +44,18 @@ const sharedOnStop = async (ctx: any): Promise<void> => {
   await ctx.order.cancelAll()
 }
 
+/** taille par risque, plafonnée par la marge disponible (stops serrés → notional énorme sinon) */
+function sizedQty(ctx: any, entry: number, stop: number, riskPct: number): number {
+  const riskQty = ctx.risk.sizeByRisk({ entry, stop, riskPct })
+  const lev = ctx.market === 'futures' ? ctx.position.leverage : 1
+  const maxQty = ctx.roundQty((ctx.equity * lev * 0.9) / entry)
+  return Math.min(riskQty, maxQty)
+}
+
 async function enter(ctx: any, side: 'BUY' | 'SELL', stop: number, tp: number | null, riskPct: number, reason: string): Promise<void> {
   const entry = ctx.price
   if (Math.abs(entry - stop) <= 0) return
-  const qty = ctx.risk.sizeByRisk({ entry, stop, riskPct })
+  const qty = sizedQty(ctx, entry, stop, riskPct)
   if (qty <= 0) return
   ctx.state['stop'] = ctx.roundPrice(stop)
   ctx.state['tp'] = tp !== null ? ctx.roundPrice(tp) : 0
@@ -466,6 +475,161 @@ const erTrend = defineStrategy({
   onStop: sharedOnStop,
 })
 
+// =================================================================== I
+const obRetest = defineStrategy({
+  name: 'R&D Order Block Retest',
+  markets: ['futures'],
+  params: {
+    ...baseParams,
+    impulseBars: p.int({ default: 3, min: 2, max: 10 }),
+    impulseAtrMult: p.number({ default: 3, min: 1, max: 8, step: 0.5 }),
+    minEfficiency: p.number({ default: 0.65, min: 0.3, max: 0.95, step: 0.05 }),
+    bosLookback: p.int({ default: 20, min: 0, max: 100 }),
+    expiryBars: p.int({ default: 120, min: 20, max: 500 }),
+    bodyOnly: p.bool({ default: false }),
+    stopPadAtr: p.number({ default: 0.3, min: 0, max: 2, step: 0.1 }),
+    tpR: p.number({ default: 2, min: 0.5, max: 10, step: 0.5 }),
+    useFlowFilter: p.bool({ default: false }),
+    entryMode: p.select({ options: ['touch', 'reject', 'limit'], default: 'touch' }),
+    rejectBars: p.int({ default: 3, min: 1, max: 10, description: 'fenêtre de confirmation du rejet' }),
+    htfErMin: p.number({ default: 0, min: 0, max: 0.6, step: 0.05, description: 'ER 1d minimum (0 = off) — coupe les régimes de chop' }),
+  },
+  data: htfData,
+  init(ctx) {
+    return {
+      obs: ctx.indicator(
+        'main',
+        orderBlocks({
+          impulseBars: ctx.params.impulseBars,
+          impulseAtrMult: ctx.params.impulseAtrMult,
+          minEfficiency: ctx.params.minEfficiency,
+          bosLookback: ctx.params.bosLookback,
+          expiryBars: ctx.params.expiryBars,
+          bodyOnly: ctx.params.bodyOnly,
+        }),
+        { plot: 'none' },
+      ),
+      atr: ctx.indicator('main', ind.atr(14), { plot: 'none' }),
+      flow: ctx.indicator('main', ind.takerFlow(10), { plot: 'none' }),
+      htfEma: ctx.indicator('htf', ind.ema(200), { plot: 'none' }),
+      htfEr: ctx.indicator('htf', ind.efficiencyRatio(20), { plot: 'none' }),
+    }
+  },
+  async onCandle(ctx, feedId, c) {
+    if (feedId !== 'main') return
+    const { obs, atr, flow, htfEr } = ctx.locals
+    const zones: ObZone[] = obs.value ?? []
+    if (!atr.ready) return
+    const trend = htfTrend(ctx)
+    const a = atr.value ?? 0
+    const f = flow.value ?? 0.5
+    const mode = ctx.params.entryMode
+    const regimeOk = ctx.params.htfErMin <= 0 || (htfEr.value ?? 0) >= ctx.params.htfErMin
+
+    const allowLong = regimeOk && (!ctx.params.useHtf || trend === 'up') && (!ctx.params.useFlowFilter || f > 0.5)
+    const allowShortNow =
+      regimeOk &&
+      ctx.params.allowShort && (!ctx.params.useHtf || trend === 'down') && (!ctx.params.useFlowFilter || f < 0.5)
+
+    // ---- mode limit : un ordre au sommet de la zone la plus récente valide
+    if (mode === 'limit') {
+      if (ctx.position.qty !== 0) return
+      const target =
+        [...zones].reverse().find((z) => !z.consumed && ((z.side === 1 && allowLong) || (z.side === -1 && allowShortNow))) ?? null
+      const currentTag = ctx.state['obLimitKey'] as string | undefined
+      const key = target ? `${target.side}:${target.createdIdx}` : undefined
+      if (key !== currentTag) {
+        await ctx.order.cancelAll('entry')
+        ctx.state['obLimitKey'] = key ?? ''
+        if (target) {
+          const price = target.side === 1 ? target.high : target.low
+          const stop = target.side === 1 ? target.low - ctx.params.stopPadAtr * a : target.high + ctx.params.stopPadAtr * a
+          const dist = Math.abs(price - stop)
+          if (dist <= 0) return
+          const qty = sizedQty(ctx, price, stop, ctx.params.riskPct)
+          if (qty <= 0) return
+          ctx.state['stop'] = ctx.roundPrice(stop)
+          ctx.state['tp'] = ctx.roundPrice(target.side === 1 ? price + ctx.params.tpR * dist : price - ctx.params.tpR * dist)
+          ctx.state['bracket'] = false
+          await ctx.order.limit({
+            side: target.side === 1 ? 'BUY' : 'SELL',
+            qty,
+            price: ctx.roundPrice(price),
+            reason: `Limit sur OB ${target.low.toFixed(0)}-${target.high.toFixed(0)}`,
+            tag: 'entry',
+          })
+        }
+      }
+      return
+    }
+
+    if (ctx.position.qty !== 0 || zones.length === 0) return
+
+    for (const z of zones) {
+      if (z.consumed) continue
+      const armedKey = `armed:${z.side}:${z.createdIdx}`
+      if (z.side === 1) {
+        const touched = c.low <= z.high && c.close >= z.low
+        if (mode === 'reject') {
+          // armement au toucher, entrée sur re-clôture AU-DESSUS de la zone
+          const armedAt = ctx.state[armedKey] as number | undefined
+          if (touched && armedAt === undefined) {
+            ctx.state[armedKey] = 0
+            continue
+          }
+          if (armedAt === undefined) continue
+          ctx.state[armedKey] = (armedAt as number) + 1
+          if ((ctx.state[armedKey] as number) > ctx.params.rejectBars) {
+            z.consumed = true
+            delete ctx.state[armedKey]
+            continue
+          }
+          if (c.close <= z.high) continue // pas encore de rejet confirmé
+        } else if (!touched) {
+          continue
+        }
+        z.consumed = true
+        delete ctx.state[armedKey]
+        if (!allowLong) continue
+        const stop = z.low - ctx.params.stopPadAtr * a
+        const dist = c.close - stop
+        if (dist <= 0) continue
+        await enter(ctx, 'BUY', stop, c.close + ctx.params.tpR * dist, ctx.params.riskPct, `OB demande ${z.low.toFixed(0)}-${z.high.toFixed(0)} (${mode})`)
+        return
+      } else {
+        const touched = c.high >= z.low && c.close <= z.high
+        if (mode === 'reject') {
+          const armedAt = ctx.state[armedKey] as number | undefined
+          if (touched && armedAt === undefined) {
+            ctx.state[armedKey] = 0
+            continue
+          }
+          if (armedAt === undefined) continue
+          ctx.state[armedKey] = (armedAt as number) + 1
+          if ((ctx.state[armedKey] as number) > ctx.params.rejectBars) {
+            z.consumed = true
+            delete ctx.state[armedKey]
+            continue
+          }
+          if (c.close >= z.low) continue
+        } else if (!touched) {
+          continue
+        }
+        z.consumed = true
+        delete ctx.state[armedKey]
+        if (!allowShortNow) continue
+        const stop = z.high + ctx.params.stopPadAtr * a
+        const dist = stop - c.close
+        if (dist <= 0) continue
+        await enter(ctx, 'SELL', stop, c.close - ctx.params.tpR * dist, ctx.params.riskPct, `OB offre ${z.low.toFixed(0)}-${z.high.toFixed(0)} (${mode})`)
+        return
+      }
+    }
+  },
+  onFill: sharedOnFill,
+  onStop: sharedOnStop,
+})
+
 // ------------------------------------------------------------------ export
 
 export const FAMILIES: Family[] = [
@@ -547,6 +711,20 @@ export const FAMILIES: Family[] = [
       { label: 'cand-ema50', params: { erLen: 20, erMin: 0.35, emaLen: 50, atrMult: 2.5, useFlowFilter: true, flowTh: 0.5 } },
       { label: 'cand-er.45', params: { erLen: 20, erMin: 0.45, emaLen: 100, atrMult: 2.5, useFlowFilter: true, flowTh: 0.5 } },
       { label: 'cand-erLen30', params: { erLen: 30, erMin: 0.35, emaLen: 100, atrMult: 2.5, useFlowFilter: true, flowTh: 0.5 } },
+    ],
+  },
+  {
+    key: 'obretest',
+    def: obRetest,
+    variants: [
+      { label: 'ob-touch (base)', params: {} },
+      { label: 'ob-reject', params: { entryMode: 'reject' } },
+      { label: 'ob-limit', params: { entryMode: 'limit' } },
+      { label: 'ob-soft-2atr5b', params: { impulseAtrMult: 2, impulseBars: 5 } },
+      { label: 'ob-soft-reject', params: { impulseAtrMult: 2, impulseBars: 5, entryMode: 'reject' } },
+      { label: 'ob-soft-limit', params: { impulseAtrMult: 2, impulseBars: 5, entryMode: 'limit' } },
+      { label: 'ob-soft-limit-flow', params: { impulseAtrMult: 2, impulseBars: 5, entryMode: 'limit', useFlowFilter: true } },
+      { label: 'ob-soft-1h-limit', params: { impulseAtrMult: 2, impulseBars: 5, entryMode: 'limit', interval: '1h' } },
     ],
   },
 ]
