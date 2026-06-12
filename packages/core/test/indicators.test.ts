@@ -126,6 +126,40 @@ describe('indicators', () => {
   })
 })
 
+describe('indicateurs de flux / régime', () => {
+  it('takerFlow : part lissée du volume acheteur agressif', async () => {
+    const { takerFlow } = await import('../src/indicators/flow')
+    const inst = takerFlow(4).create()
+    let v: number | null = null
+    for (let i = 0; i < 8; i++) {
+      const c = mkCandle(i, 100, 101, 99, 100)
+      c.takerBuyBase = i < 4 ? c.volume : c.volume * 0.25 // 100% acheteurs puis 25%
+      v = inst.update(c)
+    }
+    expect(v).toBeCloseTo(0.25, 9)
+  })
+
+  it('efficiencyRatio : 1 sur un mouvement rectiligne, ~0 sur un zigzag', async () => {
+    const { efficiencyRatio } = await import('../src/indicators/flow')
+    const line = efficiencyRatio(10).create()
+    let v: number | null = null
+    for (let i = 0; i < 15; i++) v = line.update(flat(i, 100 + i))
+    expect(v).toBeCloseTo(1, 9)
+    const zigzag = efficiencyRatio(10).create()
+    for (let i = 0; i < 15; i++) v = zigzag.update(flat(i, 100 + (i % 2)))
+    expect(v!).toBeLessThan(0.2)
+  })
+
+  it('atrPercentile : la volatilité qui explose donne un percentile haut', async () => {
+    const { atrPercentile } = await import('../src/indicators/flow')
+    const inst = atrPercentile(5, 30).create()
+    let v: number | null = null
+    for (let i = 0; i < 50; i++) v = inst.update(mkCandle(i, 100, 100.5, 99.5, 100))
+    for (let i = 50; i < 60; i++) v = inst.update(mkCandle(i, 100, 104, 96, 100)) // range ×8
+    expect(v!).toBeGreaterThan(90)
+  })
+})
+
 describe('bound indicators + ta helpers', () => {
   it('lookback access and crossover detection', () => {
     const bound = new BoundIndicator('main', ema(3))

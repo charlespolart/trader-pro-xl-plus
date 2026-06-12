@@ -4,11 +4,13 @@ export * from './bound'
 export * from './ma'
 export * from './oscillators'
 export * from './volatility'
+export * from './flow'
 export * from './patterns'
 
 import { ema, hma, rollingVwap, sma, vwap, wma } from './ma'
 import { cci, macd, mfi, obv, roc, rsi, stoch, stochRsi, willr } from './oscillators'
 import { adx, atr, bbands, donchian, keltner, psar, supertrend } from './volatility'
+import { atrPercentile, efficiencyRatio, squeezeRatio, takerFlow } from './flow'
 
 /** Convenience namespace: ctx.indicator('main', ind.rsi(14)) */
 export const ind = {
@@ -34,4 +36,8 @@ export const ind = {
   adx,
   supertrend,
   psar,
+  takerFlow,
+  efficiencyRatio,
+  atrPercentile,
+  squeezeRatio,
 }

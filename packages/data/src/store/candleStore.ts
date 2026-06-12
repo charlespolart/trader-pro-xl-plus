@@ -155,8 +155,16 @@ export class CandleStore {
         if (csv) {
           await this.commitChunk(market, symbol, interval, parseVisionKlinesCsv(csv), cursor, dayEnd)
         } else {
-          const rows = await this.mkt[market].klinesRange(symbol, interval, cursor, dayEnd)
-          await this.commitChunk(market, symbol, interval, rows, cursor, dayEnd)
+          try {
+            const rows = await this.mkt[market].klinesRange(symbol, interval, cursor, dayEnd)
+            await this.commitChunk(market, symbol, interval, rows, cursor, dayEnd)
+          } catch (err) {
+            // jour absent de Vision + REST géo-bloqué (souvent: avant le
+            // début des archives) — on continue sans marquer la couverture
+            console.warn(
+              `REST fallback ${market}:${symbol}:${interval} ${stamp} indisponible (${err instanceof Error ? err.message.slice(0, 80) : err}) — jour ignoré`,
+            )
+          }
         }
         cursor = dayEnd
       } else {
