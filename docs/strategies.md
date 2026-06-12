@@ -132,6 +132,34 @@ const myMomentum = (len: number) =>
 
 Le calcul est **incrémental** (une bougie clôturée → une valeur) : c'est ce qui rend le live et le backtest rigoureusement identiques. Primitives disponibles : `smaStream, emaStream, rmaStream, wmaStream, stddevStream, highestStream, lowestStream, lagStream`. Multi-sorties : retournez un objet et déclarez `outputs: ['a','b']`.
 
+## Patterns de chandeliers japonais
+
+`candlePatterns()` détecte ~30 patterns classiques (doji et variantes, hammer/hanging man, marubozu, spinning tops, kickers, engulfing, piercing/dark cloud, tweezers, harami, morning/evening star, abandoned baby, three soldiers/crows, three inside/outside, three line strike, windows) comme un indicateur standard :
+
+```ts
+import { bullishSignals, candlePatterns } from '@tpx/core'
+
+init(ctx) {
+  return {
+    // sorties typées : pat.value.hammer ∈ {1, 0} ; les baissiers émettent -1
+    pat: ctx.indicator('main', candlePatterns(['hammer', 'bullishEngulfing', 'morningStar'])),
+  }
+},
+onCandle(ctx) {
+  const signaux = bullishSignals(ctx.locals.pat.value)   // ex: ['hammer']
+  if (signaux.length > 0) { /* ... */ }
+}
+```
+
+- **Affichage automatique** : `plot: 'markers'` par défaut — chaque détection apparaît comme une flèche nommée sur la chart (vert = haussier, rouge = baissier). `{ plot: 'none' }` pour un usage silencieux.
+- **Contexte de tendance** : les définitions classiques sont respectées (un *hammer* exige une baisse préalable ; la même bougie après une hausse est un *hanging man*). Réglable via `trendLookback` / `trendMinPct`, désactivable avec `{ requireTrend: false }`.
+- **Seuils relatifs configurables** (`PatternOptions`) : taille de corps doji, ratio des mèches, tolérance d'égalité des tweezers…
+- `candlePatterns()` sans argument détecte tout ; `BULLISH_PATTERNS` / `BEARISH_PATTERNS` listent les noms par direction.
+- Adaptations crypto : pas de gaps en 24/7 → piercing line / dark cloud assouplis (pas d'exigence de gap d'ouverture), windows et abandoned baby quasi muets sur les paires liquides.
+- **Non couvert (phase 2)** : patterns structurels multi-bougies (double top/bottom, cup & handle, wedge, flag) — ils nécessitent un moteur de pivots/zigzag.
+
+Exemple complet : `strategies/pattern-reversal.ts`.
+
 ## Ordres
 
 ```ts

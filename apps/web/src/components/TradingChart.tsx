@@ -147,6 +147,25 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
     }
   }, [candles])
 
+  // ---- pattern-style series (plot 'markers'): signed arrows on the candles
+  const patternMarkers = useMemo<ChartMarker[]>(() => {
+    const out: ChartMarker[] = []
+    for (const dto of indicators) {
+      if (dto.plot !== 'markers') continue
+      for (const [t, v] of dto.points) {
+        if (v === null || v === 0) continue
+        out.push({
+          time: t,
+          position: v > 0 ? 'belowBar' : 'aboveBar',
+          shape: v > 0 ? 'arrowUp' : 'arrowDown',
+          color: v > 0 ? 'rgba(38,166,154,0.7)' : 'rgba(239,83,80,0.7)',
+          text: dto.output,
+        })
+      }
+    }
+    return out
+  }, [indicators])
+
   // ---- indicator series (recreate when the id set changes)
   const indKey = useMemo(() => indicators.map((s) => `${s.paneId}:${s.output}`).join('|'), [indicators])
   useEffect(() => {
@@ -159,6 +178,7 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
     let nextPane = 1
     let colorIdx = 0
     for (const dto of indicators) {
+      if (dto.plot === 'markers') continue
       let pane = 0
       if (dto.plot === 'pane') {
         if (!paneIndex.has(dto.paneId)) paneIndex.set(dto.paneId, nextPane++)
@@ -193,7 +213,7 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
     const plugin = markersRef.current
     if (!plugin) return
     const all: SeriesMarker<Time>[] = [
-      ...markers.map((m) => ({
+      ...[...markers, ...patternMarkers].map((m) => ({
         time: ts(m.time),
         position: m.position,
         shape: m.shape,
@@ -220,7 +240,7 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
         })),
     ].sort((a, b) => (a.time as number) - (b.time as number))
     plugin.setMarkers(all)
-  }, [markers, annotations])
+  }, [markers, annotations, patternMarkers])
 
   // ---- hline annotations as price lines
   useEffect(() => {

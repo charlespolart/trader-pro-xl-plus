@@ -3,7 +3,7 @@ import type { IndicatorInstance, IndicatorSpec } from './types'
 import type { SeriesLike } from '../series'
 
 export interface PlotOptions {
-  plot?: 'overlay' | 'pane' | 'none'
+  plot?: 'overlay' | 'pane' | 'markers' | 'none'
   /** one color (single-output) or a per-output map */
   color?: string | Record<string, string>
   title?: string
@@ -19,7 +19,7 @@ export interface PlotOptions {
 export class BoundIndicator<O = number> {
   readonly spec: IndicatorSpec<O>
   readonly feedId: string
-  readonly plot: 'overlay' | 'pane' | 'none'
+  readonly plot: 'overlay' | 'pane' | 'markers' | 'none'
   readonly title: string
   value: O | null = null
 
@@ -119,7 +119,7 @@ export class BoundIndicator<O = number> {
       indicatorId: this.spec.id,
       feedId: this.feedId,
       output,
-      plot: this.plot as 'overlay' | 'pane',
+      plot: this.plot as 'overlay' | 'pane' | 'markers',
       paneId,
       color: this.colors[output],
       points: this.times.map((t, i) => [t, this.hist[output]![i] ?? null] as [number, number | null]),

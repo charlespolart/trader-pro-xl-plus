@@ -157,7 +157,8 @@ export interface IndicatorSeriesDTO {
   /** feed it was computed on */
   feedId: string
   output: string
-  plot: 'overlay' | 'pane'
+  /** 'markers': non-zero points render as signed arrows on the candles */
+  plot: 'overlay' | 'pane' | 'markers'
   /** pane grouping key — outputs of one indicator share a pane */
   paneId: string
   color?: string

@@ -4,6 +4,7 @@ export * from './bound'
 export * from './ma'
 export * from './oscillators'
 export * from './volatility'
+export * from './patterns'
 
 import { ema, hma, rollingVwap, sma, vwap, wma } from './ma'
 import { cci, macd, mfi, obv, roc, rsi, stoch, stochRsi, willr } from './oscillators'

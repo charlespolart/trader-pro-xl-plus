@@ -17,7 +17,8 @@ export interface IndicatorSpec<O = number> {
   outputs: readonly string[]
   /** candles needed before the indicator produces values (used for data preload) */
   warmup: number
-  defaultPlot: 'overlay' | 'pane'
+  /** 'markers': non-zero outputs render as signed arrows on the candles */
+  defaultPlot: 'overlay' | 'pane' | 'markers'
   /** per-output default colors for the chart */
   defaultColors?: Record<string, string>
   /** outputs accessible via at()/out() but never plotted (signals, flags…) */
@@ -29,7 +30,7 @@ export function defineIndicator<O = number>(opts: {
   id: string
   outputs?: readonly string[]
   warmup?: number
-  defaultPlot?: 'overlay' | 'pane'
+  defaultPlot?: 'overlay' | 'pane' | 'markers'
   defaultColors?: Record<string, string>
   hiddenOutputs?: readonly string[]
   /** returns the per-instance update function (closure holds the state) */
