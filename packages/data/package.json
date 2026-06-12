@@ -1,0 +1,24 @@
+{
+  "name": "@tpx/data",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@tpx/core": "workspace:*",
+    "@tpx/db": "workspace:*",
+    "@tpx/shared": "workspace:*",
+    "drizzle-orm": "^0.44.2",
+    "fflate": "^0.8.2"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.20",
+    "typescript": "^5.8.3"
+  }
+}
