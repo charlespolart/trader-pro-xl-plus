@@ -630,6 +630,106 @@ const obRetest = defineStrategy({
   onStop: sharedOnStop,
 })
 
+// =================================================================== J
+const makerRev = defineStrategy({
+  name: 'R&D Maker MeanRev',
+  markets: ['futures'],
+  params: {
+    ...baseParams,
+    interval: p.interval({ default: '15m' }),
+    emaLen: p.int({ default: 20, min: 5, max: 100 }),
+    entryAtr: p.number({ default: 2, min: 0.5, max: 5, step: 0.25, description: 'limit à k×ATR de l’EMA' }),
+    tpMode: p.select({ options: ['ema', 'atr'], default: 'ema' }),
+    tpAtr: p.number({ default: 1, min: 0.25, max: 4, step: 0.25 }),
+    slAtr: p.number({ default: 2.5, min: 0.5, max: 6, step: 0.25 }),
+    timeStopBars: p.int({ default: 16, min: 2, max: 200, description: 'sortie forcée après N bougies' }),
+  },
+  data: htfData,
+  init(ctx) {
+    return {
+      ema: ctx.indicator('main', ind.ema(ctx.params.emaLen), { plot: 'none' }),
+      atr: ctx.indicator('main', ind.atr(14), { plot: 'none' }),
+      htfEma: ctx.indicator('htf', ind.ema(200), { plot: 'none' }),
+    }
+  },
+  async onCandle(ctx, feedId, c) {
+    if (feedId !== 'main') return
+    const { ema, atr } = ctx.locals
+    if (!ema.ready || !atr.ready) return
+    const a = atr.value ?? 0
+    const e = ema.value!
+    const pos = ctx.position.qty
+
+    if (pos !== 0) {
+      const bars = ((ctx.state['bars'] as number) ?? 0) + 1
+      ctx.state['bars'] = bars
+      if (bars >= ctx.params.timeStopBars) {
+        await closeAll(ctx, `time stop ${bars} bougies`)
+      }
+      return
+    }
+    ctx.state['bars'] = 0
+
+    const trend = htfTrend(ctx)
+    let desired: { side: 'BUY' | 'SELL'; price: number; stop: number; tp: number } | null = null
+    if ((!ctx.params.useHtf || trend === 'up') && a > 0) {
+      const lvl = ctx.roundPrice(e - ctx.params.entryAtr * a)
+      if (lvl < c.close) {
+        desired = {
+          side: 'BUY',
+          price: lvl,
+          stop: ctx.roundPrice(lvl - ctx.params.slAtr * a),
+          tp: ctx.roundPrice(ctx.params.tpMode === 'ema' ? e : lvl + ctx.params.tpAtr * a),
+        }
+      }
+    } else if (ctx.params.allowShort && (!ctx.params.useHtf || trend === 'down') && a > 0) {
+      const lvl = ctx.roundPrice(e + ctx.params.entryAtr * a)
+      if (lvl > c.close) {
+        desired = {
+          side: 'SELL',
+          price: lvl,
+          stop: ctx.roundPrice(lvl + ctx.params.slAtr * a),
+          tp: ctx.roundPrice(ctx.params.tpMode === 'ema' ? e : lvl - ctx.params.tpAtr * a),
+        }
+      }
+    }
+
+    const key = desired ? `${desired.side}:${desired.price}` : ''
+    if (key === (ctx.state['entryKey'] as string)) return
+    await ctx.order.cancelAll('entry')
+    ctx.state['entryKey'] = key
+    if (!desired) return
+    const qty = sizedQty(ctx, desired.price, desired.stop, ctx.params.riskPct)
+    if (qty <= 0) return
+    ctx.state['stop'] = desired.stop
+    ctx.state['tp'] = desired.tp
+    ctx.state['bracket'] = false
+    await ctx.order.limit({ side: desired.side, qty, price: desired.price, reason: `MR limit ${ctx.params.entryAtr}×ATR`, tag: 'entry' })
+  },
+  // bracket custom : TP en LIMIT (maker), SL en stop-market
+  async onFill(ctx: any, _fill: any, order: any) {
+    if (order.tag === 'entry' && ctx.position.qty !== 0 && ctx.state['bracket'] !== true) {
+      ctx.state['bracket'] = true
+      ctx.state['bars'] = 0
+      const long = ctx.position.qty > 0
+      const qty = Math.abs(ctx.position.qty)
+      const stop = ctx.state['stop'] as number
+      const tp = ctx.state['tp'] as number
+      if (stop > 0) {
+        await ctx.order.stopMarket({ side: long ? 'SELL' : 'BUY', qty, stopPrice: stop, reduceOnly: true, ocoGroup: 'exit', tag: 'sl', reason: 'SL' })
+      }
+      if (tp > 0) {
+        await ctx.order.limit({ side: long ? 'SELL' : 'BUY', qty, price: tp, reduceOnly: true, ocoGroup: 'exit', tag: 'tp', reason: 'TP maker' })
+      }
+    }
+    if ((order.tag === 'sl' || order.tag === 'tp' || order.tag === 'exit') && ctx.position.qty === 0) {
+      ctx.state['bracket'] = false
+      ctx.state['entryKey'] = ''
+    }
+  },
+  onStop: sharedOnStop,
+})
+
 // ------------------------------------------------------------------ export
 
 export const FAMILIES: Family[] = [
@@ -725,6 +825,18 @@ export const FAMILIES: Family[] = [
       { label: 'ob-soft-limit', params: { impulseAtrMult: 2, impulseBars: 5, entryMode: 'limit' } },
       { label: 'ob-soft-limit-flow', params: { impulseAtrMult: 2, impulseBars: 5, entryMode: 'limit', useFlowFilter: true } },
       { label: 'ob-soft-1h-limit', params: { impulseAtrMult: 2, impulseBars: 5, entryMode: 'limit', interval: '1h' } },
+    ],
+  },
+  {
+    key: 'makerrev',
+    def: makerRev,
+    variants: [
+      { label: 'mr-2atr-tpema', params: { riskPct: 0.5 } },
+      { label: 'mr-2.5atr-tpema', params: { riskPct: 0.5, entryAtr: 2.5 } },
+      { label: 'mr-2atr-tp1atr', params: { riskPct: 0.5, tpMode: 'atr' } },
+      { label: 'mr-2atr-noHtf', params: { riskPct: 0.5, useHtf: false } },
+      { label: 'mr-2atr-1h', params: { riskPct: 0.5, interval: '1h', timeStopBars: 8 } },
+      { label: 'mr-3atr-tpema', params: { riskPct: 0.5, entryAtr: 3 } },
     ],
   },
 ]
