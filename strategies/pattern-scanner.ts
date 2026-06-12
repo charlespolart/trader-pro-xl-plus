@@ -22,6 +22,11 @@ export default defineStrategy({
       label: 'Pattern à scanner',
     }),
     requireTrend: p.bool({ default: true, label: 'Contexte de tendance requis' }),
+    strictColor: p.bool({
+      default: false,
+      label: 'Couleur stricte (famille marteau)',
+      description: 'Hammer vert / hanging man rouge obligatoires — non canonique mais conforme aux fiches simplifiées',
+    }),
     trendMinPct: p.number({ default: 0.8, min: 0.1, max: 5, step: 0.1, label: 'Tendance min (%)' }),
   },
 
@@ -33,7 +38,11 @@ export default defineStrategy({
     return {
       pat: ctx.indicator(
         'main',
-        candlePatterns(names, { requireTrend: ctx.params.requireTrend, trendMinPct: ctx.params.trendMinPct }),
+        candlePatterns(names, {
+          requireTrend: ctx.params.requireTrend,
+          strictColor: ctx.params.strictColor,
+          trendMinPct: ctx.params.trendMinPct,
+        }),
       ),
     }
   },

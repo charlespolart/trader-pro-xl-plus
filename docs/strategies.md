@@ -153,6 +153,7 @@ onCandle(ctx) {
 
 - **Affichage automatique** : `plot: 'markers'` par défaut — chaque détection apparaît comme une flèche nommée sur la chart (vert = haussier, rouge = baissier). `{ plot: 'none' }` pour un usage silencieux.
 - **Contexte de tendance** : les définitions classiques sont respectées (un *hammer* exige une baisse préalable ; la même bougie après une hausse est un *hanging man*). Réglable via `trendLookback` / `trendMinPct`, désactivable avec `{ requireTrend: false }`.
+- **Couleur du corps (famille marteau)** : conformément aux références (Nison, StockCharts ChartSchool, Wikipedia), la couleur n'est **pas** un critère pour hammer / inverted hammer / hanging man / shooting star — c'est la forme et le contexte qui définissent le pattern, un corps vert n'étant qu'un signal légèrement plus fort. Certaines fiches simplifiées (wikiHow…) imposent la couleur : `{ strictColor: true }` pour les suivre (hammer/inverted verts, hanging man/shooting star rouges).
 - **Seuils relatifs configurables** (`PatternOptions`) : taille de corps doji, ratio des mèches, tolérance d'égalité des tweezers…
 - `candlePatterns()` sans argument détecte tout ; `BULLISH_PATTERNS` / `BEARISH_PATTERNS` listent les noms par direction.
 - Adaptations crypto : pas de gaps en 24/7 → piercing line / dark cloud assouplis (pas d'exigence de gap d'ouverture), windows et abandoned baby quasi muets sur les paires liquides.

@@ -176,6 +176,25 @@ describe('régressions — formes qui ne doivent PAS matcher', () => {
   })
 })
 
+describe('couleur du corps — famille marteau', () => {
+  // mèche basse 71% du range, mèche haute ~0, corps en haut
+  const redHammer = (base: number) => mk(base, base + 0.05, base - 2, base - 0.5) // bear
+  const greenHammer = (base: number) => mk(base - 0.5, base + 0.05, base - 2, base) // bull
+
+  it('défaut (canonique Nison/StockCharts) : la couleur ne compte pas', () => {
+    expect(detect(['hammer'], [...downtrend(), redHammer(103)])['hammer']).toBe(1)
+    expect(detect(['hammer'], [...downtrend(), greenHammer(103)])['hammer']).toBe(1)
+  })
+
+  it('strictColor (style wikiHow) : hammer vert uniquement, hanging man rouge uniquement', () => {
+    expect(detect(['hammer'], [...downtrend(), redHammer(103)], { strictColor: true })['hammer']).toBe(0)
+    expect(detect(['hammer'], [...downtrend(), greenHammer(103)], { strictColor: true })['hammer']).toBe(1)
+    // hanging man : même forme en uptrend — doit être ROUGE en strict
+    expect(detect(['hangingMan'], [...uptrend(), greenHammer(108)], { strictColor: true })['hangingMan']).toBe(0)
+    expect(detect(['hangingMan'], [...uptrend(), redHammer(108)], { strictColor: true })['hangingMan']).toBe(-1)
+  })
+})
+
 describe('helpers', () => {
   it('bullishSignals / bearishSignals', () => {
     expect(bullishSignals({ hammer: 1, doji: 0, hangingMan: -1 })).toEqual(['hammer'])

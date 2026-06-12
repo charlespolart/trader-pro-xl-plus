@@ -44,6 +44,15 @@ export interface PatternOptions {
   trendMinPct: number
   /** exiger le contexte de tendance des définitions classiques (défaut true) */
   requireTrend: boolean
+  /**
+   * Exiger la couleur « intuitive » sur la famille marteau : hammer/inverted
+   * hammer verts, hanging man/shooting star rouges (défaut false).
+   * Les références (Nison, StockCharts) ne font PAS de la couleur un critère —
+   * c'est la forme et le contexte qui définissent ces patterns ; un corps vert
+   * n'est qu'un signal légèrement plus fort. Certaines fiches simplifiées
+   * (wikiHow…) imposent la couleur : activez cette option pour les suivre.
+   */
+  strictColor: boolean
 }
 
 export const DEFAULT_PATTERN_OPTIONS: PatternOptions = {
@@ -59,6 +68,7 @@ export const DEFAULT_PATTERN_OPTIONS: PatternOptions = {
   trendLookback: 5,
   trendMinPct: 0.8,
   requireTrend: true,
+  strictColor: false,
 }
 
 // ----------------------------------------------------------------- helpers
@@ -138,25 +148,25 @@ export const PATTERNS = {
     lookback: 1,
     direction: 1,
     needsTrend: 'down',
-    detect: ([c], o) => hammerShape(c!, o),
+    detect: ([c], o) => hammerShape(c!, o) && (!o.strictColor || bull(c!)),
   },
   invertedHammer: {
     lookback: 1,
     direction: 1,
     needsTrend: 'down',
-    detect: ([c], o) => invHammerShape(c!, o),
+    detect: ([c], o) => invHammerShape(c!, o) && (!o.strictColor || bull(c!)),
   },
   hangingMan: {
     lookback: 1,
     direction: -1,
     needsTrend: 'up',
-    detect: ([c], o) => hammerShape(c!, o),
+    detect: ([c], o) => hammerShape(c!, o) && (!o.strictColor || bear(c!)),
   },
   shootingStar: {
     lookback: 1,
     direction: -1,
     needsTrend: 'up',
-    detect: ([c], o) => invHammerShape(c!, o),
+    detect: ([c], o) => invHammerShape(c!, o) && (!o.strictColor || bear(c!)),
   },
   bullishSpinningTop: {
     lookback: 1,

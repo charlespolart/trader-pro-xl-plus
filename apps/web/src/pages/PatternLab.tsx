@@ -17,6 +17,7 @@ export function PatternLab() {
   const [from, setFrom] = useState(dateToInputValue(Date.now() - 90 * 86_400_000))
   const [to, setTo] = useState(dateToInputValue(Date.now()))
   const [requireTrend, setRequireTrend] = useState(true)
+  const [strictColor, setStrictColor] = useState(false)
   const [trendMinPct, setTrendMinPct] = useState('0.8')
 
   const [result, setResult] = useState<PatternScanResult | null>(null)
@@ -34,6 +35,7 @@ export function PatternLab() {
         end: inputValueToMs(to) + 86_400_000,
         names: 'all',
         requireTrend,
+        strictColor,
         trendMinPct: Number(trendMinPct),
       }),
     onSuccess: (r) => {
@@ -112,6 +114,13 @@ export function PatternLab() {
           <label className="flex cursor-pointer items-center gap-2 py-2 text-sm">
             <input type="checkbox" checked={requireTrend} onChange={(e) => setRequireTrend(e.target.checked)} className="accent-blue-500" />
             Contexte de tendance
+          </label>
+          <label
+            className="flex cursor-pointer items-center gap-2 py-2 text-sm"
+            title="Hammer/inverted hammer verts, hanging man/shooting star rouges. Les références (Nison, StockCharts) ne font pas de la couleur un critère — option pour suivre les fiches simplifiées."
+          >
+            <input type="checkbox" checked={strictColor} onChange={(e) => setStrictColor(e.target.checked)} className="accent-blue-500" />
+            Couleur stricte
           </label>
           <Field label="Tendance min (%)">
             <input className="input w-20" type="number" step="0.1" value={trendMinPct} onChange={(e) => setTrendMinPct(e.target.value)} />
