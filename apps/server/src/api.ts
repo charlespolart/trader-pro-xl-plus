@@ -15,6 +15,7 @@ import {
   type MarketType,
   type SymbolInfo,
 } from '@tpx/shared'
+import { ALL_PATTERNS, candlePatterns, type PatternName } from '@tpx/core'
 import { BinanceAccount, BinanceMarketData, BinanceRest, CandleStore } from '@tpx/data'
 import { authEnabled, env } from './env'
 import { issueToken } from './crypto'
@@ -314,6 +315,53 @@ export function buildApi(s: Services): Hono {
     }
     const candles = await store.getCandles(market, symbol, interval, start, end)
     return c.json(candles.slice(-20_000))
+  })
+
+  /** scan de patterns de bougies sur une plage — outil de vérification visuelle */
+  api.get('/market/patterns', async (c) => {
+    const market = asMarket(c.req.query('market'))
+    const symbol = (c.req.query('symbol') ?? '').toUpperCase()
+    const interval = asInterval(c.req.query('interval'))
+    const end = Number(c.req.query('end') ?? Date.now())
+    const start = Number(c.req.query('start') ?? end - 60 * 86_400_000)
+    const namesRaw = c.req.query('names') ?? 'all'
+    const requireTrend = c.req.query('requireTrend') !== 'false'
+    const trendMinPct = Number(c.req.query('trendMinPct') ?? 0.8)
+    if (!symbol) return c.json({ error: 'symbol requis' }, 400)
+    const { INTERVAL_MS } = await import('@tpx/shared')
+    if ((end - start) / INTERVAL_MS[interval] > 20_000) {
+      return c.json({ error: 'Plage trop large (> 20 000 bougies) — réduisez la période ou montez l’intervalle' }, 400)
+    }
+
+    const names =
+      namesRaw === 'all'
+        ? undefined
+        : namesRaw.split(',').filter((n): n is PatternName => (ALL_PATTERNS as string[]).includes(n))
+    if (names !== undefined && names.length === 0) return c.json({ error: 'patterns inconnus' }, 400)
+
+    const spec = candlePatterns(names as PatternName[] | undefined, { requireTrend, trendMinPct })
+    const warmupMs = (spec.warmup + 2) * INTERVAL_MS[interval]
+    const store = new CandleStore(s.db)
+    await store.ensureRange(market, symbol, interval, start - warmupMs, end)
+    const all = await store.getCandles(market, symbol, interval, start - warmupMs, end)
+
+    const inst = spec.create()
+    const detections: { time: number; name: string; dir: number }[] = []
+    const counts: Record<string, number> = {}
+    const windowCandles: typeof all = []
+    for (const candle of all) {
+      const v = inst.update(candle) as Record<string, number> | null
+      if (candle.openTime < start) continue
+      windowCandles.push(candle)
+      if (!v) continue
+      for (const [name, dir] of Object.entries(v)) {
+        if (dir !== 0) {
+          detections.push({ time: candle.openTime, name, dir })
+          counts[name] = (counts[name] ?? 0) + 1
+        }
+      }
+    }
+    return c.json({ candles: windowCandles, detections, counts, available: ALL_PATTERNS })
   })
 
   api.get('/market/symbols', async (c) => {

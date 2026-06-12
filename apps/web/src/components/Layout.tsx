@@ -11,6 +11,7 @@ const nav = [
   { to: '/strategies', label: 'Stratégies', icon: 'ƒ' },
   { to: '/backtests', label: 'Backtests', icon: '⏮' },
   { to: '/optimizer', label: 'Optimiseur', icon: '◬' },
+  { to: '/patterns', label: 'Patterns', icon: '⧗' },
   { to: '/trades', label: 'Trades', icon: '⇄' },
   { to: '/data', label: 'Données', icon: '⛁' },
   { to: '/settings', label: 'Réglages', icon: '⚙' },

@@ -64,6 +64,19 @@ export interface BotChartData {
   interval: Interval | null
 }
 
+export interface PatternDetection {
+  time: number
+  name: string
+  dir: number
+}
+
+export interface PatternScanResult {
+  candles: Candle[]
+  detections: PatternDetection[]
+  counts: Record<string, number>
+  available: string[]
+}
+
 export interface AccountData {
   configured: boolean
   mode: 'live' | 'testnet'
@@ -180,6 +193,20 @@ export const api = {
   klines: (market: MarketType, symbol: string, interval: Interval, start: number, end: number) =>
     get<Candle[]>(`/market/klines?market=${market}&symbol=${symbol}&interval=${interval}&start=${start}&end=${end}`),
   symbols: (market: MarketType) => get<SymbolInfo[]>(`/market/symbols?market=${market}`),
+  patternScan: (q: {
+    market: MarketType
+    symbol: string
+    interval: Interval
+    start: number
+    end: number
+    names: string
+    requireTrend: boolean
+    trendMinPct: number
+  }) =>
+    get<PatternScanResult>(
+      `/market/patterns?market=${q.market}&symbol=${q.symbol}&interval=${q.interval}&start=${q.start}&end=${q.end}` +
+        `&names=${encodeURIComponent(q.names)}&requireTrend=${q.requireTrend}&trendMinPct=${q.trendMinPct}`,
+    ),
 
   // account / risk
   account: (mode: 'live' | 'testnet') => get<AccountData>(`/account?mode=${mode}`),

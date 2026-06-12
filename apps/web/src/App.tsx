@@ -10,6 +10,7 @@ import { Backtests } from './pages/Backtests'
 import { BacktestDetail } from './pages/BacktestDetail'
 import { Optimizer } from './pages/Optimizer'
 import { OptimizationDetail } from './pages/OptimizationDetail'
+import { PatternLab } from './pages/PatternLab'
 import { DataManager } from './pages/DataManager'
 import { TradesPage } from './pages/TradesPage'
 import { Settings } from './pages/Settings'
@@ -28,6 +29,7 @@ export default function App() {
         <Route path="/backtests/:id" element={<BacktestDetail />} />
         <Route path="/optimizer" element={<Optimizer />} />
         <Route path="/optimizer/:id" element={<OptimizationDetail />} />
+        <Route path="/patterns" element={<PatternLab />} />
         <Route path="/data" element={<DataManager />} />
         <Route path="/trades" element={<TradesPage />} />
         <Route path="/settings" element={<Settings />} />

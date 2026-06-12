@@ -62,11 +62,13 @@ interface Props {
   annotations?: ChartAnnotation[]
   /** ws topic (candles:market:symbol:interval) for live updates */
   liveTopic?: string
+  /** when set/changed, the chart scrolls to center this time (ms) */
+  focusTime?: number
   height?: number
   className?: string
 }
 
-export function TradingChart({ candles, indicators = [], markers = [], annotations = [], liveTopic, height = 480, className = '' }: Props) {
+export function TradingChart({ candles, indicators = [], markers = [], annotations = [], liveTopic, focusTime, height = 480, className = '' }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null)
@@ -275,6 +277,18 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
       )
     }
   }, [annotations])
+
+  // ---- focus navigation (pattern lab, trade inspection)
+  useEffect(() => {
+    const chart = chartRef.current
+    if (!chart || focusTime === undefined || candles.length < 2) return
+    const itv = candles[1]!.openTime - candles[0]!.openTime
+    try {
+      chart.timeScale().setVisibleRange({ from: ts(focusTime - 45 * itv), to: ts(focusTime + 45 * itv) })
+    } catch {
+      /* focus outside data range */
+    }
+  }, [focusTime, candles])
 
   // ---- live updates
   useEffect(() => {

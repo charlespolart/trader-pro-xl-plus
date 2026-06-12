@@ -158,6 +158,8 @@ onCandle(ctx) {
 - Adaptations crypto : pas de gaps en 24/7 → piercing line / dark cloud assouplis (pas d'exigence de gap d'ouverture), windows et abandoned baby quasi muets sur les paires liquides.
 - **Non couvert (phase 2)** : patterns structurels multi-bougies (double top/bottom, cup & handle, wedge, flag) — ils nécessitent un moteur de pivots/zigzag.
 
+**Vérifier visuellement les détecteurs** : la page **Patterns** de l'UI scanne n'importe quelle plage (paire/intervalle/période) et permet de naviguer détection par détection sur la chart — mêmes détecteurs et mêmes seuils que dans les stratégies. Pour le workflow backtest (avec replay), la stratégie `pattern-scanner` détecte un pattern au choix sans jamais trader.
+
 Exemple complet : `strategies/pattern-reversal.ts`.
 
 ## Ordres
