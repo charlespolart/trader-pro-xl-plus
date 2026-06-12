@@ -20,6 +20,8 @@ export interface IndicatorSpec<O = number> {
   defaultPlot: 'overlay' | 'pane'
   /** per-output default colors for the chart */
   defaultColors?: Record<string, string>
+  /** outputs accessible via at()/out() but never plotted (signals, flags…) */
+  hiddenOutputs?: readonly string[]
   create(): IndicatorInstance<O>
 }
 
@@ -29,6 +31,7 @@ export function defineIndicator<O = number>(opts: {
   warmup?: number
   defaultPlot?: 'overlay' | 'pane'
   defaultColors?: Record<string, string>
+  hiddenOutputs?: readonly string[]
   /** returns the per-instance update function (closure holds the state) */
   create: () => (candle: Candle) => O | null
 }): IndicatorSpec<O> {
@@ -38,6 +41,7 @@ export function defineIndicator<O = number>(opts: {
     warmup: opts.warmup ?? 1,
     defaultPlot: opts.defaultPlot ?? 'overlay',
     defaultColors: opts.defaultColors,
+    hiddenOutputs: opts.hiddenOutputs,
     create: () => {
       const update = opts.create()
       return { update }

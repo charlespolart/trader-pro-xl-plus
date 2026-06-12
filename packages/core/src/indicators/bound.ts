@@ -112,7 +112,10 @@ export class BoundIndicator<O = number> {
   toSeriesDTO(): IndicatorSeriesDTO[] {
     if (this.plot === 'none') return []
     const paneId = `${this.feedId}:${this.spec.id}`
-    return this.spec.outputs.map((output) => ({
+    const hidden = this.spec.hiddenOutputs ?? []
+    return this.spec.outputs
+      .filter((output) => !hidden.includes(output))
+      .map((output) => ({
       indicatorId: this.spec.id,
       feedId: this.feedId,
       output,
