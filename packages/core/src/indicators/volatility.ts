@@ -172,8 +172,9 @@ export const supertrend = (atrPeriod = 10, mult = 3) =>
   })
 
 /**
- * Parabolic SAR (Wilder). Slight simplification: the SAR clamp uses the
- * previous bar only (canonical uses the two previous bars).
+ * Parabolic SAR — algorithme canonique de Wilder : le SAR d'une période
+ * haussière ne peut pas dépasser le plus bas des DEUX bougies précédentes
+ * (symétriquement en baisse), accélération af bornée à `max`.
  */
 export const psar = (start = 0.02, step = 0.02, max = 0.2) =>
   defineIndicator({
@@ -182,6 +183,7 @@ export const psar = (start = 0.02, step = 0.02, max = 0.2) =>
     defaultPlot: 'overlay',
     create: () => {
       let prev: Candle | null = null
+      let prev2: Candle | null = null
       let sar = 0
       let ep = 0
       let af = start
@@ -198,12 +200,13 @@ export const psar = (start = 0.02, step = 0.02, max = 0.2) =>
           ep = up ? Math.max(prev.high, c.high) : Math.min(prev.low, c.low)
           af = start
           started = true
+          prev2 = prev
           prev = c
           return sar
         }
         sar = sar + af * (ep - sar)
         if (up) {
-          sar = Math.min(sar, prev.low)
+          sar = Math.min(sar, prev.low, prev2?.low ?? prev.low)
           if (c.high > ep) {
             ep = c.high
             af = Math.min(max, af + step)
@@ -215,7 +218,7 @@ export const psar = (start = 0.02, step = 0.02, max = 0.2) =>
             af = start
           }
         } else {
-          sar = Math.max(sar, prev.high)
+          sar = Math.max(sar, prev.high, prev2?.high ?? prev.high)
           if (c.low < ep) {
             ep = c.low
             af = Math.min(max, af + step)
@@ -227,6 +230,7 @@ export const psar = (start = 0.02, step = 0.02, max = 0.2) =>
             af = start
           }
         }
+        prev2 = prev
         prev = c
         return sar
       }

@@ -327,6 +327,7 @@ export function buildApi(s: Services): Hono {
     const namesRaw = c.req.query('names') ?? 'all'
     const requireTrend = c.req.query('requireTrend') !== 'false'
     const strictColor = c.req.query('strictColor') === 'true'
+    const strictGaps = c.req.query('strictGaps') === 'true'
     const trendMinPct = Number(c.req.query('trendMinPct') ?? 0.8)
     if (!symbol) return c.json({ error: 'symbol requis' }, 400)
     const { INTERVAL_MS } = await import('@tpx/shared')
@@ -340,7 +341,7 @@ export function buildApi(s: Services): Hono {
         : namesRaw.split(',').filter((n): n is PatternName => (ALL_PATTERNS as string[]).includes(n))
     if (names !== undefined && names.length === 0) return c.json({ error: 'patterns inconnus' }, 400)
 
-    const spec = candlePatterns(names as PatternName[] | undefined, { requireTrend, trendMinPct, strictColor })
+    const spec = candlePatterns(names as PatternName[] | undefined, { requireTrend, trendMinPct, strictColor, strictGaps })
     const warmupMs = (spec.warmup + 2) * INTERVAL_MS[interval]
     const store = new CandleStore(s.db)
     await store.ensureRange(market, symbol, interval, start - warmupMs, end)

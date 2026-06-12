@@ -53,6 +53,14 @@ export interface PatternOptions {
    * (wikiHow…) imposent la couleur : activez cette option pour les suivre.
    */
   strictColor: boolean
+  /**
+   * Exiger les gaps des définitions canoniques (piercing line ouvre sous le
+   * plus bas précédent, dark cloud au-dessus du plus haut, gaps de corps des
+   * étoiles, strike ouvrant au-delà de la clôture…). Défaut false : en crypto
+   * 24/7 l'open ≈ la clôture précédente, les gaps n'existent quasiment pas —
+   * la version adaptée garde l'esprit du pattern sans l'exigence de gap.
+   */
+  strictGaps: boolean
 }
 
 export const DEFAULT_PATTERN_OPTIONS: PatternOptions = {
@@ -69,6 +77,7 @@ export const DEFAULT_PATTERN_OPTIONS: PatternOptions = {
   trendMinPct: 0.8,
   requireTrend: true,
   strictColor: false,
+  strictGaps: false,
 }
 
 // ----------------------------------------------------------------- helpers
@@ -225,17 +234,29 @@ export const PATTERNS = {
     lookback: 2,
     direction: 1,
     needsTrend: 'down',
-    // adapté au 24/7 (pas de gap d'ouverture en crypto) : clôture au-dessus du
-    // milieu du corps précédent sans le dépasser entièrement
+    // canonique (strictGaps) : la 2e bougie ouvre SOUS LE PLUS BAS de la 1re
+    // (« opens at a new low », StockCharts) ; adaptation 24/7 par défaut :
+    // ouverture ≤ clôture précédente. Clôture au-dessus du milieu du corps
+    // précédent sans le dépasser (sinon c'est un engulfing).
     detect: ([a, b], o) =>
-      bear(a!) && bull(b!) && strongBody(a!, o) && b!.open <= a!.close * (1 + o.nearTolerance) && b!.close > bodyMid(a!) && b!.close < a!.open,
+      bear(a!) &&
+      bull(b!) &&
+      strongBody(a!, o) &&
+      (o.strictGaps ? b!.open < a!.low : b!.open <= a!.close * (1 + o.nearTolerance)) &&
+      b!.close > bodyMid(a!) &&
+      b!.close < a!.open,
   },
   darkCloudCover: {
     lookback: 2,
     direction: -1,
     needsTrend: 'up',
     detect: ([a, b], o) =>
-      bull(a!) && bear(b!) && strongBody(a!, o) && b!.open >= a!.close * (1 - o.nearTolerance) && b!.close < bodyMid(a!) && b!.close > a!.open,
+      bull(a!) &&
+      bear(b!) &&
+      strongBody(a!, o) &&
+      (o.strictGaps ? b!.open > a!.high : b!.open >= a!.close * (1 - o.nearTolerance)) &&
+      b!.close < bodyMid(a!) &&
+      b!.close > a!.open,
   },
   tweezerBottom: {
     lookback: 2,
@@ -267,17 +288,29 @@ export const PATTERNS = {
     lookback: 3,
     direction: 1,
     needsTrend: 'down',
-    // l'étoile (petit corps) doit se situer SOUS le milieu du corps de la
-    // première bougie — c'est elle qui marque le point bas
+    // canonique (strictGaps) : le corps de l'étoile gappe SOUS le corps de la
+    // 1re bougie et la 3e ouvre en gap au-dessus de l'étoile ; adaptation
+    // 24/7 : l'étoile (petit corps) se situe sous le milieu du corps 1 —
+    // c'est elle qui marque le point bas
     detect: ([a, b, c], o) =>
-      bear(a!) && strongBody(a!, o) && smallBody(b!, o) && bodyTop(b!) <= bodyMid(a!) && bull(c!) && c!.close > bodyMid(a!),
+      bear(a!) &&
+      strongBody(a!, o) &&
+      smallBody(b!, o) &&
+      (o.strictGaps ? bodyTop(b!) < bodyBottom(a!) && c!.open > bodyTop(b!) : bodyTop(b!) <= bodyMid(a!)) &&
+      bull(c!) &&
+      c!.close > bodyMid(a!),
   },
   eveningStar: {
     lookback: 3,
     direction: -1,
     needsTrend: 'up',
     detect: ([a, b, c], o) =>
-      bull(a!) && strongBody(a!, o) && smallBody(b!, o) && bodyBottom(b!) >= bodyMid(a!) && bear(c!) && c!.close < bodyMid(a!),
+      bull(a!) &&
+      strongBody(a!, o) &&
+      smallBody(b!, o) &&
+      (o.strictGaps ? bodyBottom(b!) > bodyTop(a!) && c!.open < bodyBottom(b!) : bodyBottom(b!) >= bodyMid(a!)) &&
+      bear(c!) &&
+      c!.close < bodyMid(a!),
   },
   bullishAbandonedBaby: {
     lookback: 3,
@@ -348,19 +381,38 @@ export const PATTERNS = {
   },
 
   // ---- 4 bougies
+  // Nommage Bulkowski (thepatternsite.com) : le three-line strike est nommé
+  // d'après la TENDANCE des trois premières bougies (théorie : continuation
+  // après que la 4e a « purgé » le mouvement). Bullish = 3 blanches montantes
+  // avalées par une grande noire. NB Bulkowski mesure ~65 % de comportements
+  // de RETOURNEMENT malgré le nom — backtester avant d'en faire un signal.
   bullishThreeLineStrike: {
     lookback: 4,
     direction: 1,
-    needsTrend: null,
-    detect: ([a, b, c, d]) =>
-      bear(a!) && bear(b!) && bear(c!) && b!.close < a!.close && c!.close < b!.close && bull(d!) && d!.close > a!.open,
+    needsTrend: 'up',
+    detect: ([a, b, c, d], o) =>
+      bull(a!) &&
+      bull(b!) &&
+      bull(c!) &&
+      b!.close > a!.close &&
+      c!.close > b!.close &&
+      bear(d!) &&
+      d!.close < a!.open &&
+      (!o.strictGaps || d!.open > c!.close),
   },
   bearishThreeLineStrike: {
     lookback: 4,
     direction: -1,
-    needsTrend: null,
-    detect: ([a, b, c, d]) =>
-      bull(a!) && bull(b!) && bull(c!) && b!.close > a!.close && c!.close > b!.close && bear(d!) && d!.close < a!.open,
+    needsTrend: 'down',
+    detect: ([a, b, c, d], o) =>
+      bear(a!) &&
+      bear(b!) &&
+      bear(c!) &&
+      b!.close < a!.close &&
+      c!.close < b!.close &&
+      bull(d!) &&
+      d!.close > a!.open &&
+      (!o.strictGaps || d!.open < c!.close),
   },
 
   // ---- gaps (windows) — rarissimes en crypto 24/7, fournis pour complétude

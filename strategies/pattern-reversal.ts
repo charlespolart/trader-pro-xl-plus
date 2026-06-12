@@ -59,7 +59,9 @@ export default defineStrategy({
             'morningStar',
             'threeInsideUp',
             'threeOutsideUp',
-            'bullishThreeLineStrike',
+            // NB: pas de bullishThreeLineStrike ici — nommage Bulkowski, c'est
+            // un pattern de CONTINUATION haussière (3 blanches + strike noir),
+            // pas un retournement sur faiblesse
           ],
           { requireTrend: ctx.params.requireTrend, trendMinPct: ctx.params.trendMinPct },
         ),

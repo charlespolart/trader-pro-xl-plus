@@ -27,6 +27,11 @@ export default defineStrategy({
       label: 'Couleur stricte (famille marteau)',
       description: 'Hammer vert / hanging man rouge obligatoires — non canonique mais conforme aux fiches simplifiées',
     }),
+    strictGaps: p.bool({
+      default: false,
+      label: 'Gaps stricts (canonique)',
+      description: 'Exige les gaps des définitions textbook — quasi muet en crypto 24/7',
+    }),
     trendMinPct: p.number({ default: 0.8, min: 0.1, max: 5, step: 0.1, label: 'Tendance min (%)' }),
   },
 
@@ -41,6 +46,7 @@ export default defineStrategy({
         candlePatterns(names, {
           requireTrend: ctx.params.requireTrend,
           strictColor: ctx.params.strictColor,
+          strictGaps: ctx.params.strictGaps,
           trendMinPct: ctx.params.trendMinPct,
         }),
       ),

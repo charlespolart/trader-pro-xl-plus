@@ -18,6 +18,7 @@ export function PatternLab() {
   const [to, setTo] = useState(dateToInputValue(Date.now()))
   const [requireTrend, setRequireTrend] = useState(true)
   const [strictColor, setStrictColor] = useState(false)
+  const [strictGaps, setStrictGaps] = useState(false)
   const [trendMinPct, setTrendMinPct] = useState('0.8')
 
   const [result, setResult] = useState<PatternScanResult | null>(null)
@@ -36,6 +37,7 @@ export function PatternLab() {
         names: 'all',
         requireTrend,
         strictColor,
+        strictGaps,
         trendMinPct: Number(trendMinPct),
       }),
     onSuccess: (r) => {
@@ -121,6 +123,13 @@ export function PatternLab() {
           >
             <input type="checkbox" checked={strictColor} onChange={(e) => setStrictColor(e.target.checked)} className="accent-blue-500" />
             Couleur stricte
+          </label>
+          <label
+            className="flex cursor-pointer items-center gap-2 py-2 text-sm"
+            title="Exiger les gaps des définitions canoniques (piercing sous le plus bas, dark cloud au-dessus du plus haut, gaps des étoiles…). Quasi muet en crypto 24/7."
+          >
+            <input type="checkbox" checked={strictGaps} onChange={(e) => setStrictGaps(e.target.checked)} className="accent-blue-500" />
+            Gaps stricts
           </label>
           <Field label="Tendance min (%)">
             <input className="input w-20" type="number" step="0.1" value={trendMinPct} onChange={(e) => setTrendMinPct(e.target.value)} />

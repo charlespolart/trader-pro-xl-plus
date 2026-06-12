@@ -119,12 +119,39 @@ describe('candlePatterns — 3+ bougies', () => {
     expect(r['threeOutsideUp']).toBe(1)
   })
 
-  it('bullish three line strike : 3 baissières avalées par une haussière', () => {
-    const r = detect(
-      ['bullishThreeLineStrike'],
+  it('three line strike — nommage Bulkowski (par la tendance des 3 premières bougies)', () => {
+    // bearish 3LS : trois noires descendantes avalées par une grande blanche
+    const bearish = detect(
+      ['bearishThreeLineStrike'],
       [mk(105, 105.1, 103.9, 104), mk(104, 104.1, 102.9, 103), mk(103, 103.1, 101.9, 102), mk(102, 105.6, 101.8, 105.5)],
+      { requireTrend: false },
     )
-    expect(r['bullishThreeLineStrike']).toBe(1)
+    expect(bearish['bearishThreeLineStrike']).toBe(-1)
+    // bullish 3LS : trois blanches montantes avalées par une grande noire
+    const bullish = detect(
+      ['bullishThreeLineStrike'],
+      [mk(100, 102.2, 99.9, 102), mk(102, 104.2, 101.9, 104), mk(104, 106.2, 103.9, 106), mk(106, 106.4, 99.2, 99.5)],
+      { requireTrend: false },
+    )
+    expect(bullish['bullishThreeLineStrike']).toBe(1)
+  })
+
+  it('strictGaps : piercing line canonique ouvre sous le plus bas précédent', () => {
+    const a = mk(104, 104.1, 102.4, 102.5) // grande noire, low 102.4
+    const noGap = mk(102.5, 103.6, 102.3, 103.5) // ouvre à la clôture (crypto 24/7)
+    expect(detect(['piercingLine'], [...downtrend(), a, noGap])['piercingLine']).toBe(1)
+    expect(detect(['piercingLine'], [...downtrend(), a, noGap], { strictGaps: true })['piercingLine']).toBe(0)
+    const gap = mk(102.2, 103.6, 102.1, 103.5) // ouvre sous 102.4
+    expect(detect(['piercingLine'], [...downtrend(), a, gap], { strictGaps: true })['piercingLine']).toBe(1)
+  })
+
+  it("strictGaps : morning star canonique exige le gap du corps de l'étoile", () => {
+    const a = mk(104, 104.1, 102.4, 102.5)
+    const star = mk(102.2, 102.45, 102.0, 102.1) // corps entièrement sous le corps de a
+    const c3 = mk(102.5, 103.8, 102.4, 103.7) // ouvre au-dessus du corps de l'étoile
+    expect(detect(['morningStar'], [...downtrend(), a, star, c3], { strictGaps: true })['morningStar']).toBe(1)
+    const starHigh = mk(102.5, 102.9, 102.4, 102.6) // pas de gap de corps
+    expect(detect(['morningStar'], [...downtrend(), a, starHigh, c3], { strictGaps: true })['morningStar']).toBe(0)
   })
 })
 
@@ -203,7 +230,7 @@ describe('helpers', () => {
   })
 
   it("le warmup couvre le pattern le plus long + la tendance", () => {
-    const spec = candlePatterns(['bullishThreeLineStrike'])
+    const spec = candlePatterns(['bearishThreeLineStrike'])
     expect(spec.warmup).toBeGreaterThanOrEqual(4 + 5)
   })
 })

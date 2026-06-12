@@ -202,11 +202,12 @@ export const api = {
     names: string
     requireTrend: boolean
     strictColor: boolean
+    strictGaps: boolean
     trendMinPct: number
   }) =>
     get<PatternScanResult>(
       `/market/patterns?market=${q.market}&symbol=${q.symbol}&interval=${q.interval}&start=${q.start}&end=${q.end}` +
-        `&names=${encodeURIComponent(q.names)}&requireTrend=${q.requireTrend}&strictColor=${q.strictColor}&trendMinPct=${q.trendMinPct}`,
+        `&names=${encodeURIComponent(q.names)}&requireTrend=${q.requireTrend}&strictColor=${q.strictColor}&strictGaps=${q.strictGaps}&trendMinPct=${q.trendMinPct}`,
     ),
 
   // account / risk

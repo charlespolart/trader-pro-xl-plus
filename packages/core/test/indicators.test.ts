@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import type { Candle } from '@tpx/shared'
 import { emaStream, highestStream, lowestStream, smaStream, stddevStream } from '../src/indicators/streams'
-import { atr, bbands, donchian, supertrend } from '../src/indicators/volatility'
+import { atr, bbands, donchian, psar, supertrend } from '../src/indicators/volatility'
 import { macd, rsi } from '../src/indicators/oscillators'
 import { BoundIndicator } from '../src/indicators/bound'
 import { ema } from '../src/indicators/ma'
@@ -98,6 +98,19 @@ describe('indicators', () => {
     expect(v).not.toBeNull()
     expect(v!.hist).toBeCloseTo(v!.macd - v!.signal, 10)
     expect(v!.macd).toBeGreaterThan(0) // rising series
+  })
+
+  it('psar (Wilder canonique) reste sous les bougies en hausse, bascule au retournement', () => {
+    const p = psar().create()
+    let v: number | null = null
+    for (let i = 0; i < 30; i++) v = p.update(mkCandle(i, 100 + i, 101.2 + i, 99.8 + i, 101 + i))
+    expect(v).not.toBeNull()
+    expect(v!).toBeLessThan(99.8 + 29) // sous le plus bas de la dernière bougie
+    for (let i = 30; i < 42; i++) {
+      const px = 125 - (i - 30) * 3
+      v = p.update(mkCandle(i, px, px + 1, px - 2, px - 1.5))
+    }
+    expect(v!).toBeGreaterThan(125 - 11 * 3 + 1) // au-dessus des bougies en baisse
   })
 
   it('supertrend flips direction with the trend', () => {
