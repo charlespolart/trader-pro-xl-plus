@@ -75,7 +75,14 @@ export class PgDataProvider implements BacktestDataProvider {
     const key = `${market}:${symbol}`
     const cached = this.symbolInfoCache.get(key)
     if (cached !== undefined) return cached
-    const info = await this.mkt[market].symbolInfo(symbol)
+    let info: SymbolInfo | null = null
+    try {
+      info = await this.mkt[market].symbolInfo(symbol)
+    } catch (err) {
+      // geo-blocked exchangeInfo: backtests degrade gracefully (no
+      // tick/step rounding); live trading still hard-requires it
+      console.warn(`symbolInfo(${market}:${symbol}) unavailable: ${err instanceof Error ? err.message : err}`)
+    }
     this.symbolInfoCache.set(key, info)
     return info
   }

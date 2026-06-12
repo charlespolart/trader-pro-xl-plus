@@ -109,6 +109,37 @@ export class SimExchange implements ExecutionAdapter {
 
   // ------------------------------------------------------------ engine API
 
+  /** persistable wallet/position snapshot (paper bots surviving a restart) */
+  snapshotState(): Record<string, number> {
+    return {
+      quoteFree: this.quoteFree,
+      quoteLocked: this.quoteLocked,
+      baseFree: this.baseFree,
+      baseLocked: this.baseLocked,
+      wallet: this.wallet,
+      usedMargin: this.usedMargin,
+      posQty: this.posQty,
+      posEntry: this.posEntry,
+      totalFees: this.totalFees,
+      bnbFeesQuote: this.bnbFeesQuote,
+      totalFunding: this.totalFunding,
+    }
+  }
+
+  restoreSnapshot(s: Record<string, number>): void {
+    this.quoteFree = s['quoteFree'] ?? this.quoteFree
+    this.quoteLocked = s['quoteLocked'] ?? 0
+    this.baseFree = s['baseFree'] ?? this.baseFree
+    this.baseLocked = s['baseLocked'] ?? 0
+    this.wallet = s['wallet'] ?? this.wallet
+    this.usedMargin = s['usedMargin'] ?? 0
+    this.posQty = s['posQty'] ?? 0
+    this.posEntry = s['posEntry'] ?? 0
+    this.totalFees = s['totalFees'] ?? 0
+    this.bnbFeesQuote = s['bnbFeesQuote'] ?? 0
+    this.totalFunding = s['totalFunding'] ?? 0
+  }
+
   setTime(t: number): void {
     this.time = t
   }

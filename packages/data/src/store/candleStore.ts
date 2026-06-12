@@ -165,14 +165,22 @@ export class CandleStore {
           gapEnd,
           cursor === dayStart ? gapEnd : dayEnd, // re-enter the zip path at the next day boundary
         )
-        const rows = await this.mkt[market].klinesRange(symbol, interval, cursor, sliceEnd)
-        const itv = INTERVAL_MS[interval]
-        const lastClosed = rows.filter((c) => c.closeTime <= Date.now() - 500)
-        const covEnd =
-          lastClosed.length > 0
-            ? Math.max(cursor, lastClosed[lastClosed.length - 1]!.openTime + itv)
-            : sliceEnd
-        await this.commitChunk(market, symbol, interval, lastClosed, cursor, Math.min(covEnd, sliceEnd))
+        try {
+          const rows = await this.mkt[market].klinesRange(symbol, interval, cursor, sliceEnd)
+          const itv = INTERVAL_MS[interval]
+          const lastClosed = rows.filter((c) => c.closeTime <= Date.now() - 500)
+          const covEnd =
+            lastClosed.length > 0
+              ? Math.max(cursor, lastClosed[lastClosed.length - 1]!.openTime + itv)
+              : sliceEnd
+          await this.commitChunk(market, symbol, interval, lastClosed, cursor, Math.min(covEnd, sliceEnd))
+        } catch (err) {
+          // geo-blocked REST (futures tail without mirror): leave the gap
+          // uncovered — it will fill on a later attempt from an allowed IP
+          console.warn(
+            `REST klines ${market}:${symbol}:${interval} unavailable (${err instanceof Error ? err.message : err}) — tail [${new Date(cursor).toISOString()}, ${new Date(sliceEnd).toISOString()}) skipped`,
+          )
+        }
         cursor = sliceEnd
       }
       progress(cursor - gapStart)

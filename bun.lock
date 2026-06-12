@@ -7,6 +7,22 @@
         "typescript": "^5.8.3",
       },
     },
+    "apps/server": {
+      "name": "@tpx/server",
+      "version": "0.1.0",
+      "dependencies": {
+        "@tpx/core": "workspace:*",
+        "@tpx/data": "workspace:*",
+        "@tpx/db": "workspace:*",
+        "@tpx/shared": "workspace:*",
+        "drizzle-orm": "^0.44.2",
+        "hono": "^4.7.10",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.2.20",
+        "typescript": "^5.8.3",
+      },
+    },
     "packages/core": {
       "name": "@tpx/core",
       "version": "0.1.0",
@@ -130,6 +146,8 @@
 
     "@tpx/db": ["@tpx/db@workspace:packages/db"],
 
+    "@tpx/server": ["@tpx/server@workspace:apps/server"],
+
     "@tpx/shared": ["@tpx/shared@workspace:packages/shared"],
 
     "@tpx/strategies": ["@tpx/strategies@workspace:strategies"],
@@ -153,6 +171,8 @@
     "fsevents": ["fsevents@2.3.3", "", { "os": "darwin" }, "sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw=="],
 
     "get-tsconfig": ["get-tsconfig@4.14.0", "", { "dependencies": { "resolve-pkg-maps": "^1.0.0" } }, "sha512-yTb+8DXzDREzgvYmh6s9vHsSVCHeC0G3PI5bEXNBHtmshPnO+S5O7qgLEOn0I5QvMy6kpZN8K1NKGyilLb93wA=="],
+
+    "hono": ["hono@4.12.25", "", {}, "sha512-2NFaIyNVgJmBs/ecmtGzlmluTFs5cHEWGTdu0t1HBwYzoGXOL5nUQBRMXsXWla5i4KkG//QMzVP88m1+I3fdAQ=="],
 
     "postgres": ["postgres@3.4.9", "", {}, "sha512-GD3qdB0x1z9xgFI6cdRD6xu2Sp2WCOEoe3mtnyB5Ee0XrrL5Pe+e4CCnJrRMnL1zYtRDZmQQVbvOttLnKDLnaw=="],
 

@@ -1,0 +1,23 @@
+{
+  "name": "@tpx/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch --env-file=../../.env src/index.ts",
+    "start": "bun --env-file=../../.env src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@tpx/core": "workspace:*",
+    "@tpx/data": "workspace:*",
+    "@tpx/db": "workspace:*",
+    "@tpx/shared": "workspace:*",
+    "drizzle-orm": "^0.44.2",
+    "hono": "^4.7.10"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.20",
+    "typescript": "^5.8.3"
+  }
+}

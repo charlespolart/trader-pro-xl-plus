@@ -33,8 +33,11 @@ type Params = Record<string, string | number | boolean | undefined>
  * - proactive rate limiting from X-MBX-USED-WEIGHT headers
  * - 429 Retry-After honored, 418 (IP ban) surfaces immediately
  */
+/** official market-data-only mirror of the spot /api/v3 — not geo-blocked */
+const SPOT_DATA_MIRROR = 'https://data-api.binance.vision'
+
 export class BinanceRest {
-  private readonly base: string
+  private base: string
   private readonly prefix: string
   private timeOffset = 0
   private timeSynced = false
@@ -135,6 +138,20 @@ export class BinanceRest {
       return this.request<T>(method, path, params, sign, skipRateLimit, attempt + 1, keyOnly)
     }
 
+    // 451: geo-restricted IP. Spot public endpoints transparently fail over
+    // to the official data mirror; signed/futures endpoints cannot.
+    if (
+      res.status === 451 &&
+      this.o.market === 'spot' &&
+      !sign &&
+      !keyOnly &&
+      !(this.o.testnet ?? false) &&
+      this.base !== SPOT_DATA_MIRROR
+    ) {
+      this.base = SPOT_DATA_MIRROR
+      return this.request<T>(method, path, params, sign, skipRateLimit, attempt, keyOnly)
+    }
+
     if (!res.ok) {
       let code = -1
       let msg = res.statusText
@@ -144,6 +161,9 @@ export class BinanceRest {
         msg = body.msg ?? msg
       } catch {
         /* non-JSON error body */
+      }
+      if (res.status === 451) {
+        msg += ' [geo-restricted IP — Vision archives still work; run live trading from the VPS]'
       }
       // -1021: timestamp outside recvWindow — resync once and retry
       if (code === -1021 && attempt < 2) {

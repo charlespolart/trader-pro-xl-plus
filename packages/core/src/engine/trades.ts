@@ -109,6 +109,21 @@ export class TradeBuilder {
     return out
   }
 
+  /**
+   * Pop newly completed trades (live engines persist them incrementally).
+   * Backtests use finalize() once instead — don't mix the two.
+   */
+  drainClosed(): TradeRecord[] {
+    const out = this.trades
+    this.trades = []
+    return out
+  }
+
+  /** the open trade as a record (exitTime null), for UI display */
+  currentOpenTrade(): TradeRecord | null {
+    return this.current ? this.toRecord(this.current, null) : null
+  }
+
   get openTradeCount(): number {
     return this.current ? 1 : 0
   }

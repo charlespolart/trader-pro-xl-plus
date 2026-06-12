@@ -69,6 +69,23 @@ export function parseVisionKlinesCsv(csv: string): Candle[] {
   return out
 }
 
+export function visionFundingUrl(symbol: string, monthStamp: string): string {
+  return `${VISION_BASE}/data/futures/um/monthly/fundingRate/${symbol}/${symbol}-fundingRate-${monthStamp}.zip`
+}
+
+/** columns: calc_time, funding_interval_hours, last_funding_rate */
+export function parseVisionFundingCsv(csv: string): { time: number; rate: number }[] {
+  const out: { time: number; rate: number }[] = []
+  for (const line of csv.split('\n')) {
+    if (line.length === 0) continue
+    const c = line.split(',')
+    const time = Number(c[0])
+    if (!Number.isFinite(time)) continue // header
+    out.push({ time: normalizeTs(time), rate: Number(c[2]) })
+  }
+  return out
+}
+
 export function parseVisionAggTradesCsv(csv: string): AggTrade[] {
   const out: AggTrade[] = []
   for (const line of csv.split('\n')) {
