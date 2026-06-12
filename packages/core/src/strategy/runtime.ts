@@ -65,6 +65,7 @@ export class StrategyRuntime {
   private readonly annotations: ChartAnnotation[] = []
   private readonly logs: LogEntry[] = []
   private state: Record<string, unknown> = {}
+  private locals: Record<string, unknown> = {}
   private initDone = false
   private haltedReason: string | null = null
 
@@ -250,6 +251,9 @@ export class StrategyRuntime {
       get state() {
         return self.state
       },
+      get locals() {
+        return self.locals
+      },
       get symbolInfo() {
         return exec.symbolInfo()
       },
@@ -272,7 +276,10 @@ export class StrategyRuntime {
   // ----------------------------------------------------------- engine hooks
 
   async init(): Promise<void> {
-    await this.def.hooks.init?.(this.ctx)
+    const returned = await this.def.hooks.init?.(this.ctx as never)
+    if (returned !== undefined && returned !== null && typeof returned === 'object') {
+      this.locals = returned as Record<string, unknown>
+    }
     this.initDone = true
   }
 

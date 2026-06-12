@@ -78,11 +78,17 @@ export interface RiskApi {
   sizeByEquityPct(pct: number): number
 }
 
-export interface StrategyContext<P = ParamValues> {
+export interface StrategyContext<P = ParamValues, L = Record<string, unknown>> {
   readonly mode: EngineMode
   readonly market: MarketType
   readonly symbol: string
   readonly params: P
+  /**
+   * Per-instance storage returned by init() — indicator handles, cached
+   * computations… Typed from init's return value. Not persisted (use
+   * ctx.state for anything that must survive a restart).
+   */
+  readonly locals: L
   /** current engine time, ms */
   readonly time: number
   /** last known price of the traded symbol */
@@ -118,18 +124,22 @@ export interface StrategyContext<P = ParamValues> {
   halt(reason: string): void
 }
 
-export interface StrategyHooks<P = ParamValues> {
-  /** register indicators here; candle history is not available yet */
-  init?(ctx: StrategyContext<P>): void | Promise<void>
+export interface StrategyHooks<P = ParamValues, L = Record<string, unknown>> {
+  /**
+   * Register indicators here and return the per-instance locals object
+   * (indicator handles, etc.) — it becomes ctx.locals in every other hook.
+   * Candle history is not available yet at this point.
+   */
+  init?(ctx: StrategyContext<P, Record<string, never>>): L | Promise<L>
   /** fired once per CLOSED candle, per candle feed, in chronological order */
-  onCandle?(ctx: StrategyContext<P>, feedId: string, candle: Candle): void | Promise<void>
+  onCandle?(ctx: StrategyContext<P, L>, feedId: string, candle: Candle): void | Promise<void>
   /** fired per aggTrade on feeds declared with trades: true */
-  onTrade?(ctx: StrategyContext<P>, feedId: string, trade: AggTrade): void | Promise<void>
-  onFill?(ctx: StrategyContext<P>, fill: Fill, order: Order): void | Promise<void>
-  onOrderUpdate?(ctx: StrategyContext<P>, order: Order): void | Promise<void>
+  onTrade?(ctx: StrategyContext<P, L>, feedId: string, trade: AggTrade): void | Promise<void>
+  onFill?(ctx: StrategyContext<P, L>, fill: Fill, order: Order): void | Promise<void>
+  onOrderUpdate?(ctx: StrategyContext<P, L>, order: Order): void | Promise<void>
   /** futures: funding applied to the open position (amount < 0 means we paid) */
-  onFunding?(ctx: StrategyContext<P>, amount: number, rate: number): void | Promise<void>
-  onStop?(ctx: StrategyContext<P>): void | Promise<void>
+  onFunding?(ctx: StrategyContext<P, L>, amount: number, rate: number): void | Promise<void>
+  onStop?(ctx: StrategyContext<P, L>): void | Promise<void>
 }
 
 /** Runtime-erased strategy, as loaded from a strategies/*.ts file. */
@@ -139,7 +149,8 @@ export interface StrategyDefinition {
   markets: MarketType[]
   schema: ParamSchema
   data: (params: ParamValues) => FeedSpecMap
-  hooks: StrategyHooks
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  hooks: StrategyHooks<any, any>
 }
 
 /**

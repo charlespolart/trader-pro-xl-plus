@@ -225,7 +225,9 @@ export class SimExchange implements ExecutionAdapter {
       }
     }
 
-    this.lockFundsFor(order)
+    // trigger orders lock nothing until activation — this is what allows a
+    // SL + TP bracket (same ocoGroup) to coexist on the same spot holdings
+    if (!isTriggerOrder(order.type)) this.lockFundsFor(order)
     this.orders.set(order.id, order)
     this.events.onOrderUpdate?.(order.id)
     return order
@@ -512,7 +514,15 @@ export class SimExchange implements ExecutionAdapter {
       const px = o.side === 'BUY' ? atPrice * (1 + slip) : atPrice * (1 - slip)
       this.fillOrder(o, px, false, o.qty)
     } else {
-      // becomes a resting limit
+      // becomes a resting limit; funds lock now (placement skipped trigger orders)
+      try {
+        this.lockFundsFor(o)
+      } catch {
+        o.status = 'REJECTED'
+        o.updatedAt = this.time
+        this.events.onOrderUpdate?.(o.id)
+        return
+      }
       o.status = 'NEW'
       o.updatedAt = this.time
       this.events.onOrderUpdate?.(o.id)
@@ -596,17 +606,19 @@ export class SimExchange implements ExecutionAdapter {
           return false
         }
         this.quoteFree -= fromFree
+        // without BNB the fee shaves the received base asset (Binance behavior)
+        const received = this.o.fees.bnbDiscount ? qty : qty * (1 - rate)
         if (this.o.fees.bnbDiscount) {
-          this.baseFree += qty
+          this.baseFree += received
           this.quoteFree -= feeQuote
           this.bnbFeesQuote += feeQuote
           feeAsset = 'BNB'
         } else {
-          this.baseFree += qty * (1 - rate)
+          this.baseFree += received
           feeAsset = si?.baseAsset ?? 'BASE'
         }
-        // cost basis
-        const newQty = this.posQty + qty
+        // cost basis tracks what we actually hold
+        const newQty = this.posQty + received
         this.posEntry = newQty > 0 ? (this.posEntry * this.posQty + price * qty) / newQty : 0
         this.posQty = newQty
       } else {

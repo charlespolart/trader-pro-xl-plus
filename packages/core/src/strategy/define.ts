@@ -2,7 +2,7 @@ import { isInterval, type MarketType, type ParamValues } from '@tpx/shared'
 import type { FeedSpecMap, StrategyDefinition, StrategyHooks } from './types'
 import { toParamSchema, type InferParams, type ParamBuilders } from './params'
 
-export interface StrategyInput<S extends ParamBuilders> extends StrategyHooks<InferParams<S>> {
+export interface StrategyInput<S extends ParamBuilders, L> extends StrategyHooks<InferParams<S>, L> {
   name: string
   description?: string
   /** markets this strategy supports; defaults to both */
@@ -16,7 +16,9 @@ export interface StrategyInput<S extends ParamBuilders> extends StrategyHooks<In
   data?: (params: InferParams<S>) => FeedSpecMap
 }
 
-export function defineStrategy<S extends ParamBuilders>(input: StrategyInput<S>): StrategyDefinition {
+export function defineStrategy<S extends ParamBuilders, L = Record<string, never>>(
+  input: StrategyInput<S, L>,
+): StrategyDefinition {
   const dataFn = input.data as ((p: ParamValues) => FeedSpecMap) | undefined
 
   const data = (params: ParamValues): FeedSpecMap => {
@@ -44,6 +46,7 @@ export function defineStrategy<S extends ParamBuilders>(input: StrategyInput<S>)
       onOrderUpdate: input.onOrderUpdate,
       onFunding: input.onFunding,
       onStop: input.onStop,
-    } as StrategyHooks,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as StrategyHooks<any, any>,
   }
 }

@@ -70,11 +70,15 @@ export class TradeBuilder {
     if (fill.reason) this.current.exitReason = fill.reason
     this.current.fills.push(fill)
 
-    const flat = Math.abs(posAfter) < 1e-12
+    // fee dust tolerance: spot fees paid in the base asset leave ~0.1% of the
+    // position unsellable; treat anything below 0.5% of entry size as flat
+    const flatEps = Math.max(1e-12, this.current.entryQty * 0.005)
+    const flat = Math.abs(posAfter) < flatEps
     const flipped = !flat && Math.sign(posAfter) !== dirSign
 
     if (flat || flipped) {
       this.closeTrade(fill.time)
+      if (flat) this.posQty = 0
       if (flipped && remainder > 1e-12) {
         this.openTrade(fill, remainder, fill.fee * (1 - closeShare))
       }
