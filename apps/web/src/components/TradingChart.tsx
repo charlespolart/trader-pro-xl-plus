@@ -147,13 +147,23 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
     }
   }, [candles])
 
+  // indicator history can start long before the first loaded candle (warmup);
+  // anything outside the candle window must NOT reach the chart — markers at
+  // unknown times get glued to the nearest bar and end up on the wrong candle
+  const candleWindow = useMemo(() => {
+    if (candles.length === 0) return null
+    return { from: candles[0]!.openTime, to: candles[candles.length - 1]!.openTime }
+  }, [candles])
+
   // ---- pattern-style series (plot 'markers'): signed arrows on the candles
   const patternMarkers = useMemo<ChartMarker[]>(() => {
+    if (!candleWindow) return []
     const out: ChartMarker[] = []
     for (const dto of indicators) {
       if (dto.plot !== 'markers') continue
       for (const [t, v] of dto.points) {
         if (v === null || v === 0) continue
+        if (t < candleWindow.from || t > candleWindow.to) continue
         out.push({
           time: t,
           position: v > 0 ? 'belowBar' : 'aboveBar',
@@ -164,7 +174,7 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
       }
     }
     return out
-  }, [indicators])
+  }, [indicators, candleWindow])
 
   // ---- indicator series (recreate when the id set changes)
   const indKey = useMemo(() => indicators.map((s) => `${s.paneId}:${s.output}`).join('|'), [indicators])
@@ -197,7 +207,10 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
       )
       series.setData(
         dto.points
-          .filter((p): p is [number, number] => p[1] !== null)
+          .filter(
+            (p): p is [number, number] =>
+              p[1] !== null && (!candleWindow || (p[0] >= candleWindow.from && p[0] <= candleWindow.to)),
+          )
           .map(([t, v]) => ({ time: ts(t), value: v })),
       )
       indSeriesRef.current.set(`${dto.paneId}:${dto.output}`, series)
@@ -206,7 +219,7 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
     const panes = chart.panes()
     for (let i = 1; i < panes.length; i++) panes[i]!.setHeight(110)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [indKey, indicators])
+  }, [indKey, indicators, candleWindow])
 
   // ---- markers + label annotations
   useEffect(() => {

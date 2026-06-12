@@ -22,9 +22,13 @@ import { defineIndicator, type IndicatorSpec } from './types'
 export interface PatternOptions {
   /** corps ≤ x·range ⇒ doji (défaut 0.1) */
   dojiBodyMax: number
-  /** mèche ≥ x·corps pour hammer & co (défaut 2) */
+  /** mèche dominante ≥ x·corps pour hammer & co (défaut 2) */
   shadowBodyRatio: number
-  /** mèche « courte » ≤ x·range (défaut 0.15) */
+  /** mèche dominante ≥ x·range pour hammer & co (défaut 0.55) */
+  dominantShadowMin: number
+  /** mèche OPPOSÉE ≤ x·range pour hammer & co — « peu ou pas de mèche » (défaut 0.08) */
+  oppositeShadowMax: number
+  /** mèche « courte » ≤ x·range (soldiers/crows : clôtures près des extrêmes) (défaut 0.25) */
   shortShadowMax: number
   /** mèches ≤ x·range ⇒ marubozu (défaut 0.05) */
   marubozuShadowMax: number
@@ -45,7 +49,9 @@ export interface PatternOptions {
 export const DEFAULT_PATTERN_OPTIONS: PatternOptions = {
   dojiBodyMax: 0.1,
   shadowBodyRatio: 2,
-  shortShadowMax: 0.15,
+  dominantShadowMin: 0.55,
+  oppositeShadowMax: 0.08,
+  shortShadowMax: 0.25,
   marubozuShadowMax: 0.05,
   smallBodyMax: 0.35,
   strongBodyMin: 0.6,
@@ -72,16 +78,21 @@ const isDojiC = (c: Candle, o: PatternOptions): boolean => body(c) <= o.dojiBody
 const smallBody = (c: Candle, o: PatternOptions): boolean => body(c) <= o.smallBodyMax * range(c)
 const strongBody = (c: Candle, o: PatternOptions): boolean => body(c) >= o.strongBodyMin * range(c)
 
-/** forme marteau : long ombre basse, corps en haut, mèche haute courte */
+/**
+ * Forme marteau (canonique, Nison) : longue mèche basse (≥ ratio×corps ET
+ * ≥ dominantShadowMin×range), corps dans le haut, mèche haute quasi absente.
+ */
 const hammerShape = (c: Candle, o: PatternOptions): boolean =>
   lowerShadow(c) >= o.shadowBodyRatio * Math.max(body(c), range(c) * 0.03) &&
-  upperShadow(c) <= o.shortShadowMax * range(c) &&
+  lowerShadow(c) >= o.dominantShadowMin * range(c) &&
+  upperShadow(c) <= o.oppositeShadowMax * range(c) &&
   !isDojiC(c, o)
 
-/** forme marteau inversé : long ombre haute, corps en bas */
+/** forme marteau inversé : longue mèche haute, corps en bas, mèche basse quasi absente */
 const invHammerShape = (c: Candle, o: PatternOptions): boolean =>
   upperShadow(c) >= o.shadowBodyRatio * Math.max(body(c), range(c) * 0.03) &&
-  lowerShadow(c) <= o.shortShadowMax * range(c) &&
+  upperShadow(c) >= o.dominantShadowMin * range(c) &&
+  lowerShadow(c) <= o.oppositeShadowMax * range(c) &&
   !isDojiC(c, o)
 
 const engulfsBody = (big: Candle, small: Candle): boolean =>
@@ -179,13 +190,14 @@ export const PATTERNS = {
     lookback: 2,
     direction: 1,
     needsTrend: null,
-    detect: ([a, b], o) => bear(a!) && bull(b!) && b!.open > a!.open && strongBody(b!, o),
+    // deux bougies fortes + gap au-dessus de l'open précédent (rare en 24/7)
+    detect: ([a, b], o) => bear(a!) && bull(b!) && b!.open > a!.open && strongBody(a!, o) && strongBody(b!, o),
   },
   bearishKicker: {
     lookback: 2,
     direction: -1,
     needsTrend: null,
-    detect: ([a, b], o) => bull(a!) && bear(b!) && b!.open < a!.open && strongBody(b!, o),
+    detect: ([a, b], o) => bull(a!) && bear(b!) && b!.open < a!.open && strongBody(a!, o) && strongBody(b!, o),
   },
   bullishEngulfing: {
     lookback: 2,
@@ -245,13 +257,17 @@ export const PATTERNS = {
     lookback: 3,
     direction: 1,
     needsTrend: 'down',
-    detect: ([a, b, c], o) => bear(a!) && strongBody(a!, o) && smallBody(b!, o) && bull(c!) && c!.close > bodyMid(a!),
+    // l'étoile (petit corps) doit se situer SOUS le milieu du corps de la
+    // première bougie — c'est elle qui marque le point bas
+    detect: ([a, b, c], o) =>
+      bear(a!) && strongBody(a!, o) && smallBody(b!, o) && bodyTop(b!) <= bodyMid(a!) && bull(c!) && c!.close > bodyMid(a!),
   },
   eveningStar: {
     lookback: 3,
     direction: -1,
     needsTrend: 'up',
-    detect: ([a, b, c], o) => bull(a!) && strongBody(a!, o) && smallBody(b!, o) && bear(c!) && c!.close < bodyMid(a!),
+    detect: ([a, b, c], o) =>
+      bull(a!) && strongBody(a!, o) && smallBody(b!, o) && bodyBottom(b!) >= bodyMid(a!) && bear(c!) && c!.close < bodyMid(a!),
   },
   bullishAbandonedBaby: {
     lookback: 3,
@@ -272,23 +288,29 @@ export const PATTERNS = {
     lookback: 3,
     direction: 1,
     needsTrend: null,
+    // trois bougies fortes qui clôturent près de leurs plus hauts, chaque
+    // open à l'intérieur du corps précédent, clôtures croissantes
     detect: (w, o) =>
-      w.every((c) => bull(c) && strongBody(c, o)) &&
+      w.every((c) => bull(c) && strongBody(c, o) && upperShadow(c) <= o.shortShadowMax * range(c)) &&
       w[1]!.close > w[0]!.close &&
       w[2]!.close > w[1]!.close &&
-      w[1]!.open >= bodyBottom(w[0]!) &&
-      w[2]!.open >= bodyBottom(w[1]!),
+      w[1]!.open >= bodyBottom(w[0]!) - range(w[0]!) * 0.05 &&
+      w[1]!.open <= bodyTop(w[0]!) + range(w[0]!) * 0.05 &&
+      w[2]!.open >= bodyBottom(w[1]!) - range(w[1]!) * 0.05 &&
+      w[2]!.open <= bodyTop(w[1]!) + range(w[1]!) * 0.05,
   },
   threeBlackCrows: {
     lookback: 3,
     direction: -1,
     needsTrend: null,
     detect: (w, o) =>
-      w.every((c) => bear(c) && strongBody(c, o)) &&
+      w.every((c) => bear(c) && strongBody(c, o) && lowerShadow(c) <= o.shortShadowMax * range(c)) &&
       w[1]!.close < w[0]!.close &&
       w[2]!.close < w[1]!.close &&
-      w[1]!.open <= bodyTop(w[0]!) &&
-      w[2]!.open <= bodyTop(w[1]!),
+      w[1]!.open <= bodyTop(w[0]!) + range(w[0]!) * 0.05 &&
+      w[1]!.open >= bodyBottom(w[0]!) - range(w[0]!) * 0.05 &&
+      w[2]!.open <= bodyTop(w[1]!) + range(w[1]!) * 0.05 &&
+      w[2]!.open >= bodyBottom(w[1]!) - range(w[1]!) * 0.05,
   },
   threeInsideUp: {
     lookback: 3,

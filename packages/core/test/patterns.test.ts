@@ -128,6 +128,54 @@ describe('candlePatterns — 3+ bougies', () => {
   })
 })
 
+describe('régressions — formes qui ne doivent PAS matcher', () => {
+  it("gros corps avec petites mèches des deux côtés ≠ famille marteau (bug report capture d'écran)", () => {
+    // ressemble à la bougie du screenshot : corps 57% du range, mèches 30%/13%
+    const big = mk(100, 101.05, 93.5, 94)
+    const r = detect(['hammer', 'invertedHammer', 'hangingMan', 'shootingStar'], [big], { requireTrend: false })
+    expect(r['hammer']).toBe(0)
+    expect(r['invertedHammer']).toBe(0)
+    expect(r['hangingMan']).toBe(0)
+    expect(r['shootingStar']).toBe(0)
+  })
+
+  it('marteau inversé avec une mèche basse visible (> 8% du range) → rejeté', () => {
+    // longue mèche haute OK mais mèche basse à ~13% du range : « il y a un trait en dessous »
+    const c = mk(100, 104, 99.4, 100.2)
+    expect(detect(['invertedHammer'], [c], { requireTrend: false })['invertedHammer']).toBe(0)
+    // la même sans mèche basse (et corps non-doji) passe
+    const clean = mk(100, 104, 99.95, 100.6)
+    expect(detect(['invertedHammer'], [clean], { requireTrend: false })['invertedHammer']).toBe(1)
+  })
+
+  it('mèche dominante trop courte (< 55% du range) → pas un marteau', () => {
+    const c = mk(100, 100.4, 98.9, 100.1) // lower ≈ 0.53R… limite basse
+    const r = detect(['hammer'], [c], { requireTrend: false, dominantShadowMin: 0.6 })
+    expect(r['hammer']).toBe(0)
+  })
+
+  it('three white soldiers avec longues mèches hautes (clôtures loin des hauts) → rejeté', () => {
+    const wicky = [mk(100, 103.5, 99.9, 102), mk(101.5, 105.2, 101.4, 103.5), mk(103, 107, 102.9, 105)]
+    expect(detect(['threeWhiteSoldiers'], wicky)['threeWhiteSoldiers']).toBe(0)
+  })
+
+  it("morning star dont l'étoile flotte au-dessus du milieu de la 1re bougie → rejeté", () => {
+    const r = detect(
+      ['morningStar'],
+      [...downtrend(), mk(104, 104.1, 102.4, 102.5), mk(103.6, 103.9, 103.4, 103.75), mk(103.7, 104.2, 103.5, 104.1)],
+    )
+    expect(r['morningStar']).toBe(0)
+  })
+
+  it('kicker : les deux bougies doivent être fortes', () => {
+    // première bougie faiblarde (corps < 60% du range)
+    const r = detect(['bullishKicker'], [mk(100, 100.6, 98.9, 99.9), mk(100.5, 102.6, 100.45, 102.5)])
+    expect(r['bullishKicker']).toBe(0)
+    const ok = detect(['bullishKicker'], [mk(100, 100.05, 98.9, 99), mk(100.5, 102.6, 100.45, 102.5)])
+    expect(ok['bullishKicker']).toBe(1)
+  })
+})
+
 describe('helpers', () => {
   it('bullishSignals / bearishSignals', () => {
     expect(bullishSignals({ hammer: 1, doji: 0, hangingMan: -1 })).toEqual(['hammer'])
