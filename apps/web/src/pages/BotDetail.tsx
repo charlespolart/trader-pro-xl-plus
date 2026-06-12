@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { LogEntry, TradeRecord } from '@tpx/shared'
-import { api } from '../lib/api'
+import { api, type RefitConfigDTO } from '../lib/api'
 import { useBots, wsClient } from '../lib/ws'
 import { fmtDate, fmtNum, fmtPrice, pnlClass } from '../lib/format'
-import { Badge, Card, Empty } from '../components/ui'
+import { Badge, Card, Empty, Field } from '../components/ui'
 import { TradingChart } from '../components/TradingChart'
 import { TradesTable } from '../components/TradesTable'
 
@@ -164,6 +164,8 @@ export function BotDetail() {
         <TradesTable trades={tradeRecords} />
       </Card>
 
+      <RefitCard botId={id} />
+
       <Card title="Journal">
         {allLogs.length === 0 ? (
           <Empty>Aucun log</Empty>
@@ -185,5 +187,118 @@ export function BotDetail() {
         )}
       </Card>
     </div>
+  )
+}
+
+function RefitCard({ botId }: { botId: string }) {
+  const qc = useQueryClient()
+  const { data: state } = useQuery({
+    queryKey: ['refit', botId],
+    queryFn: () => api.refitState(botId),
+    refetchInterval: 10_000,
+  })
+  const [draft, setDraft] = useState<RefitConfigDTO | null>(null)
+  const [spaceText, setSpaceText] = useState('')
+
+  useEffect(() => {
+    if (state && draft === null) {
+      setDraft(state.config)
+      setSpaceText(JSON.stringify(Object.keys(state.config.space).length > 0 ? state.config.space : (state.defaultSpace ?? {}), null, 0))
+    }
+  }, [state, draft])
+
+  const invalidate = () => void qc.invalidateQueries({ queryKey: ['refit', botId] })
+
+  const save = useMutation({
+    mutationFn: () => {
+      const space = JSON.parse(spaceText || '{}') as Record<string, unknown>
+      return api.setRefitConfig(botId, { ...draft!, space })
+    },
+    onSuccess: invalidate,
+    onError: (e) => alert(e instanceof Error ? e.message : String(e)),
+  })
+  const runNow = useMutation({ mutationFn: () => api.runRefit(botId), onSuccess: invalidate })
+  const apply = useMutation({
+    mutationFn: () => api.applyRefit(botId),
+    onSuccess: (r) => {
+      if (!r.applied) alert('Non appliqué : le bot a une position ouverte — réessayez quand il est flat.')
+      invalidate()
+    },
+  })
+  const discard = useMutation({ mutationFn: () => api.discardRefit(botId), onSuccess: invalidate })
+
+  if (!state || !draft) return null
+
+  return (
+    <Card
+      title="Refit périodique des paramètres"
+      actions={
+        <button className="btn-ghost" onClick={() => runNow.mutate()} disabled={runNow.isPending}>
+          ▶ Lancer maintenant
+        </button>
+      }
+    >
+      <div className="space-y-3">
+        <div className="text-xs text-zinc-500">
+          Ré-estime les paramètres dans une grille bornée (le plateau validé) avec un score mécanique — la logique de la stratégie ne
+          change jamais. Dernier run : {state.lastRunAt ? fmtDate(state.lastRunAt) : 'jamais'}.
+        </div>
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="flex cursor-pointer items-center gap-2 py-2 text-sm">
+            <input
+              type="checkbox"
+              checked={draft.enabled}
+              onChange={(e) => setDraft({ ...draft, enabled: e.target.checked })}
+              className="accent-blue-500"
+            />
+            Activé
+          </label>
+          <Field label="Mode">
+            <select className="input w-44" value={draft.mode} onChange={(e) => setDraft({ ...draft, mode: e.target.value as 'auto' | 'propose' })}>
+              <option value="propose">Proposition (je valide)</option>
+              <option value="auto">Auto (appliqué si flat)</option>
+            </select>
+          </Field>
+          <Field label="Cadence (jours)">
+            <input className="input w-24" type="number" value={draft.everyDays} onChange={(e) => setDraft({ ...draft, everyDays: Number(e.target.value) })} />
+          </Field>
+          <Field label="Fenêtre IS (jours)">
+            <input className="input w-24" type="number" value={draft.windowDays} onChange={(e) => setDraft({ ...draft, windowDays: Number(e.target.value) })} />
+          </Field>
+          <Field label="Trades min">
+            <input className="input w-20" type="number" value={draft.minTrades} onChange={(e) => setDraft({ ...draft, minTrades: Number(e.target.value) })} />
+          </Field>
+          <Field label="Amélioration min (×)">
+            <input className="input w-24" type="number" step="0.01" value={draft.minImprovement} onChange={(e) => setDraft({ ...draft, minImprovement: Number(e.target.value) })} />
+          </Field>
+        </div>
+        <Field label="Grille (JSON — restez dans le plateau validé)">
+          <input className="input font-mono text-xs" value={spaceText} onChange={(e) => setSpaceText(e.target.value)} />
+        </Field>
+        <div className="flex justify-end">
+          <button className="btn-primary" onClick={() => save.mutate()} disabled={save.isPending}>
+            Enregistrer
+          </button>
+        </div>
+
+        {state.lastReport !== null && (
+          <pre className="overflow-x-auto rounded bg-panel2 p-3 text-xs text-zinc-300">{state.lastReport}</pre>
+        )}
+        {state.proposal !== null && (
+          <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+            <div className="mb-2 font-semibold text-amber-400">Proposition en attente ({fmtDate(state.proposal.at)})</div>
+            <pre className="mb-2 overflow-x-auto text-xs text-zinc-300">{state.proposal.report}</pre>
+            <div className="flex gap-2">
+              <button className="btn-success" onClick={() => apply.mutate()} disabled={apply.isPending}>
+                ✓ Appliquer (si flat)
+              </button>
+              <button className="btn-ghost" onClick={() => discard.mutate()}>
+                Rejeter
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </Card>
   )
 }

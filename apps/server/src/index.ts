@@ -12,6 +12,7 @@ import { buildApi, type Services } from './api'
 import { SettingsService } from './services/settings'
 import { CredentialsService } from './services/credentials'
 import { BotManager } from './services/botManager'
+import { RefitService } from './services/refit'
 import { BacktestRunner } from './services/backtestRunner'
 import { OptimizerService } from './services/optimizer'
 import { DownloadService } from './services/downloads'
@@ -24,6 +25,7 @@ async function main(): Promise<void> {
   const settings = new SettingsService(db)
   const credentials = new CredentialsService(db)
   const bots = new BotManager(db, settings, credentials)
+  const refit = new RefitService(db, settings, bots)
   const backtests = new BacktestRunner(db)
   const optimizer = new OptimizerService(db)
   const downloads = new DownloadService(db)
@@ -32,8 +34,9 @@ async function main(): Promise<void> {
   await optimizer.init()
   await downloads.init()
   await bots.init()
+  refit.start()
 
-  const services: Services = { db, settings, credentials, bots, backtests, optimizer, downloads }
+  const services: Services = { db, settings, credentials, bots, refit, backtests, optimizer, downloads }
   const app = new Hono()
   const { upgradeWebSocket, websocket } = createBunWebSocket()
 

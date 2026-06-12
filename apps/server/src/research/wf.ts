@@ -29,7 +29,9 @@ const GRID = expandGrid(fam.def.schema, base, {
 
 const START = Date.parse('2020-08-01T00:00:00Z')
 const END = Date.parse('2026-06-09T00:00:00Z')
-const windows = walkForwardWindows(START, END, { windows: 5, isRatio: 0.7 })
+const nWindows = Number(process.argv[2] ?? 5)
+const isRatio = Number(process.argv[3] ?? 0.7)
+const windows = walkForwardWindows(START, END, { windows: nWindows, isRatio })
 
 const d = (t: number): string => new Date(t).toISOString().slice(0, 10)
 let equity = 1

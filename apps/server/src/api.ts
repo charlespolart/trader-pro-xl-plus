@@ -23,6 +23,8 @@ import { registry } from './strategies'
 import type { SettingsService } from './services/settings'
 import type { CredentialsService } from './services/credentials'
 import type { BotManager } from './services/botManager'
+import type { RefitService, RefitConfig } from './services/refit'
+import { DEFAULT_SPACES } from './services/refit'
 import type { BacktestRunner } from './services/backtestRunner'
 import type { OptimizerService, OptimizationRequest } from './services/optimizer'
 import type { DownloadService, DownloadRequest } from './services/downloads'
@@ -32,6 +34,7 @@ export interface Services {
   settings: SettingsService
   credentials: CredentialsService
   bots: BotManager
+  refit: RefitService
   backtests: BacktestRunner
   optimizer: OptimizerService
   downloads: DownloadService
@@ -166,6 +169,39 @@ export function buildApi(s: Services): Hono {
   api.get('/bots/:id/logs', (c) => {
     const runner = s.bots.runner(c.req.param('id'))
     return c.json(runner ? runner.recentLogs : [])
+  })
+
+  // ---- refit périodique
+  api.get('/bots/:id/refit', async (c) => {
+    const botId = c.req.param('id')
+    const bot = await s.bots.getConfig(botId)
+    const state = await s.refit.getState(botId)
+    return c.json({ ...state, defaultSpace: bot ? (DEFAULT_SPACES[bot.strategyId] ?? null) : null })
+  })
+
+  api.put('/bots/:id/refit', async (c) => {
+    const config = (await c.req.json()) as RefitConfig
+    return c.json(await s.refit.setConfig(c.req.param('id'), config))
+  })
+
+  api.post('/bots/:id/refit/run', (c) => {
+    const botId = c.req.param('id')
+    // long (grille en workers) → fire-and-forget, le rapport arrive dans
+    // l'état du refit + journal du bot + Telegram
+    void s.refit.run(botId).catch((err: unknown) => {
+      console.error(`refit ${botId}:`, err)
+    })
+    return c.json({ started: true })
+  })
+
+  api.post('/bots/:id/refit/apply', async (c) => {
+    const applied = await s.refit.tryApply(c.req.param('id'))
+    return c.json({ applied })
+  })
+
+  api.post('/bots/:id/refit/discard', async (c) => {
+    await s.refit.discardProposal(c.req.param('id'))
+    return c.json({ ok: true })
   })
 
   api.get('/bots/:id/orders', async (c) => {

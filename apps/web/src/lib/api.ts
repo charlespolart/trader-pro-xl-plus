@@ -64,6 +64,25 @@ export interface BotChartData {
   interval: Interval | null
 }
 
+export interface RefitConfigDTO {
+  enabled: boolean
+  mode: 'auto' | 'propose'
+  everyDays: number
+  windowDays: number
+  space: Record<string, unknown>
+  objective: string
+  minTrades: number
+  minImprovement: number
+}
+
+export interface RefitStateDTO {
+  config: RefitConfigDTO
+  lastRunAt: number | null
+  lastReport: string | null
+  proposal: { params: ParamValues; report: string; at: number } | null
+  defaultSpace: Record<string, unknown> | null
+}
+
 export interface PatternDetection {
   time: number
   name: string
@@ -168,6 +187,13 @@ export const api = {
   resumeBot: (id: string) => post<{ ok: boolean }>(`/bots/${id}/resume`),
   botChart: (id: string) => get<BotChartData>(`/bots/${id}/chart`),
   botLogs: (id: string) => get<LogEntry[]>(`/bots/${id}/logs`),
+
+  // refit
+  refitState: (id: string) => get<RefitStateDTO>(`/bots/${id}/refit`),
+  setRefitConfig: (id: string, config: RefitConfigDTO) => put<RefitStateDTO>(`/bots/${id}/refit`, config),
+  runRefit: (id: string) => post<{ started: boolean }>(`/bots/${id}/refit/run`),
+  applyRefit: (id: string) => post<{ applied: boolean }>(`/bots/${id}/refit/apply`),
+  discardRefit: (id: string) => post<{ ok: boolean }>(`/bots/${id}/refit/discard`),
 
   // trades
   trades: (botId?: string) => get<LiveTradeRow[]>(`/trades${botId ? `?botId=${botId}` : ''}`),

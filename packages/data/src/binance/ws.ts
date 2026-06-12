@@ -1,5 +1,5 @@
 import type { AggTrade, Candle, Interval, MarketType } from '@tpx/shared'
-import { endpointsFor } from './endpoints'
+import { endpointsFor, SPOT_WS_MIRROR } from './endpoints'
 
 interface RawWsKline {
   t: number
@@ -66,6 +66,10 @@ export class BinanceMarketWs {
   private closed = false
   private backoffMs = 1000
   private recycleTimer: ReturnType<typeof setTimeout> | null = null
+  /** spot prod : bascule vers data-stream.binance.vision si le stream officiel est muet (géo-blocage) */
+  private useMirror = false
+  private silenceTimer: ReturnType<typeof setTimeout> | null = null
+  private gotMessage = false
 
   constructor(
     private readonly market: MarketType,
@@ -103,8 +107,10 @@ export class BinanceMarketWs {
 
   private open(): void {
     const ep = endpointsFor(this.market, this.testnet)
-    const ws = new WebSocket(`${ep.ws}/stream`)
+    const base = this.useMirror && this.market === 'spot' && !this.testnet ? SPOT_WS_MIRROR : ep.ws
+    const ws = new WebSocket(`${base}/stream`)
     this.ws = ws
+    this.gotMessage = false
 
     ws.onopen = () => {
       this.backoffMs = 1000
@@ -114,9 +120,21 @@ export class BinanceMarketWs {
       this.handlers.onOpen?.()
       if (this.recycleTimer) clearTimeout(this.recycleTimer)
       this.recycleTimer = setTimeout(() => ws.close(), 23 * 3600 * 1000)
+      // géo-blocage : le socket s'ouvre parfois mais reste muet — si aucun
+      // message en 30s alors que des streams sont souscrits, on bascule
+      if (this.silenceTimer) clearTimeout(this.silenceTimer)
+      if (this.market === 'spot' && !this.testnet && !this.useMirror && this.streams.size > 0) {
+        this.silenceTimer = setTimeout(() => {
+          if (!this.gotMessage) {
+            this.useMirror = true
+            ws.close()
+          }
+        }, 30_000)
+      }
     }
 
     ws.onmessage = (ev) => {
+      this.gotMessage = true
       try {
         const msg = JSON.parse(String(ev.data)) as { stream?: string; data?: unknown }
         if (msg.stream && msg.data !== undefined) {

@@ -16,6 +16,9 @@ export function endpointsFor(market: MarketType, testnet: boolean): Endpoints {
     : { rest: 'https://fapi.binance.com', ws: 'wss://fstream.binance.com' }
 }
 
+/** miroir market-data officiel des streams spot — non géo-bloqué */
+export const SPOT_WS_MIRROR = 'wss://data-stream.binance.vision'
+
 /** REST path prefix: spot /api/v3, futures /fapi/v1 */
 export function apiPrefix(market: MarketType): string {
   return market === 'spot' ? '/api/v3' : '/fapi/v1'

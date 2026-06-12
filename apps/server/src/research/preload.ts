@@ -7,13 +7,14 @@ const db = createDb(process.env.DATABASE_URL ?? 'postgres://tpx:tpx@localhost:54
 const store = new CandleStore(db)
 const funding = new FundingStore(db)
 
+const SYMBOL = process.argv[2] ?? 'BTCUSDT'
 const START = Date.parse('2020-01-01T00:00:00Z')
 const END = Date.now()
 
 for (const itv of ['1d', '4h', '1h', '15m'] as Interval[]) {
   let last = 0
-  process.stdout.write(`candles ${itv} `)
-  await store.ensureRange('futures', 'BTCUSDT', itv, START, END, {
+  process.stdout.write(`candles ${SYMBOL} ${itv} `)
+  await store.ensureRange('futures', SYMBOL, itv, START, END, {
     onProgress: (d, t) => {
       const pct = Math.floor((d / t) * 10)
       if (pct > last) {
@@ -25,6 +26,6 @@ for (const itv of ['1d', '4h', '1h', '15m'] as Interval[]) {
   console.log(' ok')
 }
 process.stdout.write('funding ')
-await funding.ensureRange('BTCUSDT', START, END)
+await funding.ensureRange(SYMBOL, START, END)
 console.log('ok')
 process.exit(0)

@@ -21,8 +21,8 @@ import { defineStrategy, ind, p } from '@tpx/core'
 export default defineStrategy({
   name: 'ER-Flow Trend',
   description:
-    "Suivi de tendance 4h : régime EMA200 1d, Efficiency Ratio (qualité de tendance) + taker-flow (confirmation order-flow), stop ATR, sortie au re-croisement d'EMA.",
-  markets: ['futures'],
+    "Suivi de tendance 4h : régime EMA200 1d, Efficiency Ratio (qualité de tendance) + taker-flow (confirmation order-flow), stop ATR, sortie au re-croisement d'EMA. Long-only sur spot.",
+  markets: ['spot', 'futures'],
 
   params: {
     interval: p.interval({ default: '4h', label: 'Unité de temps', group: 'Général' }),
@@ -100,7 +100,7 @@ export default defineStrategy({
         reason: `Régime 1d haussier | ER ${erV.toFixed(2)} ≥ ${ctx.params.erMin} | flow ${f.toFixed(3)} > 0.5 | prix > EMA${ctx.params.emaLen}`,
         tag: 'entry',
       })
-    } else if (ctx.params.allowShort && trendDown && candle.close < e && (!ctx.params.useFlowFilter || f < 0.5)) {
+    } else if (ctx.params.allowShort && ctx.market === 'futures' && trendDown && candle.close < e && (!ctx.params.useFlowFilter || f < 0.5)) {
       const stop = ctx.roundPrice(candle.close + ctx.params.atrMult * a)
       const qty = ctx.risk.sizeByRisk({ entry: candle.close, stop, riskPct: ctx.params.riskPct })
       if (qty <= 0) return

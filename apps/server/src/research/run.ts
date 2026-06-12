@@ -26,12 +26,14 @@ export const PERIODS: Record<string, [string, string]> = {
 const db = createDb(process.env.DATABASE_URL ?? 'postgres://tpx:tpx@localhost:5436/tpx')
 const provider = new PgDataProvider(db, { dataDir: resolve(import.meta.dir, '../../../../data') })
 
+export const RESEARCH_SYMBOL = process.env.RESEARCH_SYMBOL ?? 'BTCUSDT'
+
 export function mkConfig(params: ParamValues, start: number, end: number): BacktestConfig {
   return {
     strategyId: 'research',
     params,
     market: 'futures',
-    symbol: 'BTCUSDT',
+    symbol: RESEARCH_SYMBOL,
     start,
     end,
     initialBalance: 10_000,
