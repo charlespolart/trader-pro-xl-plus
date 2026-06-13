@@ -67,11 +67,15 @@ interface Props {
   liveTopic?: string
   /** when set/changed, the chart scrolls to center this time (ms) */
   focusTime?: number
+  /** émet la fenêtre temporelle visible (ms) à chaque pan/zoom — pour la vue d'ensemble */
+  onVisibleTimeRangeChange?: (range: { from: number; to: number } | null) => void
+  /** quand fourni/changé, applique cette fenêtre visible (ms) — navigation depuis la vue d'ensemble */
+  viewTimeRange?: { from: number; to: number } | null
   height?: number
   className?: string
 }
 
-export function TradingChart({ candles, indicators = [], markers = [], annotations = [], tradeZones = [], liveTopic, focusTime, height = 480, className = '' }: Props) {
+export function TradingChart({ candles, indicators = [], markers = [], annotations = [], tradeZones = [], liveTopic, focusTime, onVisibleTimeRangeChange, viewTimeRange, height = 480, className = '' }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const tooltipRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
@@ -85,6 +89,9 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
   // textes des marqueurs (raisons d'achat/vente) indexés par temps (s) — affichés
   // au survol seulement, pour ne pas surcharger la chart
   const markerTextsRef = useRef<Map<number, string[]>>(new Map())
+  // callback de fenêtre visible gardé en ref (l'effet de création ne tourne qu'une fois)
+  const onRangeRef = useRef(onVisibleTimeRangeChange)
+  onRangeRef.current = onVisibleTimeRangeChange
 
   // ---- create / destroy
   useEffect(() => {
@@ -102,7 +109,8 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
         horzLines: { color: '#161b28' },
       },
       timeScale: { timeVisible: true, secondsVisible: false, borderColor: '#232a3b' },
-      rightPriceScale: { borderColor: '#232a3b' },
+      // largeur d'échelle fixe = alignée avec la vue d'ensemble (même valeur)
+      rightPriceScale: { borderColor: '#232a3b', minimumWidth: 64 },
       crosshair: { mode: 0 },
     })
     const candleSeries = chart.addSeries(CandlestickSeries, {
@@ -154,8 +162,19 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
     }
     chart.subscribeCrosshairMove(onMove)
 
+    // émet la fenêtre visible (ms) → la vue d'ensemble dessine le rectangle
+    const onRange = (range: { from: Time; to: Time } | null): void => {
+      if (!range) {
+        onRangeRef.current?.(null)
+        return
+      }
+      onRangeRef.current?.({ from: Number(range.from) * 1000, to: Number(range.to) * 1000 })
+    }
+    chart.timeScale().subscribeVisibleTimeRangeChange(onRange)
+
     return () => {
       chart.unsubscribeCrosshairMove(onMove)
+      chart.timeScale().unsubscribeVisibleTimeRangeChange(onRange)
       chart.remove()
       chartRef.current = null
       candleSeriesRef.current = null
@@ -380,6 +399,19 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
       )
     }
   }, [annotations])
+
+  // ---- navigation externe : applique la fenêtre demandée par la vue d'ensemble.
+  // Pas de boucle : ceci ne se déclenche qu'au clic sur la vue d'ensemble (nouvel
+  // objet), pas quand l'utilisateur panne directement le graphe principal.
+  useEffect(() => {
+    const chart = chartRef.current
+    if (!chart || !viewTimeRange) return
+    try {
+      chart.timeScale().setVisibleRange({ from: ts(viewTimeRange.from), to: ts(viewTimeRange.to) })
+    } catch {
+      /* fenêtre hors plage */
+    }
+  }, [viewTimeRange])
 
   // ---- focus navigation (pattern lab, trade inspection)
   useEffect(() => {

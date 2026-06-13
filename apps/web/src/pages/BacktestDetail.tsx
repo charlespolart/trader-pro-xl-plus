@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { INTERVALS, INTERVAL_MS, isInterval, type Candle, type Interval } from '@tpx/shared'
@@ -6,6 +6,7 @@ import { api } from '../lib/api'
 import { fmtDate } from '../lib/format'
 import { Badge, Card, Empty, Spinner } from '../components/ui'
 import { TradingChart, tradesToMarkers } from '../components/TradingChart'
+import { OverviewChart } from '../components/OverviewChart'
 import { MetricsGrid } from '../components/MetricsGrid'
 import { EquityChart } from '../components/EquityChart'
 import { TradesTable } from '../components/TradesTable'
@@ -50,12 +51,43 @@ export function BacktestDetail() {
     return inferInterval(result?.equity.map((pt) => pt.time) ?? [])
   }, [run?.config.params, result?.equity])
 
+  const chartStart = run ? run.config.start - 100 * INTERVAL_MS[interval] : 0
   const { data: candles } = useQuery({
     queryKey: ['backtest-candles', id, interval],
-    queryFn: () =>
-      api.klines(run!.config.market, run!.config.symbol, interval, run!.config.start - 100 * INTERVAL_MS[interval], run!.config.end),
+    queryFn: () => api.klines(run!.config.market, run!.config.symbol, interval, chartStart, run!.config.end),
     enabled: run !== undefined && run.status === 'done',
   })
+
+  // ---- vue d'ensemble : une time-frame plus large que le feed principal
+  const overviewOptions = useMemo<Interval[]>(
+    () => INTERVALS.filter((i) => INTERVAL_MS[i] > INTERVAL_MS[interval]),
+    [interval],
+  )
+  const defaultOverview = useMemo<Interval | null>(
+    () => (overviewOptions.length === 0 ? null : overviewOptions.includes('1d') ? '1d' : overviewOptions[0]!),
+    [overviewOptions],
+  )
+  const [overviewSel, setOverviewSel] = useState<Interval | null>(null)
+  // garde un choix valide (> intervalle principal), sinon retombe sur le défaut
+  const overviewInterval = overviewSel && INTERVAL_MS[overviewSel] > INTERVAL_MS[interval] ? overviewSel : defaultOverview
+
+  const { data: overviewCandles } = useQuery({
+    queryKey: ['backtest-overview', id, overviewInterval],
+    queryFn: () => api.klines(run!.config.market, run!.config.symbol, overviewInterval!, chartStart, run!.config.end),
+    enabled: run !== undefined && run.status === 'done' && overviewInterval !== null,
+  })
+
+  // fenêtre visible du graphe principal (ms) ↔ rectangle sur la vue d'ensemble
+  const [mainRange, setMainRange] = useState<{ from: number; to: number } | null>(null)
+  // fenêtre demandée par un clic sur la vue d'ensemble (recentrage du principal)
+  const [mainTarget, setMainTarget] = useState<{ from: number; to: number } | null>(null)
+  const onNavigate = useCallback(
+    (centerMs: number) => {
+      const span = mainRange ? mainRange.to - mainRange.from : 60 * INTERVAL_MS[interval]
+      setMainTarget({ from: centerMs - span / 2, to: centerMs + span / 2 })
+    },
+    [mainRange, interval],
+  )
 
   // ---- replay
   const [replay, setReplay] = useState<number | null>(null) // candle index limit, null = off
@@ -148,6 +180,22 @@ export function BacktestDetail() {
           title={`${run.config.symbol} · ${interval}`}
           actions={
             <div className="flex items-center gap-2">
+              {overviewInterval && (
+                <label className="flex items-center gap-1.5 text-xs text-zinc-400">
+                  Vue d'ensemble
+                  <select
+                    value={overviewInterval}
+                    onChange={(e) => setOverviewSel(e.target.value as Interval)}
+                    className="rounded border border-zinc-700 bg-zinc-900 px-1.5 py-1 text-xs text-zinc-200"
+                  >
+                    {overviewOptions.map((i) => (
+                      <option key={i} value={i}>
+                        {i}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
               {replay !== null && candles && (
                 <>
                   <input
@@ -179,12 +227,22 @@ export function BacktestDetail() {
             </div>
           }
         >
+          {overviewInterval && overviewCandles && overviewCandles.length > 0 && (
+            <div className="mb-2">
+              <div className="mb-1 text-xs text-zinc-500">
+                Vue d'ensemble ({overviewInterval}) — la zone claire = ce qui est affiché ci-dessous · clic pour s'y rendre
+              </div>
+              <OverviewChart candles={overviewCandles} visibleRange={mainRange} onNavigate={onNavigate} height={110} />
+            </div>
+          )}
           <TradingChart
             candles={view.candles}
             indicators={view.indicators}
             markers={view.markers}
             annotations={view.annotations}
             tradeZones={view.tradeZones}
+            onVisibleTimeRangeChange={setMainRange}
+            viewTimeRange={mainTarget}
             height={520}
           />
         </Card>
