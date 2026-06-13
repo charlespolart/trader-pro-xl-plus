@@ -15,8 +15,8 @@ const DOWN = '#ef5350'
  * Bandeau « code-barres » des trades : une barre verticale par trade clôturé,
  * en ordre chronologique (gauche = premier, droite = dernier), verte vers le
  * haut pour un gain, rouge vers le bas pour une perte, hauteur ∝ au montant.
- * Espacement égal → on voit (et on compte) TOUS les trades, sans chevauchement.
- * Survol n'importe où dans une colonne → infobulle (date + P&L).
+ * Les barres se partagent toute la largeur (flex) : peu de trades = barres
+ * larges, beaucoup de trades = barres fines. Survol d'une colonne → infobulle.
  */
 export function TradePnlStrip({ trades, denomination = 'quote', height = 190 }: Props) {
   const closed = useMemo(
@@ -46,6 +46,8 @@ export function TradePnlStrip({ trades, denomination = 'quote', height = 190 }: 
 
   const ht = hover ? closed[hover.idx]! : null
   const tipLeft = hover ? Math.min(Math.max(hover.x, 96), hover.w - 96) : 0
+  // espacement entre barres : fin, et réduit encore quand il y a beaucoup de trades
+  const gap = n > 120 ? 1 : 2
 
   return (
     <div>
@@ -55,25 +57,39 @@ export function TradePnlStrip({ trades, denomination = 'quote', height = 190 }: 
         onMouseMove={onMove}
         onMouseLeave={() => setHover(null)}
       >
-        {/* ligne de zéro */}
+        {/* barres : flex → chaque colonne prend une part égale de la largeur */}
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'stretch', gap }}>
+          {closed.map((t, i) => {
+            const win = t.realizedPnl > 0
+            const h = Math.max(4, (Math.abs(t.realizedPnl) / maxAbs) * 44)
+            const isHover = hover?.idx === i
+            return (
+              <div
+                key={t.id ?? i}
+                style={{
+                  flex: '1 1 0',
+                  minWidth: 0,
+                  position: 'relative',
+                  background: isHover ? 'rgba(255,255,255,0.05)' : 'transparent',
+                }}
+              >
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    right: 0,
+                    height: `${h}%`,
+                    background: win ? UP : DOWN,
+                    opacity: hover && !isHover ? 0.45 : 1,
+                    ...(win ? { bottom: '50%' } : { top: '50%' }),
+                  }}
+                />
+              </div>
+            )
+          })}
+        </div>
+        {/* ligne de zéro (au-dessus des barres) */}
         <div style={{ position: 'absolute', left: 0, right: 0, top: '50%', height: 1, background: '#39425a' }} />
-        {closed.map((t, i) => {
-          const win = t.realizedPnl > 0
-          const h = Math.max(4, (Math.abs(t.realizedPnl) / maxAbs) * 44)
-          const isHover = hover?.idx === i
-          const style: React.CSSProperties = {
-            position: 'absolute',
-            left: `${((i + 0.5) / n) * 100}%`,
-            width: isHover ? 5 : 3,
-            marginLeft: isHover ? -2.5 : -1.5,
-            height: `${h}%`,
-            background: win ? UP : DOWN,
-            opacity: hover && !isHover ? 0.45 : 1,
-            borderRadius: 1,
-            ...(win ? { bottom: '50%' } : { top: '50%' }),
-          }
-          return <div key={t.id ?? i} style={style} />
-        })}
 
         {ht && hover && (
           <div
