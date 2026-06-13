@@ -232,3 +232,14 @@ const qty2 = ctx.risk.sizeByEquityPct(25)
 - ❌ Garder des données dans des variables de module (partagées entre instances de bots) → utilisez `locals`/`state`.
 - ❌ Oublier `reason` sur les ordres → vous perdrez l'explicabilité des trades.
 - ❌ `ctx.indicator()` hors de `init()` → exception (l'historique ne serait pas déterministe).
+
+## Dénomination en actif de base (accumulation BTC)
+
+Par défaut un backtest mesure la performance en **USDT** (`denomination: 'quote'`). Pour les stratégies dont le but est d'**accumuler l'actif de base** (avoir le plus de BTC possible, pas le plus d'USDT), utilisez `denomination: 'base'` (spot uniquement) :
+
+- on **DÉTIENT** `initialBalance` unités de base au départ (ex : 1 BTC) ;
+- l'équité et toutes les métriques sont mesurées **en BTC** ;
+- le benchmark buy & hold = « garder son BTC » = **0 %** (chaque % au-dessus = du BTC gagné) ;
+- un trade = une excursion **vendre → racheter** ; son P&L est le **BTC gagné** (racheter plus bas accumule, racheter plus haut perd du BTC).
+
+Côté stratégie, c'est du spot normal : `ctx.position.qty > 0` = on détient du BTC (état neutre), `== 0` = on a vendu (en USDT). On vend (`SELL`) pour ouvrir l'excursion, on rachète (`BUY` avec `quoteQty` = tout l'USDT) pour la fermer. Voir `strategies/btc-accumulator.ts` (vend uniquement en vrai bear : EMA200 1d en déclin). Réglable dans le formulaire de backtest (sélecteur **Dénomination**, marchés spot).
