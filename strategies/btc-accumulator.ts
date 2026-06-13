@@ -70,6 +70,16 @@ export default defineStrategy({
       description: 'Rachat forcé si le prix remonte de N×ATR (on s’est trompé) — limite la perte de BTC',
       group: 'Risque',
     }),
+    maxLossPct: p.number({
+      default: 5,
+      min: 0,
+      max: 20,
+      step: 0.5,
+      label: 'Perte max par trade (%)',
+      description:
+        "Plafond DUR de perte de BTC : rachat forcé si le prix remonte de N % au-dessus de la vente, peu importe la volatilité. 0 = off (le stop ATR seul, qui en forte vol laissait filer la perte jusqu'à 10 %). 5 % = validé (plafonne les pertes ET améliore le rendement).",
+      group: 'Risque',
+    }),
   },
 
   data: (params) => ({
@@ -119,8 +129,14 @@ export default defineStrategy({
       if (bearRegime && cleanTrend && sellingFlow && belowEma && a > 0) {
         const qty = ctx.roundQty(ctx.position.qty)
         if (qty <= 0) return
-        // stop : si le prix remonte de N×ATR on s'est trompé → rachat
-        ctx.state['stop'] = ctx.roundPrice(candle.close + ctx.params.stopAtrMult * a)
+        // stop = le PLUS SERRÉ entre le stop ATR et le plafond de perte en %.
+        // Le plafond garantit qu'on ne perd jamais plus de maxLossPct de BTC,
+        // même quand l'ATR est énorme (forte vol) où le stop ATR seul laissait
+        // filer la perte jusqu'à ~10 %.
+        const atrStop = candle.close + ctx.params.stopAtrMult * a
+        const maxLossStop =
+          ctx.params.maxLossPct > 0 ? candle.close * (1 + ctx.params.maxLossPct / 100) : Number.POSITIVE_INFINITY
+        ctx.state['stop'] = ctx.roundPrice(Math.min(atrStop, maxLossStop))
         ctx.state['bracket'] = false
         ctx.state['soldPrice'] = candle.close
         await ctx.order.market({
@@ -159,8 +175,11 @@ export default defineStrategy({
       const quote = ctx.balances.find((b) => b.asset !== (ctx.symbolInfo?.baseAsset ?? '___'))
       const usdt = quote ? quote.free : 0
       if (stop > 0 && usdt > 0) {
-        // racheter ~tout l'USDT au prix de déclenchement
-        const qty = ctx.roundQty(usdt / stop)
+        // racheter ~tout l'USDT au prix de déclenchement. Marge de 0,5 % :
+        // le fill se fait à stop×(1+slippage) + frais, donc usdt/stop pile
+        // serait rejeté pour fonds insuffisants (le stop ne se déclencherait
+        // jamais). Le petit reliquat d'USDT est réutilisé au cycle suivant.
+        const qty = ctx.roundQty((usdt / stop) * 0.995)
         if (qty > 0) {
           ctx.annotate({ type: 'label', time: ctx.time, price: stop, text: 'rachat stop', color: '#f23645' })
           await ctx.order.stopMarket({
