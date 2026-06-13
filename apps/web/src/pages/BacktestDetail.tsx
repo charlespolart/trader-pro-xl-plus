@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { INTERVALS, INTERVAL_MS, type Candle, type Interval } from '@tpx/shared'
+import { INTERVALS, INTERVAL_MS, isInterval, type Candle, type Interval } from '@tpx/shared'
 import { api } from '../lib/api'
 import { fmtDate } from '../lib/format'
 import { Badge, Card, Empty, Spinner } from '../components/ui'
@@ -40,7 +40,14 @@ export function BacktestDetail() {
   })
 
   const run = result?.run
-  const interval = useMemo(() => inferInterval(result?.equity.map((p) => p.time) ?? []), [result?.equity])
+  // l'intervalle du chart = celui du feed principal de la stratégie (params.interval).
+  // NE PAS le déduire de l'espacement de l'équité : elle est sous-échantillonnée
+  // (16k points 4h → 5k) donc l'espacement ne reflète plus le vrai intervalle (→ 12h).
+  const interval = useMemo<Interval>(() => {
+    const p = run?.config.params?.['interval']
+    if (typeof p === 'string' && isInterval(p)) return p
+    return inferInterval(result?.equity.map((pt) => pt.time) ?? [])
+  }, [run?.config.params, result?.equity])
 
   const { data: candles } = useQuery({
     queryKey: ['backtest-candles', id, interval],
