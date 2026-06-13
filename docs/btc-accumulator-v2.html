@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BTC Accumulator v2 — les deux edges</title>
+<style>
+  :root {
+    --bg: #0b0e14; --panel: #11151f; --panel2: #161b28; --edge: #232a3b;
+    --txt: #e4e7ee; --muted: #9aa3b5; --dim: #6b7488;
+    --up: #26a69a; --down: #ef5350; --accent: #3b82f6; --amber: #f0a92b; --orange: #ff9800;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: radial-gradient(1200px 700px at 70% -10%, #15203a 0%, var(--bg) 55%);
+    color: var(--txt); font: 16px/1.65 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 940px; margin: 0 auto; padding: 0 22px 90px; }
+  code, .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  header { padding: 70px 0 36px; border-bottom: 1px solid var(--edge); }
+  .kicker { display:inline-block; font-size:12px; letter-spacing:.18em; text-transform:uppercase;
+    color: var(--orange); background: rgba(255,152,0,.1); border:1px solid rgba(255,152,0,.25);
+    padding:4px 11px; border-radius:999px; margin-bottom:20px; }
+  h1 { font-size: 44px; line-height: 1.1; margin: 0 0 14px; letter-spacing: -.02em; }
+  h1 .btc { color: var(--orange); }
+  h1 .v { color: var(--accent); }
+  .lead { font-size: 19px; color: var(--muted); max-width: 680px; margin: 0; }
+  section { padding: 46px 0 0; }
+  h2 { font-size: 13px; letter-spacing:.16em; text-transform:uppercase; color: var(--dim);
+    margin: 0 0 18px; padding-bottom: 10px; border-bottom: 1px solid var(--edge); }
+  h3 { font-size: 21px; margin: 26px 0 8px; }
+  h4 { font-size: 16px; margin: 22px 0 6px; }
+  p { color: #cfd5e2; }
+  .muted { color: var(--muted); }
+  strong { color: #fff; }
+  .callout { background: linear-gradient(180deg, rgba(59,130,246,.10), rgba(59,130,246,.03));
+    border: 1px solid rgba(59,130,246,.3); border-left: 3px solid var(--accent);
+    border-radius: 12px; padding: 20px 24px; margin: 8px 0 4px; }
+  .callout .big { font-size: 20px; line-height: 1.5; color: #fff; }
+  .grid { display: grid; gap: 16px; }
+  .cols-2 { grid-template-columns: 1fr 1fr; }
+  @media (max-width: 720px) { .cols-2 { grid-template-columns: 1fr; } }
+  .card { background: var(--panel); border: 1px solid var(--edge); border-radius: 12px; padding: 20px 22px; }
+  .card h3, .card h4 { margin-top: 0; }
+  .num { display:inline-block; width:30px; height:30px; line-height:30px; text-align:center; border-radius:999px;
+    background: var(--accent); color:#fff; font-weight:700; font-size:15px; margin-right:10px; vertical-align:middle; }
+  /* analogie / aside */
+  .aside { background: rgba(38,166,154,.06); border:1px solid rgba(38,166,154,.25); border-left:3px solid var(--up);
+    border-radius:12px; padding:14px 18px; margin:14px 0; }
+  .aside .t { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--up); font-weight:700; }
+  /* example boxes */
+  .example { border-radius:12px; padding:16px 20px; border:1px solid var(--edge); background: var(--panel); margin-top:14px; }
+  .example.win { border-color: rgba(38,166,154,.35); }
+  .example.lose { border-color: rgba(239,83,80,.35); }
+  .example .tag { display:inline-block; font-size:11px; letter-spacing:.12em; text-transform:uppercase;
+    padding:3px 9px; border-radius:6px; margin-bottom:8px; font-weight:600; }
+  .example.win .tag { color: var(--up); background: rgba(38,166,154,.12); }
+  .example.lose .tag { color: var(--down); background: rgba(239,83,80,.12); }
+  .flow { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:6px 0 8px;
+    font-family: ui-monospace, monospace; font-size:14px; }
+  .flow .b { background: var(--panel2); border:1px solid var(--edge); border-radius:8px; padding:6px 11px; }
+  .flow .arrow { color: var(--dim); }
+  .pos { color: var(--up); } .neg { color: var(--down); }
+  /* before / after */
+  .ba { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:14px; }
+  @media (max-width:720px){ .ba { grid-template-columns:1fr; } }
+  .ba .col { border:1px solid var(--edge); border-radius:12px; padding:16px 18px; background:var(--panel); }
+  .ba .col.after { border-color: rgba(38,166,154,.4); background: rgba(38,166,154,.05); }
+  .ba .h { font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--dim); margin-bottom:8px; }
+  .ba .big { font-size:30px; font-weight:700; font-family: ui-monospace, monospace; }
+  .ba .sub { font-size:14px; color: var(--muted); margin-top:2px; }
+  /* formula-ish box */
+  .fml { background: var(--panel2); border:1px solid var(--edge); border-radius:10px; padding:15px 18px;
+    margin:14px 0; font-size:15px; color:#dbe3f2; }
+  .fml .lab { display:block; font-size:11px; color:var(--dim); letter-spacing:.12em; text-transform:uppercase; margin-bottom:9px; }
+  .warn { background: rgba(240,169,43,.07); border:1px solid rgba(240,169,43,.3); border-left:3px solid var(--amber);
+    border-radius:12px; padding:18px 22px; margin-top:14px; }
+  .warn h3 { margin-top:0; color: var(--amber); }
+  .pill { display:inline-block; font-size:12px; padding:2px 9px; border-radius:999px; border:1px solid var(--edge);
+    background:var(--panel2); color:var(--muted); }
+  /* glossary */
+  .gloss { display:grid; gap:0; }
+  .gloss .row { display:grid; grid-template-columns:170px 1fr; gap:14px; padding:11px 0; border-bottom:1px solid rgba(35,42,59,.55); }
+  .gloss .row:last-child { border-bottom:0; }
+  .gloss .k { color: var(--accent); font-weight:600; font-family: ui-monospace, monospace; font-size:14px; }
+  .gloss .d { color: #cfd5e2; font-size:14.5px; }
+  @media (max-width:720px){ .gloss .row { grid-template-columns:1fr; gap:3px; } }
+  ul.clean { padding-left: 0; list-style: none; }
+  ul.clean li { padding: 6px 0 6px 26px; position: relative; color: #cfd5e2; }
+  ul.clean li::before { content: "▸"; position: absolute; left: 4px; color: var(--accent); }
+  footer { margin-top: 60px; padding-top: 24px; border-top: 1px solid var(--edge); color: var(--dim); font-size: 13px; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <span class="kicker">Stratégie · version 2</span>
+    <h1><span class="btc">BTC</span> Accumulator <span class="v">v2</span></h1>
+    <p class="lead">La même idée que la v1 — accumuler du Bitcoin — mais avec <strong>deux réglages</strong> qui font la différence. Cette page les explique simplement, sans supposer que vous connaissez la finance.</p>
+  </header>
+
+  <!-- RAPPEL -->
+  <section>
+    <h2>D'abord, en deux phrases : que fait la stratégie ?</h2>
+    <div class="callout">
+      <p class="big" style="margin:0">On <strong>détient du Bitcoin</strong> en permanence. La seule chose qu'on cherche, c'est <strong>en avoir plus</strong>. Quand le marché part nettement à la baisse, on <strong>vend</strong> son Bitcoin contre des dollars, puis on le <strong>rachète plus bas</strong> → on se retrouve avec plus de Bitcoin qu'avant.</p>
+    </div>
+    <p class="muted" style="margin-top:14px">Tout se mesure <strong>en Bitcoin</strong>, pas en dollars. Le but n'est pas de gagner des dollars, c'est de finir avec un plus gros tas de Bitcoin. Le « score à battre » est simple : <strong>ne rien faire et garder son Bitcoin = 0 %</strong>. Chaque pourcent au-dessus, c'est du Bitcoin gagné.</p>
+    <p class="muted">Le risque, lui aussi, est en Bitcoin : si on vend et que le prix <em>monte</em> au lieu de baisser, on doit racheter plus cher → on récupère <strong>moins</strong> de Bitcoin. C'est exactement ce que les deux edges de la v2 cherchent à éviter.</p>
+  </section>
+
+  <!-- EDGE 1 -->
+  <section>
+    <h2>Edge n°1 — lire la tendance sur des bougies de 3 jours</h2>
+
+    <h4>Une « bougie », c'est quoi ?</h4>
+    <p>Sur un graphique de trading, le prix est découpé en <strong>bougies</strong>. Une bougie résume le prix sur une <strong>durée donnée</strong> : son ouverture, son plus haut, son plus bas, sa clôture. La durée d'une bougie, c'est l'<strong>unité de temps</strong> :</p>
+    <ul class="clean">
+      <li>une bougie <strong>journalière</strong> = un résumé du prix <strong>par jour</strong> ;</li>
+      <li>une bougie <strong>de 3 jours</strong> = un résumé <strong>tous les 3 jours</strong> (donc 3× moins de bougies, une vue plus « lissée ») ;</li>
+      <li>une bougie de <strong>4 heures</strong> = un résumé toutes les 4 heures (vue très détaillée).</li>
+    </ul>
+
+    <h4>Pourquoi la tendance se lit mieux sur de grandes bougies</h4>
+    <p>La <strong>tendance</strong>, c'est la direction générale : le marché monte-t-il ou descend-il <em>globalement</em> ? Le problème, c'est que sur de petites bougies (journalières), le prix gigote beaucoup : il monte un jour, baisse le lendemain… Ce « bruit » donne de fausses impressions de retournement.</p>
+    <div class="aside">
+      <span class="t">L'analogie</span>
+      <p style="margin:6px 0 0">Pour savoir si une route <strong>monte ou descend</strong>, vous ne regardez pas chaque pavé (vous descendez peut-être d'un pavé alors que la route grimpe). Vous prenez du recul et vous regardez <strong>toute la colline</strong>. Des bougies plus grandes = prendre du recul : les petits soubresauts s'effacent, la vraie pente apparaît.</p>
+    </div>
+    <p>La v1 lisait la tendance sur les bougies <strong>journalières</strong>. La v2 la lit sur les bougies de <strong>3 jours</strong> — plus lisses, moins de faux mouvements. En revanche, le <em>moment précis</em> où acheter ou vendre est toujours décidé sur de petites bougies de 4 heures (pour rester réactif). On sépare donc deux rôles :</p>
+    <div class="grid cols-2" style="margin-top:8px">
+      <div class="card">
+        <h3 style="margin-top:0">🧭 La boussole — 3 jours</h3>
+        <p class="muted" style="margin-bottom:0">Sert à répondre à <strong>une seule</strong> question : « sommes-nous globalement en marché baissier ? ». Lente, stable, peu de faux signaux.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">⏱️ Le chrono — 4 heures</h3>
+        <p class="muted" style="margin-bottom:0">Une fois la boussole au rouge, sert à choisir le <strong>bon instant</strong> pour vendre ou racheter. Rapide, précis.</p>
+      </div>
+    </div>
+
+    <h4 style="margin-top:26px">Est-ce que ça marche vraiment ?</h4>
+    <p class="muted">Oui. En rejouant l'histoire de 2021 à 2026 (un test « à l'aveugle », sur des données que la stratégie n'a pas servi à régler), lire la tendance sur 3 jours rapporte plus que sur le journalier :</p>
+    <div class="ba">
+      <div class="col">
+        <div class="h">Tendance sur le journalier (v1)</div>
+        <div class="big">+89 %</div>
+        <div class="sub">de Bitcoin accumulé</div>
+      </div>
+      <div class="col after">
+        <div class="h">Tendance sur 3 jours (v2)</div>
+        <div class="big pos">+122 %</div>
+        <div class="sub">de Bitcoin accumulé — mieux</div>
+      </div>
+    </div>
+    <p class="muted" style="font-size:13.5px; margin-top:10px">Et ce n'était pas un coup de chance : tous les réglages voisins du « 3 jours » testés sont meilleurs que le journalier, pas seulement un. Quand <em>tout un voisinage</em> fonctionne, c'est le signe d'un vrai effet, pas d'un réglage chanceux.</p>
+  </section>
+
+  <!-- EDGE 2 -->
+  <section>
+    <h2>Edge n°2 — la double confirmation (anti-mauvaises surprises)</h2>
+
+    <h4>Le problème que ça règle</h4>
+    <p>Parfois le prix baisse un peu, la boussole 3-jours passe au rouge, la stratégie <strong>vend</strong> son Bitcoin pour le racheter plus bas… mais ce n'était qu'un <strong>creux passager</strong> dans un marché qui, en réalité, montait. Le prix <strong>rebondit</strong>, on est obligé de racheter <strong>plus cher</strong> → on récupère <strong>moins de Bitcoin</strong>. On s'est fait piéger par un <strong>faux signal</strong>.</p>
+    <div class="aside" style="background:rgba(239,83,80,.06); border-color:rgba(239,83,80,.3); border-left-color:var(--down)">
+      <span class="t" style="color:var(--down)">Le mot à retenir</span>
+      <p style="margin:6px 0 0"><strong>Whipsaw</strong> (faux signal) : on agit sur un signal… qui se retourne aussitôt contre nous. On vend, ça remonte ; on a perdu pour rien. Répété, c'est ce qui grignote le capital.</p>
+    </div>
+
+    <h4>La solution : exiger DEUX avis concordants</h4>
+    <p>Avant de vendre, on demande maintenant que <strong>deux échelles de temps soient d'accord</strong> pour dire « c'est baissier » :</p>
+    <div class="fml">
+      <span class="lab">Condition pour vendre du Bitcoin</span>
+      la tendance <strong>3 jours</strong> est baissière&nbsp;&nbsp;<strong style="color:var(--accent)">ET</strong>&nbsp;&nbsp;la tendance <strong>journalière</strong> est baissière
+    </div>
+    <div class="aside">
+      <span class="t">L'analogie</span>
+      <p style="margin:6px 0 0">C'est comme exiger <strong>deux témoins indépendants</strong> avant de prendre une décision grave. Si un seul crie « au feu ! », c'est peut-être une fausse alerte. Si <strong>les deux</strong> le disent en même temps, le danger est bien réel. Une seule voix ne suffit plus à déclencher une vente.</p>
+    </div>
+    <p>Concrètement, en 2019-2020 (la remontée après le krach de 2018, puis le crash du Covid), la boussole 3-jours donnait beaucoup de fausses alertes. Exiger que le journalier soit <em>aussi</em> au rouge les a presque toutes filtrées — sans rien changer aux vrais marchés baissiers, où les deux échelles sont naturellement d'accord (le grand marché baissier de 2022 reste capté à <strong>+89 %</strong>).</p>
+
+    <h4 style="margin-top:26px">Le résultat — sur la période complète 2019 → 2026</h4>
+    <p class="muted">Le gain le plus visible est sur le <strong>drawdown</strong>. (Drawdown = la pire chute de votre tas de Bitcoin depuis un sommet : « combien j'aurais perdu, au pire moment ?». Plus c'est petit, mieux on dort.)</p>
+    <div class="ba">
+      <div class="col">
+        <div class="h">Avant (3 jours seul)</div>
+        <div class="big">+55 %</div>
+        <div class="sub">Bitcoin accumulé</div>
+        <div class="big neg" style="margin-top:10px">−44 %</div>
+        <div class="sub">pire chute (drawdown) 😬</div>
+      </div>
+      <div class="col after">
+        <div class="h">Après (double confirmation)</div>
+        <div class="big pos">+85 %</div>
+        <div class="sub">Bitcoin accumulé — plus</div>
+        <div class="big pos" style="margin-top:10px">−30 %</div>
+        <div class="sub">pire chute — bien moins profonde</div>
+      </div>
+    </div>
+    <p style="margin-top:14px">Donc on gagne sur les deux tableaux : <strong>plus de Bitcoin ET un risque plus faible</strong>. C'est rare — d'habitude, réduire le risque coûte du rendement. Ici, ça marche parce qu'on n'a pas « pris moins de risque » bêtement : on a <strong>supprimé les mauvais trades</strong> (les faux signaux de 2019-2020) sans toucher aux bons.</p>
+
+    <div class="warn">
+      <h3>⚠ Pour rester honnête</h3>
+      <p style="margin-bottom:0">La double confirmation est un <strong>filtre de sécurité</strong>, pas une machine à gagner plus tout le temps. Quand le marché est « propre » (sans faux signaux), elle <strong>ne change presque rien</strong> — et coûte même un peu (sur une période facile, le rendement passe de +160 % à +143 %). Sa valeur, c'est de <strong>protéger</strong> quand le danger est là (2019-2020). Gros bénéfice dans la tempête, neutre par beau temps. On peut la désactiver d'un clic (<code class="mono">useConfirm</code>) pour retrouver le 3-jours pur.</p>
+    </div>
+  </section>
+
+  <!-- RECAP -->
+  <section>
+    <h2>En résumé</h2>
+    <div class="grid cols-2">
+      <div class="card">
+        <h3><span class="num">1</span>Tendance sur 3 jours</h3>
+        <p class="muted" style="margin-bottom:0">On lit la direction du marché sur de <strong>grandes bougies</strong> (3 jours) plutôt que journalières → moins de bruit, on suit la vraie tendance. <strong>+122 %</strong> contre +89 % pour le journalier.</p>
+      </div>
+      <div class="card">
+        <h3><span class="num">2</span>Double confirmation</h3>
+        <p class="muted" style="margin-bottom:0">On ne vend que si <strong>le 3 jours ET le journalier</strong> sont baissiers → on évite les faux signaux. Le drawdown passe de <strong>−44 % à −30 %</strong>, et le rendement monte.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- GLOSSAIRE -->
+  <section>
+    <h2>Petit lexique (les mots de finance utilisés ici)</h2>
+    <div class="card">
+      <div class="gloss">
+        <div class="row"><div class="k">Bougie</div><div class="d">Résumé du prix sur une durée (ouverture, plus haut, plus bas, clôture). L'unité de base d'un graphique.</div></div>
+        <div class="row"><div class="k">Unité de temps</div><div class="d">La durée que couvre chaque bougie (4 h, 1 jour, 3 jours…). Plus elle est grande, plus la vue est lissée.</div></div>
+        <div class="row"><div class="k">Tendance</div><div class="d">La direction générale du marché : globalement haussier (« bull ») ou baissier (« bear »).</div></div>
+        <div class="row"><div class="k">Marché baissier (bear)</div><div class="d">Période où le prix descend durablement. C'est là — et seulement là — que la stratégie vend pour racheter plus bas.</div></div>
+        <div class="row"><div class="k">EMA</div><div class="d">« Moyenne mobile » : une ligne qui suit le prix en le lissant. Si elle descend, la tendance descend. Sert de boussole.</div></div>
+        <div class="row"><div class="k">Drawdown</div><div class="d">La pire chute de votre capital depuis un sommet. « Combien j'aurais perdu au pire moment. » On le veut petit.</div></div>
+        <div class="row"><div class="k">Whipsaw</div><div class="d">Faux signal : on agit, et le marché se retourne aussitôt. On vend, ça remonte → perte inutile.</div></div>
+        <div class="row"><div class="k">Walk-forward</div><div class="d">Test « à l'aveugle » : on règle la stratégie sur le passé, on la juge sur une période suivante qu'elle n'a jamais vue. Évite de se mentir.</div></div>
+        <div class="row"><div class="k">Dénomination BTC</div><div class="d">On compte tout en Bitcoin, pas en dollars. Le but : finir avec plus de Bitcoin. Garder son Bitcoin sans rien faire = 0 %.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    BTC Accumulator v2 · les chiffres viennent de backtests sur BTCUSDT (spot, mesuré en Bitcoin, 2019-2026) · la v1 reste la version de référence ; la v2 est sa version améliorée sur la lecture de tendance.
+  </footer>
+
+</div>
+</body>
+</html>
