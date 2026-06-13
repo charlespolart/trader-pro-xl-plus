@@ -198,7 +198,7 @@
         <div class="n sell">1</div>
         <div>
           <h4>Signal baissier confirmé → on VEND tout le BTC</h4>
-          <p>Quatre conditions doivent être réunies en même temps (voir « le filtre de régime » ci-dessous). On vend la totalité du Bitcoin contre des USDT, et on pose un <strong>stop de rachat</strong> juste au-dessus : si le prix repart à la hausse, on rachète vite pour limiter la perte de BTC.</p>
+          <p>Quatre conditions doivent être réunies en même temps (voir « le filtre de régime » ci-dessous). On vend la totalité du Bitcoin contre des USDT, et on pose un <strong>plafond de perte dur</strong> : si le prix remonte de plus de ~5 % au-dessus de la vente, on rachète immédiatement pour limiter la perte de BTC à ce plafond, quelle que soit la volatilité.</p>
         </div>
       </div>
       <div class="step">
@@ -245,7 +245,7 @@
         <span class="arrow">→</span>
         <span class="b">rachat (stop) : 100 000 ÷ 125 000</span>
       </div>
-      <div class="result">Résultat : <strong class="neg">0,80 BTC</strong>. On s'est trompé de sens : en rachetant plus cher, on a <strong class="neg">perdu du Bitcoin</strong>. C'est <em>le</em> risque de la stratégie — d'où le stop ATR qui force un rachat rapide pour couper court.</div>
+      <div class="result">Résultat : <strong class="neg">0,80 BTC</strong> dans cet exemple extrême. C'est <em>le</em> risque de la stratégie. En pratique le <strong>plafond de perte de 5 %</strong> coupe court bien avant : on ne perd jamais plus de ~5 % de BTC sur un trade — le rachat est forcé dès que le prix remonte de 5 % au-dessus de la vente.</div>
     </div>
   </section>
 
@@ -303,8 +303,9 @@
           <tr><td><span class="pname">flowLen</span></td><td><span class="def">10</span></td><td>Lissage du taker-flow.</td></tr>
 
           <tr class="grouprow"><td colspan="3">Risque (gestion du rachat)</td></tr>
-          <tr><td><span class="pname">atrPeriod</span></td><td><span class="def">14</span></td><td>Période de l'ATR (volatilité), qui dimensionne le stop.</td></tr>
-          <tr><td><span class="pname">stopAtrMult</span></td><td><span class="def">2,5</span></td><td>Rachat forcé si le prix remonte de N × ATR après la vente (on s'est trompé) — limite la perte de BTC.</td></tr>
+          <tr><td><span class="pname">maxLossPct</span></td><td><span class="def">5 %</span></td><td><strong>Plafond DUR de perte.</strong> Rachat forcé si le prix remonte de N % au-dessus de la vente, peu importe la volatilité. Garantit qu'on ne perd jamais plus de ~5 % de BTC sur un trade. <span class="mono">0</span> = off.</td></tr>
+          <tr><td><span class="pname">atrPeriod</span></td><td><span class="def">14</span></td><td>Période de l'ATR (volatilité), qui dimensionne le stop ATR.</td></tr>
+          <tr><td><span class="pname">stopAtrMult</span></td><td><span class="def">2,5</span></td><td>Stop secondaire à N × ATR. Le stop effectif est le <strong>plus serré</strong> des deux (ATR vs plafond %).</td></tr>
         </tbody>
       </table>
     </div>
@@ -315,11 +316,16 @@
   <section>
     <h2>Résultats &amp; verdict honnête</h2>
     <div class="grid cols-3">
-      <div class="stat"><div class="v pos">+88 %</div><div class="l">BTC accumulé · 2020 → 2026</div></div>
-      <div class="stat"><div class="v pos">+107 %</div><div class="l">sur le bear 2022 seul</div></div>
-      <div class="stat"><div class="v neg">−28 %</div><div class="l">drawdown max (en BTC)</div></div>
+      <div class="stat"><div class="v pos">+79 %</div><div class="l">BTC accumulé · 2020 → 2026</div></div>
+      <div class="stat"><div class="v pos">+87 %</div><div class="l">sur le bear 2022 seul</div></div>
+      <div class="stat"><div class="v neg">−5 %</div><div class="l">perte max par trade (plafonnée)</div></div>
     </div>
-    <p style="margin-top:18px">Sur 6 ans, garder 1 BTC sans rien faire te laisse 1 BTC. Cette stratégie en aurait fait <strong class="pos">~1,88</strong>. Mais il faut être lucide sur <em>d'où</em> vient ce gain.</p>
+    <p style="margin-top:18px">Sur 6 ans, garder 1 BTC sans rien faire te laisse 1 BTC. Cette stratégie en aurait fait <strong class="pos">~1,79</strong>, avec un drawdown max de <strong class="neg">~27 %</strong> en BTC. Mais il faut être lucide sur <em>d'où</em> vient ce gain.</p>
+
+    <div class="card" style="border-color:rgba(38,166,154,.35); margin-top:14px">
+      <h3 style="margin-top:0; color:var(--up)">✓ Le plafond de perte (correctif 2026-06)</h3>
+      <p class="muted" style="margin:0">Un bug rendait le stop de protection inopérant : il ne se déclenchait jamais et certains trades perdaient jusqu'à <strong>10 % de BTC</strong>. Corrigé, et doublé d'un <strong>plafond de perte dur à 5 %</strong> : aucun trade ne perd désormais plus de ~5 % de Bitcoin. Bonus inattendu : plafonner les grosses pertes a aussi <strong>amélioré le rendement</strong> (de +29 % à +59 % de BTC sur 2019-2026).</p>
+    </div>
 
     <div class="warn">
       <h3>⚠ C'est un récolteur de bear, pas un compositeur régulier</h3>
@@ -421,8 +427,9 @@
     </div>
 
     <div class="warn" style="margin-top:20px">
-      <h3>⚠ Pourquoi le refit compte particulièrement ici</h3>
-      <p style="margin:0">Le walk-forward a montré que cette stratégie, à paramètres <strong>figés</strong> pendant des années, est irrégulière (1 fenêtre positive sur 6). Le refit périodique est précisément la façon de la garder calée sur le régime du moment — c'est d'ailleurs ainsi qu'elle a été validée hors-échantillon. <strong>Recommandé : laisser le refit actif en mode proposition</strong>, et valider les changements toi-même.</p>
+      <h3>⚠ Le refit est un filet de sécurité, pas un levier majeur ici</h3>
+      <p style="margin:0 0 8px">Test honnête : le walk-forward (qui ré-optimise à chaque fenêtre) choisit <strong>presque toujours les mêmes paramètres</strong> (pente 30-45 j, er 0,35-0,45, ema 50-100). Le plateau est stable, donc le refit ne transforme pas la stratégie — les défauts sont déjà bons. Comparaison sur le même historique hors-échantillon : refit ≈ paramètres figés (~+58 % vs ~+79 % BTC selon la fenêtre, les deux fortement positifs).</p>
+      <p style="margin:0">Le vrai levier n'a pas été le refit mais la <strong>correction du stop + le plafond de perte</strong>. Le refit reste utile comme adaptation lente au régime ; <strong>recommandé en mode proposition</strong>, à valider toi-même. Et il ne change rien à la nature « récolteur de bear » : 1 fenêtre positive sur 6, quel que soit le réglage.</p>
     </div>
   </section>
 
