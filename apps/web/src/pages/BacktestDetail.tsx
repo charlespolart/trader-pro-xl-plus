@@ -79,20 +79,34 @@ export function BacktestDetail() {
   }, [playing, candles])
 
   const markers = useMemo(() => (result ? tradesToMarkers(result.trades) : []), [result])
+  // bandeau translucide par trade (entrée→sortie) : vert si gagnant, rouge sinon.
+  // un trade encore ouvert court jusqu'au bord droit (clampé côté chart).
+  const zones = useMemo(
+    () =>
+      result
+        ? result.trades.map((t) => ({
+            from: t.entryTime,
+            to: t.exitTime ?? Number.POSITIVE_INFINITY,
+            win: t.realizedPnl > 0,
+          }))
+        : [],
+    [result],
+  )
 
   const view = useMemo(() => {
     if (!candles) return null
     if (replay === null) {
-      return { candles, markers, annotations: result?.annotations ?? [], indicators: result?.indicators ?? [] }
+      return { candles, markers, tradeZones: zones, annotations: result?.annotations ?? [], indicators: result?.indicators ?? [] }
     }
     const limitTime = (candles[Math.min(replay, candles.length - 1)] as Candle | undefined)?.closeTime ?? 0
     return {
       candles: candles.slice(0, replay + 1),
       markers: markers.filter((m) => m.time <= limitTime),
+      tradeZones: zones.filter((z) => z.from <= limitTime).map((z) => ({ ...z, to: Math.min(z.to, limitTime) })),
       annotations: (result?.annotations ?? []).filter((a) => a.type === 'hline' || a.time <= limitTime),
       indicators: (result?.indicators ?? []).map((s) => ({ ...s, points: s.points.filter(([t]) => t <= limitTime) })),
     }
-  }, [candles, replay, markers, result])
+  }, [candles, replay, markers, zones, result])
 
   if (isLoading) {
     return (
@@ -169,6 +183,7 @@ export function BacktestDetail() {
             indicators={view.indicators}
             markers={view.markers}
             annotations={view.annotations}
+            tradeZones={view.tradeZones}
             height={520}
           />
         </Card>

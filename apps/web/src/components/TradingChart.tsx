@@ -17,6 +17,7 @@ import {
 } from 'lightweight-charts'
 import type { Candle, ChartAnnotation, IndicatorSeriesDTO, ServerEvent, TradeRecord } from '@tpx/shared'
 import { wsClient } from '../lib/ws'
+import { TradeZonesPrimitive } from './tradeZonesPrimitive'
 
 const PALETTE = ['#2962ff', '#ff6d00', '#7e57c2', '#26a69a', '#ef5350', '#fdd835', '#29b6f6', '#ec407a']
 
@@ -60,6 +61,8 @@ interface Props {
   indicators?: IndicatorSeriesDTO[]
   markers?: ChartMarker[]
   annotations?: ChartAnnotation[]
+  /** bandeaux translucides par trade (vert=gagnant, rouge=perdant), temps en ms */
+  tradeZones?: { from: number; to: number; win: boolean }[]
   /** ws topic (candles:market:symbol:interval) for live updates */
   liveTopic?: string
   /** when set/changed, the chart scrolls to center this time (ms) */
@@ -68,7 +71,7 @@ interface Props {
   className?: string
 }
 
-export function TradingChart({ candles, indicators = [], markers = [], annotations = [], liveTopic, focusTime, height = 480, className = '' }: Props) {
+export function TradingChart({ candles, indicators = [], markers = [], annotations = [], tradeZones = [], liveTopic, focusTime, height = 480, className = '' }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const tooltipRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
@@ -76,6 +79,7 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
   const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null)
   const indSeriesRef = useRef<Map<string, ISeriesApi<'Line'>>>(new Map())
   const markersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null)
+  const tradeZonesRef = useRef<TradeZonesPrimitive | null>(null)
   const priceLinesRef = useRef<IPriceLine[]>([])
   const fittedRef = useRef(false)
   // textes des marqueurs (raisons d'achat/vente) indexés par temps (s) — affichés
@@ -122,6 +126,9 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
     candleSeriesRef.current = candleSeries
     volumeSeriesRef.current = volumeSeries
     markersRef.current = createSeriesMarkers(candleSeries, [])
+    const tradeZonesPrim = new TradeZonesPrimitive()
+    candleSeries.attachPrimitive(tradeZonesPrim)
+    tradeZonesRef.current = tradeZonesPrim
     fittedRef.current = false
 
     // infobulle des raisons d'achat/vente : affichée au survol d'une bougie
@@ -155,6 +162,7 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
       volumeSeriesRef.current = null
       indSeriesRef.current = new Map()
       markersRef.current = null
+      tradeZonesRef.current = null
       priceLinesRef.current = []
     }
   }, [])
@@ -313,6 +321,24 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
     plugin.setMarkers(all)
     markerTextsRef.current = texts
   }, [markers, annotations, patternMarkers, candles])
+
+  // ---- bandeaux de trade (vert/rouge) derrière les bougies
+  useEffect(() => {
+    const prim = tradeZonesRef.current
+    if (!prim) return
+    // borne la fin à la dernière bougie chargée : un trade encore ouvert (ou
+    // dont la sortie est hors fenêtre) court jusqu'au bord droit visible
+    const lastOpen = candleWindow?.to
+    prim.setZones(
+      tradeZones
+        .filter((z) => !candleWindow || z.from <= candleWindow.to)
+        .map((z) => ({
+          from: ts(z.from),
+          to: ts(lastOpen !== undefined ? Math.min(z.to, lastOpen) : z.to),
+          win: z.win,
+        })),
+    )
+  }, [tradeZones, candleWindow])
 
   // ---- hline annotations as price lines
   useEffect(() => {
