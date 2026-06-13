@@ -198,12 +198,7 @@ export function BacktestDetail() {
 
       {result.trades.length > 0 && (
         <Card title="Répartition des trades (gains / pertes dans le temps)">
-          <TradePnlStrip
-            trades={result.trades}
-            start={run.config.start}
-            end={run.config.end}
-            denomination={run.config.denomination}
-          />
+          <TradePnlStrip trades={result.trades} denomination={run.config.denomination} />
         </Card>
       )}
 
