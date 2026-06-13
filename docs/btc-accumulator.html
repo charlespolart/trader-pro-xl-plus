@@ -165,6 +165,12 @@
                   font:600 12.5px ui-monospace,monospace; color:#fff; white-space:nowrap; }
   .gauge-ends { display:flex; justify-content:space-between; font-size:12px; color:var(--dim);
                 font-family:ui-monospace,monospace; margin-top:4px; }
+  /* ---- encadré analogie ---- */
+  .aside { background: rgba(38,166,154,.06); border:1px solid rgba(38,166,154,.25); border-left:3px solid var(--up);
+           border-radius:12px; padding:14px 18px; margin:14px 0; }
+  .aside .t { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--up); font-weight:700; }
+  .aside p { margin:6px 0 0; }
+  h4 { font-size:16px; margin:22px 0 6px; }
 </style>
 </head>
 <body>
@@ -303,104 +309,122 @@
   <!-- LE EDGE : INDICATEURS MAISON -->
   <section>
     <h2>Le edge — les deux indicateurs maison</h2>
-    <p>La plupart des stratégies n'utilisent que des indicateurs <em>de prix</em> (RSI, MACD, moyennes mobiles) que n'importe quelle bibliothèque calcule à partir de l'OHLCV. Le edge de cette stratégie tient à <strong>deux indicateurs calculés maison</strong> qui répondent à deux questions <em>orthogonales</em> qu'un indicateur de prix seul ne peut pas trancher :</p>
+    <p>Presque toutes les stratégies se servent des mêmes outils, qui ne regardent qu'<strong>une seule chose : le prix</strong> (RSI, MACD, moyennes mobiles…). Le vrai avantage de celle-ci vient de <strong>deux indicateurs qu'on a programmés nous-mêmes</strong>, qui voient des choses que le prix seul ne montre pas. Ils répondent à deux questions différentes :</p>
     <ul class="clean" style="margin-top:6px">
-      <li><strong>La baisse est-elle « propre » ou est-ce du bruit ?</strong> → l'<strong>Efficiency Ratio</strong></li>
-      <li><strong>QUI fait bouger le prix — les acheteurs ou les vendeurs agressifs ?</strong> → le <strong>taker-flow</strong></li>
+      <li><strong>Qui pousse le prix — les acheteurs ou les vendeurs ?</strong> → le <strong>taker-flow</strong></li>
+      <li><strong>Le mouvement est-il franc, ou le prix s'agite-t-il dans le vide ?</strong> → l'<strong>Efficiency Ratio</strong></li>
     </ul>
-    <p class="muted">Le second est <strong>impossible à calculer</strong> avec une bibliothèque classique : il faut une donnée de microstructure que les bougies standard n'embarquent pas. C'est là que se cache l'avantage.</p>
+    <p class="muted">On les explique ci-dessous en partant de zéro — chaque mot de finance est défini au passage.</p>
 
     <!-- TAKER FLOW -->
-    <h3 style="margin-top:34px">1 · Taker-flow — le flux d'ordres <span class="pill">le vrai edge</span></h3>
-    <p>Chaque bougie Binance porte un champ que TA-Lib &amp; consorts ignorent : <code class="mono">takerBuyBase</code> — le volume <strong>acheté en « taker »</strong>, c'est-à-dire par des ordres qui <strong>traversent le spread</strong> pour être exécutés tout de suite (les agressifs). On en tire, bougie par bougie, la <strong>part d'agressivité acheteuse</strong>, puis on la lisse :</p>
+    <h3 style="margin-top:34px">1 · Le taker-flow — « qui pousse le prix ? » <span class="pill">le vrai edge</span></h3>
+
+    <p>Quand le Bitcoin baisse, ça peut vouloir dire <strong>deux choses très différentes</strong> :</p>
+    <ul class="clean">
+      <li>soit des vendeurs <strong>balancent</strong> activement leur Bitcoin à tout prix → la baisse est <strong>réelle</strong> et risque de continuer ;</li>
+      <li>soit personne n'achète pendant un moment et le prix <strong>glisse mollement</strong> tout seul → souvent un faux mouvement, qui rebondit vite.</li>
+    </ul>
+    <p>Le prix tout seul ne fait pas la différence : dans les deux cas, la bougie est rouge. Le taker-flow, lui, sait laquelle des deux on est en train de vivre.</p>
+
+    <div class="aside">
+      <span class="t">L'analogie — le marché aux puces</span>
+      <p>Sur un marché, il y a deux types de gens. Les <strong>patients</strong> posent une étiquette de prix sur leur stand et attendent qu'on vienne. Les <strong>pressés</strong> débarquent et prennent (ou vendent) tout de suite, au prix affiché, sans négocier. En bourse, le « pressé » s'appelle le <strong>taker</strong> (« preneur ») : c'est lui qui <em>décide</em> du mouvement, parce que c'est lui qui agit maintenant. Si les pressés sont surtout des <strong>acheteurs</strong>, le prix est tiré vers le haut ; si ce sont des <strong>vendeurs</strong>, il est poussé vers le bas.</p>
+    </div>
+
+    <p>Binance nous donne une info que la plupart des outils ignorent : pour chaque bougie, <strong>quelle part du volume a été achetée par ces « pressés »</strong> (le champ <code class="mono">takerBuyBase</code>). On la divise par le volume total pour obtenir un chiffre entre 0 et 1 — la <strong>part des acheteurs pressés</strong> — puis on la lisse sur les 10 dernières bougies pour ne pas réagir à un soubresaut isolé&nbsp;:</p>
 
     <div class="fml">
-      <span class="lab">Part acheteuse d'une bougie, puis lissage sur flowLen bougies</span>
-      flowᵢ = takerBuyBaseᵢ ∕ volumeᵢ&nbsp;&nbsp;∈ [0, 1]<br>
-      takerFlow = SMA(flow, <span class="res">flowLen = 10</span>)
+      <span class="lab">part des acheteurs pressés sur une bougie, puis moyenne sur 10 bougies</span>
+      flow = volume acheté par les pressés ∕ volume total&nbsp;&nbsp;<span style="color:var(--dim)">(entre 0 et 1)</span><br>
+      taker-flow = moyenne des 10 derniers « flow »
     </div>
 
-    <p>Lecture : <strong>0,5 = équilibre</strong> (acheteurs et vendeurs aussi agressifs). <strong>&gt; 0,5</strong> = ce sont les <span style="color:var(--up)">acheteurs</span> qui traversent le spread (pression d'achat <em>réelle</em>). <strong>&lt; 0,5</strong> = ce sont les <span style="color:var(--down)">vendeurs</span> qui paient le marché (pression de vente réelle). La stratégie ne vend du BTC que si <code class="mono">taker-flow &lt; 0,5</code>.</p>
+    <p class="muted" style="font-size:13px">(« volume » = la quantité de Bitcoin échangée. « Lisser » / « moyenne mobile » = faire la moyenne des dernières valeurs pour gommer les à-coups.)</p>
 
-    <p class="muted" style="margin-bottom:0"><strong>Pourquoi c'est un edge :</strong> une bibliothèque classique ne voit que l'OHLCV. Elle ne peut pas distinguer une bougie qui baisse parce que <em>les vendeurs cognent le bid</em> d'une bougie qui baisse simplement parce que <em>les acheteurs se sont retirés</em>. Le <code class="mono">takerBuyBase</code> révèle le <strong>côté agresseur</strong> — c'est un signal de microstructure. Une bougie rouge à flux 0,30 = vraie vente soutenue ; une bougie rouge à flux 0,55 = dérive molle qui rebondit souvent (un faux signal). Le taker-flow élimine précisément ces faux départs « jolis mais creux ».</p>
-
-    <div class="grid cols-2" style="margin-top:16px">
-      <div class="example win" style="margin-top:0">
-        <span class="tag">Exemple — une bougie 4 h</span>
-        <p style="margin:0">Volume = <strong>1 200 BTC</strong>, dont <code class="mono">takerBuyBase</code> = <strong>360 BTC</strong>.<br>
-        flow = 360 ∕ 1 200 = <strong class="neg">0,30</strong> → fortement <span style="color:var(--down)">vendeur</span>.</p>
-      </div>
-      <div class="example win" style="margin-top:0">
-        <span class="tag">Exemple — une autre bougie</span>
-        <p style="margin:0">Volume = <strong>800 BTC</strong>, dont <code class="mono">takerBuyBase</code> = <strong>560 BTC</strong>.<br>
-        flow = 560 ∕ 800 = <strong class="pos">0,70</strong> → fortement <span style="color:var(--up)">acheteur</span>.</p>
-      </div>
-    </div>
-
-    <h4 style="margin:24px 0 0; font-size:16px">Le lissage en clair</h4>
-    <p class="muted" style="margin-top:6px">On ne réagit pas à une bougie isolée : on fait la <strong>moyenne des 10 dernières parts acheteuses</strong>. Exemple sur 10 bougies&nbsp;:</p>
-    <div class="fml" style="text-align:left; font-size:14.5px">
-      <span class="lab">flow des 10 bougies</span>
-      0,42 · 0,38 · 0,30 · 0,33 · 0,41 · 0,29 · 0,35 · 0,44 · 0,31 · 0,37<br>
-      <span style="color:var(--dim)">somme = 3,60</span> &nbsp;→&nbsp; takerFlow = 3,60 ∕ 10 = <span class="res">0,36</span>
-    </div>
+    <p>Comment le lire :</p>
     <div class="gauge">
       <div class="mid"></div>
-      <div class="pin" style="left:36%"><b>0,36 — vendeurs dominent</b></div>
+      <div class="pin" style="left:36%"><b>0,36 — les vendeurs mènent</b></div>
     </div>
-    <div class="gauge-ends"><span>0 — tout vendeur</span><span>0,5 — équilibre</span><span>1 — tout acheteur</span></div>
-    <p class="muted" style="margin-top:14px">0,36 &lt; 0,5 → sur les 10 dernières bougies, ce sont bien les vendeurs agressifs qui mènent : la condition de flux est validée. <strong>Cas inverse — l'absorption :</strong> si le prix fait de nouveaux plus-bas mais que le flux <em>remonte</em> au-dessus de 0,5, des acheteurs agressifs <em>absorbent</em> la vente → la baisse s'essouffle, on ne vend pas (et on s'attend à racheter bientôt).</p>
+    <div class="gauge-ends"><span>0 — que des vendeurs pressés</span><span>0,5 — équilibre</span><span>1 — que des acheteurs pressés</span></div>
+    <p style="margin-top:14px"><strong>Au-dessus de 0,5</strong> : les <span style="color:var(--up)">acheteurs</span> pressés dominent (vraie demande). <strong>En dessous de 0,5</strong> : les <span style="color:var(--down)">vendeurs</span> pressés dominent (vraie pression de vente). <strong>La stratégie ne vend son Bitcoin que si ce chiffre est sous 0,5</strong> — c'est-à-dire seulement quand des vendeurs sont réellement à la manœuvre, pas quand le prix glisse mollement.</p>
+
+    <div class="grid cols-2" style="margin-top:16px">
+      <div class="example lose" style="margin-top:0">
+        <span class="tag">Exemple — une bougie franchement vendeuse</span>
+        <p style="margin:0">Sur cette bougie, <strong>1 200 BTC</strong> ont changé de mains, dont <strong>360</strong> achetés par des pressés.<br>
+        360 ∕ 1 200 = <strong class="neg">0,30</strong> → 30 % d'acheteurs, 70 % de vendeurs pressés → ça vend pour de vrai.</p>
+      </div>
+      <div class="example win" style="margin-top:0">
+        <span class="tag">Exemple — une bougie franchement acheteuse</span>
+        <p style="margin:0">Ici <strong>800 BTC</strong> échangés, dont <strong>560</strong> achetés par des pressés.<br>
+        560 ∕ 800 = <strong class="pos">0,70</strong> → 70 % d'acheteurs pressés → la demande pousse fort.</p>
+      </div>
+    </div>
+
+    <div class="aside">
+      <span class="t">Le détail qui fait l'avantage</span>
+      <p>Cette info — <em>qui</em> était le pressé — n'existe pas dans les outils classiques : eux ne connaissent que le prix et le volume. C'est pour ça que c'est un vrai edge : on « voit » l'intention derrière le mouvement, pas seulement le mouvement. Bonus : si le prix fait de nouveaux plus-bas mais que le taker-flow <em>remonte</em> au-dessus de 0,5, ça veut dire que des acheteurs encaissent la vente (« absorption ») → la baisse s'essouffle, on ne vend pas.</p>
+    </div>
 
     <!-- EFFICIENCY RATIO -->
-    <h3 style="margin-top:38px">2 · Efficiency Ratio (Kaufman) — la « propreté » de la tendance</h3>
-    <p>Il mesure si le prix <strong>avance vraiment</strong> ou s'il <strong>s'agite sur place</strong>. On compare le <strong>déplacement net</strong> (d'où à où le prix est allé) au <strong>chemin total réellement parcouru</strong> (la somme de tous les pas bougie à bougie) sur <code class="mono">erLen</code> bougies&nbsp;:</p>
+    <h3 style="margin-top:38px">2 · L'Efficiency Ratio — « le mouvement est-il franc ? »</h3>
 
-    <div class="fml">
-      <span class="lab">déplacement net ∕ longueur du chemin, sur erLen = 20 bougies</span>
-      ER = |Cₙ − C₀| ∕ Σ |Cᵢ − Cᵢ₋₁|&nbsp;&nbsp;∈ [0, 1]
+    <p>Celui-là mesure si le prix <strong>avance vraiment dans une direction</strong>, ou s'il <strong>gigote sur place</strong> sans aller nulle part. C'est important : on veut vendre dans une <em>vraie</em> descente bien nette, pas dans un marché qui zigzague (où on se ferait piéger à tous les coups).</p>
+
+    <div class="aside">
+      <span class="t">L'analogie — à vol d'oiseau</span>
+      <p>Vous marchez pendant une heure. Deux cas : soit vous allez <strong>tout droit</strong> et vous finissez loin du départ (chemin parcouru ≈ distance à vol d'oiseau) ; soit vous <strong>tournez en rond</strong> et vous finissez à 100 m du départ alors que vous avez marché 5 km. L'Efficiency Ratio, c'est le rapport <strong>« distance à vol d'oiseau » ÷ « distance réellement marchée »</strong>. Tout droit → proche de 1. En rond → proche de 0.</p>
     </div>
 
-    <p>Lecture : <strong>proche de 1</strong> = chaque pas va dans le même sens, ligne droite, tendance <em>efficace</em>. <strong>Proche de 0</strong> = beaucoup de mouvement pour aller nulle part, du <em>bruit</em>. On exige <code class="mono">ER ≥ 0,35</code> pour considérer la baisse comme « propre ».</p>
+    <p>Pour le prix, « à vol d'oiseau » = l'écart entre le début et la fin de la période ; « distance marchée » = la somme de tous les petits pas d'une bougie à l'autre&nbsp;:</p>
+
+    <div class="fml">
+      <span class="lab">à vol d'oiseau ∕ distance marchée, sur 20 bougies</span>
+      Efficiency Ratio = (écart début → fin) ∕ (somme de tous les pas)&nbsp;&nbsp;<span style="color:var(--dim)">(entre 0 et 1)</span>
+    </div>
+
+    <p><strong>Proche de 1</strong> = tout droit, tendance franche → on peut agir. <strong>Proche de 0</strong> = ça part dans tous les sens, du bruit → on s'abstient. On exige au minimum <strong>0,35</strong> pour considérer une baisse comme « franche ».</p>
 
     <div class="grid cols-2" style="margin-top:16px">
       <div class="example win" style="margin-top:0">
-        <span class="tag">A · baisse propre → ER élevé</span>
-        <p style="margin:0">Le prix glisse de <strong>100 → 90</strong> presque en ligne droite : 20 bougies à −0,5 chacune.<br>
-        net = |90 − 100| = <strong>10</strong> &nbsp;·&nbsp; chemin = 20 × 0,5 = <strong>10</strong><br>
-        ER = 10 ∕ 10 = <strong class="pos">1,00</strong> → on agit.</p>
+        <span class="tag">A · descente nette → score élevé</span>
+        <p style="margin:0">Le prix glisse de <strong>100 à 90</strong> presque en ligne droite (20 petits pas de −0,5).<br>
+        à vol d'oiseau = 10&nbsp; ·&nbsp; distance marchée = 10<br>
+        10 ∕ 10 = <strong class="pos">1,00</strong> → franc, on agit.</p>
       </div>
       <div class="example lose" style="margin-top:0">
-        <span class="tag">B · zigzag → ER quasi nul</span>
-        <p style="margin:0">Le prix part de 100, ballote 104 ↘ 97 ↗ 103 … et finit à <strong>99</strong>.<br>
-        net = |99 − 100| = <strong>1</strong> &nbsp;·&nbsp; chemin (tous les allers-retours) = <strong>38</strong><br>
-        ER = 1 ∕ 38 = <strong class="neg">0,03</strong> → bruit, on <em>ne vend pas</em> (pourtant le prix a bien fini plus bas).</p>
+        <span class="tag">B · zigzag → score quasi nul</span>
+        <p style="margin:0">Le prix part de 100, ballotte (104, 97, 103…) et finit à <strong>99</strong>.<br>
+        à vol d'oiseau = 1&nbsp; ·&nbsp; distance marchée = 38<br>
+        1 ∕ 38 = <strong class="neg">0,03</strong> → du bruit, on <em>ne vend pas</em> (même si le prix a fini un peu plus bas).</p>
       </div>
     </div>
-    <p class="muted" style="margin-top:14px"><strong>Cas réaliste C :</strong> une vraie descente avec quelques rebonds — net = 12, chemin = 30 → ER = 0,40 ≥ 0,35 → assez propre, validé. C'est l'exemple B qui montre l'intérêt : sans l'ER, on vendrait dans le chop et on saignerait en rachetant plus cher à chaque faux signal.</p>
+    <p class="muted" style="margin-top:14px">L'exemple B montre tout l'intérêt : sans ce filtre, on vendrait dans le zigzag… et on se ferait avoir à chaque rebond. Un cas réaliste se situe entre les deux (par ex. score 0,40 → assez franc, on valide).</p>
 
     <!-- POURQUOI LES COMBINER -->
-    <h3 style="margin-top:38px">Pourquoi les combiner — c'est ça, le edge</h3>
-    <p>Les deux mesures sont <strong>orthogonales</strong>, et chacune prise seule est aveugle là où l'autre voit&nbsp;:</p>
+    <h3 style="margin-top:38px">Pourquoi les DEUX ensemble — c'est ça, le edge</h3>
+    <p>Chacun, tout seul, a un angle mort que l'autre couvre&nbsp;:</p>
     <div class="grid cols-2" style="margin-top:8px">
       <div class="card">
-        <h3 style="margin-top:0">L'ER seul ne suffit pas</h3>
-        <p class="muted" style="margin-bottom:0">Il dit « le mouvement est propre », mais une <em>hausse</em> propre et une <em>baisse</em> propre ont toutes deux un ER élevé. Il ne dit pas qui pousse. Sur du prix seul, on peut vendre dans un mouvement net… qui est en fait <em>acheté</em>.</p>
+        <h3 style="margin-top:0">L'Efficiency Ratio seul ne suffit pas</h3>
+        <p class="muted" style="margin-bottom:0">Il dit « le mouvement est franc », mais une <em>montée</em> franche et une <em>descente</em> franche se ressemblent pour lui. Il ne dit pas <strong>qui</strong> pousse → on pourrait vendre dans un mouvement net… qui est en fait porté par des <em>acheteurs</em>.</p>
       </div>
       <div class="card">
-        <h3 style="margin-top:0">Le flux seul ne suffit pas</h3>
-        <p class="muted" style="margin-bottom:0">Il dit « les vendeurs sont agressifs là, maintenant », mais une bougie vendeuse isolée arrive aussi <em>au milieu d'une hausse</em>. Sans mesure de tendance, on se ferait piéger par le bruit.</p>
+        <h3 style="margin-top:0">Le taker-flow seul ne suffit pas</h3>
+        <p class="muted" style="margin-bottom:0">Il dit « les vendeurs sont actifs maintenant », mais une bougie vendeuse isolée arrive aussi <em>au milieu d'une hausse</em>. Sans mesure de la franchise du mouvement, on se ferait piéger par le bruit.</p>
       </div>
     </div>
-    <p style="margin-top:16px">Ensemble — et verrouillés par le filtre de vrai bear (EMA 200 en déclin) — les quatre signaux doivent <strong>tous</strong> être d'accord pour qu'on vende :</p>
+    <p style="margin-top:16px">La stratégie ne vend donc son Bitcoin que si <strong>tout est aligné</strong> en même temps — les deux indicateurs maison <em>plus</em> le filtre de vrai marché baissier&nbsp;:</p>
     <div class="fml" style="text-align:left; font-size:14.5px; line-height:2">
-      <span class="lab">Condition de vente du BTC</span>
-      <span style="color:var(--accent)">EMA 200 décline 30 j</span>&nbsp; (le régime macro est un <em>vrai</em> bear, pas un repli)<br>
-      &nbsp;&nbsp;ET&nbsp; <span style="color:var(--accent)">ER ≥ 0,35</span>&nbsp; (la jambe en cours est <em>propre</em>, pas du bruit)<br>
-      &nbsp;&nbsp;ET&nbsp; <span style="color:var(--accent)">taker-flow &lt; 0,5</span>&nbsp; (ce sont les <em>vendeurs agressifs</em> qui poussent)<br>
-      &nbsp;&nbsp;ET&nbsp; <span style="color:var(--accent)">prix &lt; EMA 50</span>&nbsp; (la tendance court-terme confirme)
+      <span class="lab">Conditions pour vendre du Bitcoin (toutes en même temps)</span>
+      <span style="color:var(--accent)">le marché est vraiment baissier</span>&nbsp; (la grande tendance descend depuis un mois)<br>
+      &nbsp;&nbsp;ET&nbsp; <span style="color:var(--accent)">le mouvement est franc</span>&nbsp; (Efficiency Ratio ≥ 0,35 — pas du zigzag)<br>
+      &nbsp;&nbsp;ET&nbsp; <span style="color:var(--accent)">ce sont les vendeurs qui poussent</span>&nbsp; (taker-flow &lt; 0,5)<br>
+      &nbsp;&nbsp;ET&nbsp; <span style="color:var(--accent)">le prix court-terme baisse aussi</span>&nbsp; (sous sa moyenne récente)
     </div>
-    <p style="margin-top:14px">Le edge, c'est cette pièce d'<strong>order-flow que les stratégies classiques ne peuvent structurellement pas calculer</strong> (pas de <code class="mono">takerBuyBase</code>), ajoutée à un filtre de directionalité et à un verrou macro de vrai bear. C'est précisément l'order-flow qui élimine les mouvements « propres en apparence mais portés par une dérive passive » — exactement les <strong>whipsaws</strong> identifiés comme la cause n°1 des trades perdants.</p>
-    <p class="muted" style="font-size:13.5px; margin-top:8px">Origine : cet assemblage ER + flux d'ordres vient de la recherche <strong>« ER-Flow Trend »</strong> (validée en walk-forward 5/5 hors-échantillon sur la stratégie mère). <strong>BTC Accumulator</strong> en est la déclinaison <em>dénominée en BTC, spécialisée bear-only</em>.</p>
+    <p style="margin-top:14px">Le edge tient surtout au <strong>taker-flow</strong> : c'est une information que les stratégies classiques <strong>ne peuvent même pas calculer</strong> (elles n'ont pas le « qui était le pressé »). Couplée à la mesure de franchise du mouvement, elle élimine les baisses « belles en apparence mais molles » — exactement les faux signaux qui faisaient perdre de l'argent.</p>
+    <p class="muted" style="font-size:13.5px; margin-top:8px">D'où ça vient : cette combinaison taker-flow + Efficiency Ratio est issue de notre recherche « ER-Flow Trend », validée par un test à l'aveugle (walk-forward) sur 5 périodes sur 5. BTC Accumulator en est la version dédiée à l'accumulation de Bitcoin.</p>
   </section>
 
   <!-- PARAMETRES -->
