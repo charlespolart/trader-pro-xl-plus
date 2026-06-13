@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>BTC Accumulator — Stratégie d'accumulation de Bitcoin</title>
+<style>
+  :root {
+    --bg: #0b0e14;
+    --panel: #11151f;
+    --panel2: #161b28;
+    --edge: #232a3b;
+    --txt: #e4e7ee;
+    --muted: #9aa3b5;
+    --dim: #6b7488;
+    --up: #26a69a;
+    --down: #ef5350;
+    --accent: #3b82f6;
+    --amber: #f0a92b;
+    --orange: #ff9800;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: radial-gradient(1200px 700px at 70% -10%, #15203a 0%, var(--bg) 55%);
+    color: var(--txt);
+    font: 16px/1.65 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 940px; margin: 0 auto; padding: 0 22px 90px; }
+  code, .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+
+  /* ---- hero ---- */
+  header {
+    padding: 70px 0 36px;
+    border-bottom: 1px solid var(--edge);
+  }
+  .kicker {
+    display: inline-block; font-size: 12px; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--orange); background: rgba(255,152,0,.1); border: 1px solid rgba(255,152,0,.25);
+    padding: 4px 11px; border-radius: 999px; margin-bottom: 20px;
+  }
+  h1 { font-size: 44px; line-height: 1.1; margin: 0 0 14px; letter-spacing: -.02em; }
+  h1 .btc { color: var(--orange); }
+  .lead { font-size: 19px; color: var(--muted); max-width: 680px; margin: 0; }
+
+  /* ---- sections ---- */
+  section { padding: 46px 0 0; }
+  h2 {
+    font-size: 13px; letter-spacing: .16em; text-transform: uppercase; color: var(--dim);
+    margin: 0 0 18px; padding-bottom: 10px; border-bottom: 1px solid var(--edge);
+  }
+  h3 { font-size: 19px; margin: 26px 0 8px; }
+  p { color: #cfd5e2; }
+  .muted { color: var(--muted); }
+  strong { color: #fff; }
+
+  /* ---- callout ---- */
+  .callout {
+    background: linear-gradient(180deg, rgba(59,130,246,.10), rgba(59,130,246,.03));
+    border: 1px solid rgba(59,130,246,.3); border-left: 3px solid var(--accent);
+    border-radius: 12px; padding: 20px 24px; margin: 8px 0 4px;
+  }
+  .callout .big { font-size: 20px; line-height: 1.5; color: #fff; }
+
+  /* ---- cards ---- */
+  .grid { display: grid; gap: 16px; }
+  .cols-2 { grid-template-columns: 1fr 1fr; }
+  .cols-3 { grid-template-columns: repeat(3, 1fr); }
+  @media (max-width: 720px) { .cols-2, .cols-3 { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--panel); border: 1px solid var(--edge); border-radius: 12px; padding: 20px 22px;
+  }
+  .card h3 { margin-top: 0; }
+  .stat { background: var(--panel); border: 1px solid var(--edge); border-radius: 12px; padding: 18px 20px; }
+  .stat .v { font-size: 28px; font-weight: 700; letter-spacing: -.02em; }
+  .stat .l { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+  .pos { color: var(--up); } .neg { color: var(--down); }
+
+  /* ---- cycle steps ---- */
+  .cycle { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 8px; }
+  .step {
+    display: grid; grid-template-columns: 44px 1fr; gap: 16px; align-items: start;
+    background: var(--panel); border: 1px solid var(--edge); border-radius: 12px; padding: 16px 18px;
+  }
+  .step .n {
+    width: 44px; height: 44px; border-radius: 11px; display: grid; place-items: center;
+    font-weight: 700; font-size: 17px; background: var(--panel2); border: 1px solid var(--edge);
+  }
+  .step .n.sell { color: var(--down); border-color: rgba(239,83,80,.4); background: rgba(239,83,80,.08); }
+  .step .n.buy { color: var(--up); border-color: rgba(38,166,154,.4); background: rgba(38,166,154,.08); }
+  .step .n.hold { color: var(--orange); border-color: rgba(255,152,0,.35); background: rgba(255,152,0,.08); }
+  .step h4 { margin: 2px 0 4px; font-size: 16px; }
+  .step p { margin: 0; font-size: 14.5px; color: var(--muted); }
+
+  /* ---- example boxes ---- */
+  .example {
+    border-radius: 12px; padding: 18px 20px; border: 1px solid var(--edge);
+    background: var(--panel); margin-top: 14px;
+  }
+  .example.win { border-color: rgba(38,166,154,.35); }
+  .example.lose { border-color: rgba(239,83,80,.35); }
+  .example .tag {
+    display: inline-block; font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+    padding: 3px 9px; border-radius: 6px; margin-bottom: 10px; font-weight: 600;
+  }
+  .example.win .tag { color: var(--up); background: rgba(38,166,154,.12); }
+  .example.lose .tag { color: var(--down); background: rgba(239,83,80,.12); }
+  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0 10px; font-family: ui-monospace, monospace; font-size: 14.5px; }
+  .flow .b { background: var(--panel2); border: 1px solid var(--edge); border-radius: 8px; padding: 6px 11px; }
+  .flow .arrow { color: var(--dim); }
+  .result { font-size: 15px; }
+
+  /* ---- table ---- */
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+  th { text-align: left; color: var(--dim); font-weight: 600; font-size: 12px; letter-spacing: .04em;
+       text-transform: uppercase; padding: 10px 12px; border-bottom: 1px solid var(--edge); }
+  td { padding: 11px 12px; border-bottom: 1px solid rgba(35,42,59,.55); vertical-align: top; }
+  td .pname { font-family: ui-monospace, monospace; color: var(--accent); }
+  td .def { display: inline-block; font-family: ui-monospace, monospace; background: var(--panel2);
+            border: 1px solid var(--edge); border-radius: 6px; padding: 1px 8px; color: #fff; }
+  .grouprow td { background: var(--panel2); color: var(--orange); font-size: 11.5px; letter-spacing: .12em;
+                 text-transform: uppercase; font-weight: 700; padding: 8px 12px; }
+
+  /* ---- plateau bars ---- */
+  .bars { display: grid; gap: 10px; margin-top: 6px; }
+  .bar { display: grid; grid-template-columns: 90px 1fr 70px; align-items: center; gap: 12px; }
+  .bar .lab { font-size: 13.5px; color: var(--muted); }
+  .bar .track { background: var(--panel2); border-radius: 6px; height: 22px; overflow: hidden; border: 1px solid var(--edge); }
+  .bar .fill { height: 100%; background: linear-gradient(90deg, #1d6b63, var(--up)); border-radius: 5px; }
+  .bar .val { font-family: ui-monospace, monospace; font-size: 14px; text-align: right; color: var(--up); }
+
+  ul.clean { padding-left: 0; list-style: none; }
+  ul.clean li { padding: 6px 0 6px 26px; position: relative; color: #cfd5e2; }
+  ul.clean li::before { content: "▸"; position: absolute; left: 4px; color: var(--accent); }
+
+  .warn {
+    background: rgba(240,169,43,.07); border: 1px solid rgba(240,169,43,.3); border-left: 3px solid var(--amber);
+    border-radius: 12px; padding: 18px 22px; margin-top: 14px;
+  }
+  .warn h3 { margin-top: 0; color: var(--amber); }
+
+  pre.cmd {
+    background: #0a0d13; border: 1px solid var(--edge); border-radius: 10px; padding: 16px 18px;
+    overflow-x: auto; font-size: 14px; color: #d4dae6; margin-top: 10px;
+  }
+  pre.cmd .c { color: var(--dim); }
+  footer { margin-top: 60px; padding-top: 24px; border-top: 1px solid var(--edge); color: var(--dim); font-size: 13px; }
+  .pill { display:inline-block; font-size:12px; padding:2px 9px; border-radius:999px; border:1px solid var(--edge); background:var(--panel2); color:var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <span class="kicker">Stratégie de trading · Trader Pro XL+</span>
+    <h1><span class="btc">BTC</span> Accumulator</h1>
+    <p class="lead">Une stratégie dont le seul but n'est pas de gagner des dollars, mais d'<strong>accumuler le plus de Bitcoin possible</strong>. On garde son BTC en permanence et on ne le vend que dans les vrais marchés baissiers, pour le racheter plus bas.</p>
+  </header>
+
+  <!-- IDEE -->
+  <section>
+    <h2>L'idée en une phrase</h2>
+    <div class="callout">
+      <div class="big">Tu détiens du Bitcoin. Tu ne fais <strong>rien</strong> tant que le marché monte. Et uniquement quand un <strong>vrai bear market</strong> s'installe, tu vends tout ton BTC contre des USDT — pour le <strong>racheter moins cher</strong> et finir avec plus de Bitcoin qu'au départ.</div>
+    </div>
+    <p class="muted" style="margin-top:18px">Le repère n'est donc pas le dollar mais le Bitcoin. La référence à battre, c'est <strong>« garder son BTC sans rien faire » = 0 %</strong>. Chaque pourcent au-dessus, c'est du Bitcoin gagné. C'est pour ça qu'on lance le backtest en <span class="pill">dénomination BTC</span> avec un capital de départ de <span class="pill">1 BTC</span>.</p>
+  </section>
+
+  <!-- POURQUOI -->
+  <section>
+    <h2>Pourquoi ça peut marcher</h2>
+    <div class="grid cols-2">
+      <div class="card">
+        <h3>📈 En marché haussier</h3>
+        <p class="muted">On ne touche à rien. On garde son BTC et on capte toute la hausse. Vendre serait une erreur : on dépenserait du Bitcoin pour rien.</p>
+      </div>
+      <div class="card">
+        <h3>📉 En marché baissier</h3>
+        <p class="muted">Le prix chute. Si on vend à 100 000 $ et qu'on rachète à 80 000 $, on récupère <strong>25 % de BTC en plus</strong> avec les mêmes USDT. La baisse devient une machine à empiler des sats.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- COMMENT -->
+  <section>
+    <h2>Comment ça marche — le cycle</h2>
+    <div class="cycle">
+      <div class="step">
+        <div class="n hold">0</div>
+        <div>
+          <h4>État par défaut : on détient du BTC</h4>
+          <p>Tant qu'on n'est pas dans un vrai bear, on ne fait rien. On garde 100 % de son Bitcoin.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="n sell">1</div>
+        <div>
+          <h4>Signal baissier confirmé → on VEND tout le BTC</h4>
+          <p>Quatre conditions doivent être réunies en même temps (voir « le filtre de régime » ci-dessous). On vend la totalité du Bitcoin contre des USDT, et on pose un <strong>stop de rachat</strong> juste au-dessus : si le prix repart à la hausse, on rachète vite pour limiter la perte de BTC.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="n buy">2</div>
+        <div>
+          <h4>La baisse s'essouffle → on RACHÈTE</h4>
+          <p>Quand le prix recroise l'EMA locale par le haut (la chute s'arrête), on rachète du Bitcoin avec <strong>tous les USDT</strong>. Si on a bien vendu plus haut qu'on rachète, on a maintenant <strong>plus de BTC</strong> qu'avant. Puis retour à l'étape 0.</p>
+        </div>
+      </div>
+    </div>
+    <p class="muted" style="margin-top:16px">Dans un grand bear, ce cycle se répète plusieurs fois : on attrape chaque jambe de baisse, on empile du BTC à chaque rachat plus bas.</p>
+  </section>
+
+  <!-- EXEMPLES -->
+  <section>
+    <h2>Deux exemples concrets</h2>
+
+    <div class="example win">
+      <span class="tag">✓ Trade gagnant — on a vu juste</span>
+      <div class="flow">
+        <span class="b">On détient 1 BTC</span>
+        <span class="arrow">→</span>
+        <span class="b">vente à 100 000 $</span>
+        <span class="arrow">→</span>
+        <span class="b">on a 100 000 USDT</span>
+        <span class="arrow">→</span>
+        <span class="b">le prix tombe à 80 000 $</span>
+        <span class="arrow">→</span>
+        <span class="b">rachat : 100 000 ÷ 80 000</span>
+      </div>
+      <div class="result">Résultat : <strong class="pos">1,25 BTC</strong>. On a transformé 1 BTC en 1,25 BTC — soit <strong class="pos">+25 %</strong> de Bitcoin, sans avoir misé un seul dollar de plus.</div>
+    </div>
+
+    <div class="example lose">
+      <span class="tag">✗ Trade perdant — on s'est trompé</span>
+      <div class="flow">
+        <span class="b">On détient 1 BTC</span>
+        <span class="arrow">→</span>
+        <span class="b">vente à 100 000 $</span>
+        <span class="arrow">→</span>
+        <span class="b">on a 100 000 USDT</span>
+        <span class="arrow">→</span>
+        <span class="b">le prix REMONTE à 125 000 $</span>
+        <span class="arrow">→</span>
+        <span class="b">rachat (stop) : 100 000 ÷ 125 000</span>
+      </div>
+      <div class="result">Résultat : <strong class="neg">0,80 BTC</strong>. On s'est trompé de sens : en rachetant plus cher, on a <strong class="neg">perdu du Bitcoin</strong>. C'est <em>le</em> risque de la stratégie — d'où le stop ATR qui force un rachat rapide pour couper court.</div>
+    </div>
+  </section>
+
+  <!-- FILTRE -->
+  <section>
+    <h2>Le filtre de régime — ce qui fait toute la différence</h2>
+    <p>Le piège évident : vendre sur chaque petit repli. Ça saigne — on vend, ça remonte, on rachète plus cher, on perd du BTC à répétition. La stratégie ne vend donc que si <strong>les quatre conditions suivantes</strong> sont vraies en même temps :</p>
+    <div class="grid cols-2" style="margin-top:8px">
+      <div class="card">
+        <h3>1 · Vrai bear soutenu <span class="pill">déterminant</span></h3>
+        <p class="muted">L'EMA 200 journalière doit être <strong>en déclin depuis 30 jours</strong>, ET le prix sous elle. C'est ce qui distingue un vrai marché baissier d'un simple repli. Sans ce filtre, la stratégie perd de l'argent ; avec, elle en gagne beaucoup.</p>
+      </div>
+      <div class="card">
+        <h3>2 · Tendance « propre »</h3>
+        <p class="muted">L'<strong>Efficiency Ratio</strong> de Kaufman (≥ 0,35) : le marché baisse de façon directionnelle, pas en zigzag bruité. On ne vend pas dans le bruit.</p>
+      </div>
+      <div class="card">
+        <h3>3 · Flux d'ordres vendeur</h3>
+        <p class="muted">Le <strong>taker-flow</strong> (indicateur maison sur le volume acheté en agressif) est sous 0,5 : ce sont les vendeurs qui traversent le spread, la pression de vente est réelle.</p>
+      </div>
+      <div class="card">
+        <h3>4 · Sous l'EMA locale</h3>
+        <p class="muted">Le prix est sous l'<strong>EMA 50</strong> sur l'unité de 4 h — la tendance court-terme est bien orientée à la baisse.</p>
+      </div>
+    </div>
+
+    <h3 style="margin-top:30px">Preuve que le filtre de pente est le bon levier</h3>
+    <p class="muted">Plus on exige que l'EMA 200 décline longtemps avant de vendre, plus on accumule de BTC (sur 2020–2026). L'amélioration est <strong>régulière et monotone</strong> — signe d'un vrai effet, pas d'un réglage chanceux :</p>
+    <div class="bars">
+      <div class="bar"><span class="lab">Sans filtre</span><div class="track"><div class="fill" style="width:6%; background:linear-gradient(90deg,#6b2b2b,var(--down))"></div></div><span class="val neg">−10 %</span></div>
+      <div class="bar"><span class="lab">Pente 7 j</span><div class="track"><div class="fill" style="width:14%"></div></div><span class="val">+12 %</span></div>
+      <div class="bar"><span class="lab">Pente 14 j</span><div class="track"><div class="fill" style="width:57%"></div></div><span class="val">+50 %</span></div>
+      <div class="bar"><span class="lab">Pente 30 j</span><div class="track"><div class="fill" style="width:100%"></div></div><span class="val">+88 %</span></div>
+    </div>
+    <p class="muted" style="font-size:13.5px; margin-top:10px">Gain de BTC sur la période complète 2020–2026, selon la durée de déclin exigée de l'EMA 200. La valeur retenue par défaut est <strong>30 jours</strong>.</p>
+  </section>
+
+  <!-- PARAMETRES -->
+  <section>
+    <h2>Les paramètres</h2>
+    <div class="card" style="padding:6px 4px">
+      <table>
+        <thead><tr><th style="width:230px">Paramètre</th><th style="width:90px">Défaut</th><th>Rôle</th></tr></thead>
+        <tbody>
+          <tr class="grouprow"><td colspan="3">Général</td></tr>
+          <tr><td><span class="pname">interval</span></td><td><span class="def">4h</span></td><td>Unité de temps des décisions et des entrées/sorties.</td></tr>
+
+          <tr class="grouprow"><td colspan="3">Régime baissier (quand vendre)</td></tr>
+          <tr><td><span class="pname">htfSlopeDays</span></td><td><span class="def">30</span></td><td><strong>Le filtre clé.</strong> Ne vend que si l'EMA 200 journalière baisse depuis N jours (vrai bear soutenu). <span class="mono">0</span> = filtre désactivé.</td></tr>
+          <tr><td><span class="pname">useHtf</span></td><td><span class="def">oui</span></td><td>Activer le filtre de régime EMA 200 journalière (prix sous l'EMA 200 + en déclin).</td></tr>
+          <tr><td><span class="pname">erLen</span></td><td><span class="def">20</span></td><td>Période de l'Efficiency Ratio (qualité de la tendance).</td></tr>
+          <tr><td><span class="pname">erMin</span></td><td><span class="def">0,35</span></td><td>Efficacité minimale exigée pour considérer la baisse comme « propre ».</td></tr>
+          <tr><td><span class="pname">emaLen</span></td><td><span class="def">50</span></td><td>EMA locale (4 h) : le prix doit être en dessous pour vendre, la recroiser par le haut déclenche le rachat.</td></tr>
+          <tr><td><span class="pname">useFlowFilter</span></td><td><span class="def">oui</span></td><td>Exiger la confirmation du flux d'ordres (taker-flow vendeur &lt; 0,5).</td></tr>
+          <tr><td><span class="pname">flowLen</span></td><td><span class="def">10</span></td><td>Lissage du taker-flow.</td></tr>
+
+          <tr class="grouprow"><td colspan="3">Risque (gestion du rachat)</td></tr>
+          <tr><td><span class="pname">atrPeriod</span></td><td><span class="def">14</span></td><td>Période de l'ATR (volatilité), qui dimensionne le stop.</td></tr>
+          <tr><td><span class="pname">stopAtrMult</span></td><td><span class="def">2,5</span></td><td>Rachat forcé si le prix remonte de N × ATR après la vente (on s'est trompé) — limite la perte de BTC.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="muted" style="font-size:13.5px; margin-top:12px">Indicateurs utilisés : <strong>Efficiency Ratio</strong> (Kaufman, maison), <strong>taker-flow</strong> (flux d'ordres, maison), <strong>EMA</strong> (50 en 4 h, 200 en journalier), <strong>ATR</strong>. Sortie/rachat : recroisement de l'EMA 50 par le haut, ou stop ATR.</p>
+  </section>
+
+  <!-- RESULTATS -->
+  <section>
+    <h2>Résultats &amp; verdict honnête</h2>
+    <div class="grid cols-3">
+      <div class="stat"><div class="v pos">+88 %</div><div class="l">BTC accumulé · 2020 → 2026</div></div>
+      <div class="stat"><div class="v pos">+107 %</div><div class="l">sur le bear 2022 seul</div></div>
+      <div class="stat"><div class="v neg">−28 %</div><div class="l">drawdown max (en BTC)</div></div>
+    </div>
+    <p style="margin-top:18px">Sur 6 ans, garder 1 BTC sans rien faire te laisse 1 BTC. Cette stratégie en aurait fait <strong class="pos">~1,88</strong>. Mais il faut être lucide sur <em>d'où</em> vient ce gain.</p>
+
+    <div class="warn">
+      <h3>⚠ C'est un récolteur de bear, pas un compositeur régulier</h3>
+      <p style="margin:0 0 8px">Le walk-forward (validation hors-échantillon, glissante) est sans appel : <strong>+50 % de BTC composé</strong>, mais <strong>1 seule fenêtre positive sur 6</strong>. Presque tout le gain vient d'<strong>une seule</strong> fenêtre — le grand bear 2022. Le reste du temps, en marché haussier ou sans direction, elle <strong>perd doucement du BTC</strong> (~3–5 %/an) : c'est le coût d'être en USDT quand le Bitcoin pompe.</p>
+      <ul class="clean" style="margin:8px 0 0">
+        <li><strong>Bon point :</strong> le filtre de pente résiste à la validation hors-échantillon — il a été choisi dans toutes les fenêtres, et a livré +82 % sur le bear 2022 sur des données jamais vues par l'optimiseur.</li>
+        <li><strong>À accepter :</strong> c'est un pari de cycle. Si les gros bears reviennent (cycles crypto), un bear tous les ~4 ans rembourse largement la saignée. Si on entre dans un bull permanent, elle coûte du BTC.</li>
+        <li><strong>Le drawdown est réel :</strong> au pire moment, on a été ~28 % « en retard » sur celui qui a juste gardé son BTC (parce qu'on avait vendu et que le prix est monté).</li>
+      </ul>
+    </div>
+    <p class="muted" style="margin-top:14px">Exemple de sensibilité à la date de départ : lancée sur <strong>2019 → 2026</strong> (qui inclut plus de hausse), elle fait <strong>+29,5 %</strong> de BTC, 57 trades, drawdown −41 %. Le résultat dépend fortement de la fenêtre — c'est la nature d'une stratégie creuse qui n'agit qu'en bear.</p>
+  </section>
+
+  <!-- LANCER -->
+  <section>
+    <h2>Comment la lancer</h2>
+    <p class="muted">Dans l'interface, onglet <strong>Backtests → Nouveau backtest</strong>. Sélectionne <strong>BTC Accumulator</strong> : le marché (spot), la dénomination (BTC) et le capital (1 BTC) se règlent automatiquement.</p>
+    <ul class="clean">
+      <li><strong>Marché :</strong> Spot (le short sur futures n'est pas le sujet — ici on vend/rachète du vrai Bitcoin détenu).</li>
+      <li><strong>Dénomination :</strong> Actif de base (BTC) — la performance se mesure en Bitcoin, pas en USDT.</li>
+      <li><strong>Capital initial :</strong> 1 BTC. Le « buy &amp; hold » de référence = garder ce 1 BTC = 0 %.</li>
+      <li><strong>Re-fit recommandé :</strong> ré-optimiser périodiquement les paramètres (comme pour les autres stratégies) plutôt que de les figer.</li>
+    </ul>
+    <p class="muted" style="margin-top:6px">Fichier de la stratégie : <code>strategies/btc-accumulator.ts</code>.</p>
+  </section>
+
+  <!-- REFIT -->
+  <section>
+    <h2>Le refit automatique</h2>
+    <p>Une stratégie figée pendant des années finit par dériver : la volatilité change d'échelle, la durée des tendances varie. Le <strong>refit</strong> ré-estime périodiquement quelques paramètres pour rester calé sur le marché récent — <strong>sans jamais toucher à la logique</strong>. C'est exactement comme pour les autres stratégies de l'app.</p>
+
+    <div class="callout" style="margin-top:6px">
+      <div class="big">Le refit ne change <strong>jamais les règles</strong>. Il ne fait que choisir <strong>où se placer dans le plateau validé</strong> : il rebalaie une petite grille bornée de paramètres et garde la meilleure combinaison sur la période récente.</div>
+    </div>
+
+    <h3 style="margin-top:26px">Comment ça marche, étape par étape</h3>
+    <div class="cycle">
+      <div class="step">
+        <div class="n">1</div>
+        <div>
+          <h4>Tous les 90 jours, il prend une fenêtre d'historique récent</h4>
+          <p>Par défaut les <strong>600 derniers jours</strong> (~20 mois) — assez long pour que les paramètres soient stables et pas dictés par le bruit.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="n">2</div>
+        <div>
+          <h4>Il backteste la grille (12 combinaisons) sur cette fenêtre</h4>
+          <p>En <strong>dénomination BTC</strong> (puisque le but est d'accumuler du Bitcoin), il teste chaque combinaison de <code>htfSlopeDays</code> × <code>erMin</code> × <code>emaLen</code>.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="n">3</div>
+        <div>
+          <h4>Un score mécanique choisit la meilleure</h4>
+          <p>Objectif : <strong>maximiser le BTC accumulé</strong>. Une combinaison qui a fait trop peu de trades pour être significative (sous <code>minTrades</code>) est écartée. Aucune décision humaine dans la boucle.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="n">4</div>
+        <div>
+          <h4>Il ne change que si c'est nettement mieux</h4>
+          <p>La nouvelle combinaison doit battre les paramètres actuels d'au moins <strong>+5 %</strong> de score. Sinon, on ne touche à rien.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="n buy">5</div>
+        <div>
+          <h4>Proposition ou application automatique</h4>
+          <p>En mode <strong>« proposition »</strong> (par défaut), il t'envoie le rapport (interface + Telegram) et <strong>tu valides à la main</strong>. En mode <strong>« auto »</strong>, il applique tout seul — mais uniquement quand le bot est <strong>flat</strong> (il détient son BTC, pas au milieu d'un trade), pour ne pas mélanger deux logiques en pleine position.</p>
+        </div>
+      </div>
+    </div>
+
+    <h3 style="margin-top:30px">La grille balayée (bornée au plateau validé)</h3>
+    <p class="muted">Volontairement restreinte à la zone où la recherche a montré que <em>toutes</em> les combinaisons fonctionnent. En particulier <code>htfSlopeDays</code> ne descend jamais à 0 (ce qui désactiverait le filtre déterminant et ferait saigner la stratégie).</p>
+    <div class="grid cols-3" style="margin-top:6px">
+      <div class="card"><h3 style="margin-top:0"><code class="mono" style="color:var(--accent)">htfSlopeDays</code></h3><p class="muted">14 · 30 · 45 jours</p></div>
+      <div class="card"><h3 style="margin-top:0"><code class="mono" style="color:var(--accent)">erMin</code></h3><p class="muted">0,35 · 0,45</p></div>
+      <div class="card"><h3 style="margin-top:0"><code class="mono" style="color:var(--accent)">emaLen</code></h3><p class="muted">50 · 100</p></div>
+    </div>
+    <p class="muted" style="font-size:13.5px; margin-top:10px">3 × 2 × 2 = <strong>12 combinaisons</strong> testées à chaque refit. Le stop ATR, l'intervalle et les filtres de flux restent figés.</p>
+
+    <h3 style="margin-top:30px">Les paramètres du refit</h3>
+    <div class="card" style="padding:6px 4px">
+      <table>
+        <thead><tr><th style="width:200px">Paramètre</th><th style="width:130px">Défaut</th><th>Rôle</th></tr></thead>
+        <tbody>
+          <tr><td><span class="pname">enabled</span></td><td><span class="def">désactivé</span></td><td>Le refit est <strong>éteint par défaut</strong>. Tu l'actives par bot, dans la carte « Refit » de sa page.</td></tr>
+          <tr><td><span class="pname">mode</span></td><td><span class="def">proposition</span></td><td><strong>proposition</strong> = il suggère, tu valides. <strong>auto</strong> = il applique seul quand le bot est flat.</td></tr>
+          <tr><td><span class="pname">everyDays</span></td><td><span class="def">90</span></td><td>Cadence : tous les N jours, il relance une ré-optimisation.</td></tr>
+          <tr><td><span class="pname">windowDays</span></td><td><span class="def">600</span></td><td>Fenêtre d'historique sur laquelle il optimise (~20 mois).</td></tr>
+          <tr><td><span class="pname">objective</span></td><td><span class="def">netProfit</span></td><td>Ce qu'il maximise. Pour BTC Accumulator : le <strong>BTC accumulé</strong> (et non l'USDT).</td></tr>
+          <tr><td><span class="pname">minTrades</span></td><td><span class="def">15</span></td><td>Une combinaison avec moins de trades est jugée non significative et écartée.</td></tr>
+          <tr><td><span class="pname">minImprovement</span></td><td><span class="def">1,05</span></td><td>Amélioration minimale du score (×1,05 = +5 %) pour accepter un changement.</td></tr>
+          <tr><td><span class="pname">space</span></td><td><span class="def">grille auto</span></td><td>La grille balayée. Pré-remplie pour BTC Accumulator ; modifiable dans l'interface.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="warn" style="margin-top:20px">
+      <h3>⚠ Pourquoi le refit compte particulièrement ici</h3>
+      <p style="margin:0">Le walk-forward a montré que cette stratégie, à paramètres <strong>figés</strong> pendant des années, est irrégulière (1 fenêtre positive sur 6). Le refit périodique est précisément la façon de la garder calée sur le régime du moment — c'est d'ailleurs ainsi qu'elle a été validée hors-échantillon. <strong>Recommandé : laisser le refit actif en mode proposition</strong>, et valider les changements toi-même.</p>
+    </div>
+  </section>
+
+  <footer>
+    Trader Pro XL+ · Document généré à partir de l'implémentation actuelle de <code>btc-accumulator.ts</code>.<br>
+    Les chiffres proviennent de backtests sur BTCUSDT spot (frais ~0,1 %, slippage 5 bps). Le passé ne préjuge pas du futur — surtout pour une stratégie qui dépend de l'arrivée de marchés baissiers.
+  </footer>
+
+</div>
+</body>
+</html>

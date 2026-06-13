@@ -58,6 +58,19 @@ export const DEFAULT_SPACES: Record<string, OptimizeSpace> = {
     emaLen: [50, 100],
     atrMult: [2, 3],
   },
+  // bornée au plateau validé : htfSlopeDays >= 14 (jamais 0, qui désactive le
+  // filtre déterminant et saigne). 3×2×2 = 12 combinaisons.
+  'btc-accumulator': {
+    htfSlopeDays: [14, 30, 45],
+    erMin: [0.35, 0.45],
+    emaLen: [50, 100],
+  },
+}
+
+/** objectif de score par stratégie (défaut : profitFactor). */
+export const DEFAULT_OBJECTIVE: Record<string, Objective> = {
+  // BTC Accumulator : maximiser le BTC accumulé (net % en dénomination base)
+  'btc-accumulator': 'netProfit',
 }
 
 const key = (botId: string): string => `refit:${botId}`
@@ -82,12 +95,17 @@ export class RefitService {
   }
 
   async getState(botId: string): Promise<RefitState> {
-    return this.settings.get<RefitState>(key(botId), {
-      config: DEFAULT_REFIT_CONFIG,
+    const saved = await this.settings.get<RefitState | null>(key(botId), null)
+    if (saved) return saved
+    // pas d'état sauvegardé → défauts adaptés à la stratégie du bot
+    const bot = await this.bots.getConfig(botId).catch(() => null)
+    const objective = (bot && DEFAULT_OBJECTIVE[bot.strategyId]) || DEFAULT_REFIT_CONFIG.objective
+    return {
+      config: { ...DEFAULT_REFIT_CONFIG, objective },
       lastRunAt: null,
       lastReport: null,
       proposal: null,
-    })
+    }
   }
 
   async setConfig(botId: string, config: RefitConfig): Promise<RefitState> {
@@ -134,6 +152,12 @@ export class RefitService {
       const start = end - cfg.windowDays * 86_400_000
       const combos = expandGrid(entry.def.schema, bot.params, space)
 
+      // certaines stratégies se mesurent en actif de base (ex : BTC Accumulator
+      // → dénomination BTC). On reprend leurs défauts de backtest pour que le
+      // refit optimise la bonne métrique (le BTC accumulé, pas l'USDT).
+      const denomination = entry.def.backtest?.denomination ?? 'quote'
+      const initialBalance = entry.def.backtest?.initialBalance ?? 10_000
+
       const mkCfg = (params: ParamValues): BacktestConfig => ({
         strategyId: bot.strategyId,
         params,
@@ -141,7 +165,8 @@ export class RefitService {
         symbol: bot.symbol,
         start,
         end,
-        initialBalance: 10_000,
+        initialBalance,
+        denomination,
         leverage: bot.leverage,
         fees: DEFAULT_FEES[bot.market],
         slippagePct: 0.0005,
