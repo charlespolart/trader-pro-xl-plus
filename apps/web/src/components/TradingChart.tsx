@@ -255,6 +255,25 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
   useEffect(() => {
     const plugin = markersRef.current
     if (!plugin) return
+    // les fills sont horodatés à la CLÔTURE de bougie, mais le curseur renvoie
+    // l'OUVERTURE : on cale chaque marqueur sur l'ouverture de sa bougie pour
+    // que l'infobulle (indexée par temps) corresponde au survol.
+    const openSecs = candles.map((c) => Math.floor(c.openTime / 1000))
+    const snap = (ms: number): UTCTimestamp => {
+      if (openSecs.length === 0) return Math.floor(ms / 1000) as UTCTimestamp
+      const sec = Math.floor(ms / 1000)
+      let lo = 0
+      let hi = openSecs.length - 1
+      let best = openSecs[0]!
+      while (lo <= hi) {
+        const mid = (lo + hi) >> 1
+        if (openSecs[mid]! <= sec) {
+          best = openSecs[mid]!
+          lo = mid + 1
+        } else hi = mid - 1
+      }
+      return best as UTCTimestamp
+    }
     const texts = new Map<number, string[]>()
     const addText = (t: number, txt?: string): void => {
       if (!txt) return
@@ -264,14 +283,14 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
     }
     const all: SeriesMarker<Time>[] = [
       ...[...markers, ...patternMarkers].map((m) => {
-        const t = ts(m.time)
+        const t = snap(m.time)
         addText(t as number, m.text)
         return { time: t, position: m.position, shape: m.shape, color: m.color }
       }),
       ...annotations
         .filter((a) => a.type === 'marker')
         .map((a): SeriesMarker<Time> => {
-          const t = ts(a.time)
+          const t = snap(a.time)
           addText(t as number, a.text)
           return {
             time: t,
@@ -283,14 +302,14 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
       ...annotations
         .filter((a) => a.type === 'label')
         .map((a) => {
-          const t = ts(a.time)
+          const t = snap(a.time)
           addText(t as number, a.text)
           return { time: t, position: 'inBar' as const, shape: 'square' as const, color: a.color ?? '#fdd835' }
         }),
     ].sort((a, b) => (a.time as number) - (b.time as number))
     plugin.setMarkers(all)
     markerTextsRef.current = texts
-  }, [markers, annotations, patternMarkers])
+  }, [markers, annotations, patternMarkers, candles])
 
   // ---- hline annotations as price lines
   useEffect(() => {
