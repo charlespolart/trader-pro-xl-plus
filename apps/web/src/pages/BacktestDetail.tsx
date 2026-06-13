@@ -9,6 +9,7 @@ import { TradingChart, tradesToMarkers } from '../components/TradingChart'
 import { MetricsGrid } from '../components/MetricsGrid'
 import { EquityChart } from '../components/EquityChart'
 import { TradesTable } from '../components/TradesTable'
+import { TradePnlStrip } from '../components/TradePnlStrip'
 
 /** infer the sampling interval from equity point spacing */
 function inferInterval(times: number[]): Interval {
@@ -192,6 +193,17 @@ export function BacktestDetail() {
       {result.equity.length > 0 && (
         <Card title="Équité & drawdown">
           <EquityChart points={result.equity} />
+        </Card>
+      )}
+
+      {result.trades.length > 0 && (
+        <Card title="Répartition des trades (gains / pertes dans le temps)">
+          <TradePnlStrip
+            trades={result.trades}
+            start={run.config.start}
+            end={run.config.end}
+            denomination={run.config.denomination}
+          />
         </Card>
       )}
 
