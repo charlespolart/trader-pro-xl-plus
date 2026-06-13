@@ -59,10 +59,12 @@ export const DEFAULT_SPACES: Record<string, OptimizeSpace> = {
     atrMult: [2, 3],
   },
   // bornée au plateau validé : htfSlopeDays >= 14 (jamais 0, qui désactive le
-  // filtre déterminant et saigne). 3×2×2 = 12 combinaisons.
+  // filtre déterminant et saigne). rebuyEmaLen est la valeur la plus sensible
+  // (la sortie est la cause n°1 des trades perdants) → on la fait refitter.
+  // 3×3×2 = 18 combinaisons.
   'btc-accumulator': {
     htfSlopeDays: [14, 30, 45],
-    erMin: [0.35, 0.45],
+    rebuyEmaLen: [60, 75, 100],
     emaLen: [50, 100],
   },
 }

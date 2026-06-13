@@ -46,7 +46,16 @@ export default defineStrategy({
 
     erLen: p.int({ default: 20, min: 5, max: 60, label: 'Période Efficiency Ratio', group: 'Régime baissier' }),
     erMin: p.number({ default: 0.35, min: 0.1, max: 0.8, step: 0.05, label: 'ER minimum', group: 'Régime baissier' }),
-    emaLen: p.int({ default: 50, min: 10, max: 200, label: 'EMA locale', group: 'Régime baissier' }),
+    emaLen: p.int({ default: 50, min: 10, max: 200, label: 'EMA locale (vente)', group: 'Régime baissier' }),
+    rebuyEmaLen: p.int({
+      default: 75,
+      min: 10,
+      max: 400,
+      label: 'EMA de rachat',
+      description:
+        "EMA dont le recroisement par le haut déclenche le rachat. Plus LENTE que l'EMA de vente = on tient le short plus longtemps au lieu de racheter au premier sursaut (cause n°1 des trades perdants). 75 = validé (+30 pts de BTC vs 50), mais à re-fitter (valeur sensible).",
+      group: 'Régime baissier',
+    }),
     useHtf: p.bool({ default: true, label: 'Filtre EMA200 1d', group: 'Régime baissier' }),
     htfSlopeDays: p.int({
       default: 30,
@@ -91,6 +100,10 @@ export default defineStrategy({
     return {
       er: ctx.indicator('main', ind.efficiencyRatio(ctx.params.erLen), { plot: 'pane' }),
       ema: ctx.indicator('main', ind.ema(ctx.params.emaLen), { color: '#ff9800' }),
+      rebuyEma: ctx.indicator('main', ind.ema(ctx.params.rebuyEmaLen), {
+        plot: ctx.params.rebuyEmaLen === ctx.params.emaLen ? 'none' : 'overlay',
+        color: '#26a69a',
+      }),
       flow: ctx.indicator('main', ind.takerFlow(ctx.params.flowLen), { plot: 'pane' }),
       atr: ctx.indicator('main', ind.atr(ctx.params.atrPeriod), { plot: 'none' }),
       htfEma: ctx.indicator('htf', ind.ema(200), { plot: 'none' }),
@@ -99,8 +112,8 @@ export default defineStrategy({
 
   async onCandle(ctx, feedId, candle) {
     if (feedId !== 'main') return
-    const { er, ema, flow, atr, htfEma } = ctx.locals
-    if (!er.ready || !ema.ready || !atr.ready || (ctx.params.useFlowFilter && !flow.ready)) return
+    const { er, ema, rebuyEma, flow, atr, htfEma } = ctx.locals
+    if (!er.ready || !ema.ready || !rebuyEma.ready || !atr.ready || (ctx.params.useFlowFilter && !flow.ready)) return
     if (ctx.params.useHtf && !htfEma.ready) return
 
     const e = ema.value!
@@ -149,8 +162,10 @@ export default defineStrategy({
       return
     }
 
-    // ---- on est en USDT (vendu) : racheter le BTC quand la baisse s'essouffle
-    if (candle.close > e) {
+    // ---- on est en USDT (vendu) : racheter quand la baisse s'essouffle, mais
+    // sur l'EMA de RACHAT (potentiellement plus lente) pour ne pas racheter au
+    // premier sursaut — c'était la cause n°1 des trades perdants (whipsaws).
+    if (candle.close > rebuyEma.value!) {
       await ctx.order.cancelAll()
       const quote = ctx.balances.find((b) => b.asset !== (ctx.symbolInfo?.baseAsset ?? '___'))
       const usdt = quote ? quote.free : 0
@@ -160,7 +175,7 @@ export default defineStrategy({
       await ctx.order.market({
         side: 'BUY',
         quoteQty: usdt,
-        reason: `Rachat sur recroisement EMA${ctx.params.emaLen} (vendu ${sold.toFixed(0)} → rachat ${candle.close.toFixed(0)}, ${gainPct >= 0 ? '+' : ''}${gainPct.toFixed(1)}% en BTC)`,
+        reason: `Rachat sur recroisement EMA${ctx.params.rebuyEmaLen} (vendu ${sold.toFixed(0)} → rachat ${candle.close.toFixed(0)}, ${gainPct >= 0 ? '+' : ''}${gainPct.toFixed(1)}% en BTC)`,
         tag: 'exit',
       })
     }
