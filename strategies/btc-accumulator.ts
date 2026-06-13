@@ -196,7 +196,6 @@ export default defineStrategy({
         // jamais). Le petit reliquat d'USDT est réutilisé au cycle suivant.
         const qty = ctx.roundQty((usdt / stop) * 0.995)
         if (qty > 0) {
-          ctx.annotate({ type: 'label', time: ctx.time, price: stop, text: 'rachat stop', color: '#f23645' })
           await ctx.order.stopMarket({
             side: 'BUY',
             qty,
