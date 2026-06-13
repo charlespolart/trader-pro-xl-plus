@@ -32,7 +32,19 @@ import { defineStrategy, ind, p } from '@tpx/core'
  *     Crête lisse sur EMA60-70 / déclin 6-8 (pas une aiguille = effet robuste
  *     du timeframe, pas un sur-ajustement). Défaut retenu : 3d / EMA60 / 8.
  *   - le 1w marche aussi (OOS +14..+21%) mais en deçà du 3d en full.
- * À CONFIRMER en walk-forward avant de basculer la prod sur la v2.
+ *   - walk-forward 6 fenêtres (OOS 2021→2026) : 3d FIGÉ compose +122% (4/6
+ *     fenêtres+) > v1 figé +89% (3/6) > ré-optim du TF +79% (2/6, NUIT →
+ *     verrouiller le TF, ne PAS le mettre en refit).
+ *
+ * DOUBLE CONFIRMATION (useConfirm, défaut ON) — anti-drawdown : le 3d seul
+ * whipsaw dans les corrections de bull (vendre puis V-recovery) → -44% DD /
+ * +55% sur 2019→2026. Exiger qu'un 2ᵉ TF plus lent (journalier, EMA200 déclin
+ * 30j = le filtre v1) soit AUSSI baissier coupe ces faux signaux : 2019→2026
+ * passe à -30% DD / +85% (DD ramené au niveau v1 ET rendement en hausse ; pertes
+ * 2019/2020 ~divisées par 2 ; le bear 2022 +88,8% intact). En walk-forward
+ * (OOS 2021→2026, sans ces whipsaws) c'est NEUTRE (+117% vs +122%, même DD) →
+ * filtre de sécurité non sur-ajusté : protège quand le danger est là, ne dégrade
+ * pas sinon. Coût : -17 pts sur la fenêtre douce 2020-08→2026 (+160→+143).
  *
  * Réglages selon l'unité de temps de tendance (l'EMA a besoin de ~trendMaLen
  * bougies pour être prête) :
@@ -44,7 +56,7 @@ import { defineStrategy, ind, p } from '@tpx/core'
 export default defineStrategy({
   name: 'BTC Accumulator v2',
   description:
-    "Accumulation de BTC, variante avec la tendance générale sur une unité de temps dédiée et configurable (1d/3d/1w) au lieu d'une EMA200 journalière figée. Spot, dénomination BASE.",
+    "Accumulation de BTC : tendance générale sur un TF dédié (3d par défaut) avec double confirmation journalière (anti-drawdown). Spot, dénomination BASE.",
   markets: ['spot'],
   backtest: { denomination: 'base', initialBalance: 1, market: 'spot' },
 
@@ -94,6 +106,39 @@ export default defineStrategy({
       group: 'Tendance générale',
     }),
 
+    // ---- DOUBLE CONFIRMATION : exiger un 2ᵉ TF (plus lent) baissier en même
+    // temps. Le 3d seul whipsaw dans les corrections de bull (2019-2020) →
+    // demander que le journalier soit AUSSI en bear filtre ces faux signaux.
+    useConfirm: p.bool({
+      default: true,
+      label: 'Double confirmation (2ᵉ TF)',
+      description:
+        "Ne vendre que si la tendance est baissière sur le TF de tendance ET sur un 2ᵉ TF plus lent (journalier). Coupe les whipsaws des corrections de bull (réduit le drawdown).",
+      group: 'Confirmation 2ᵉ TF',
+    }),
+    confirmInterval: p.interval({
+      default: '1d',
+      label: 'Unité de temps de confirmation',
+      description: 'Le 2ᵉ TF, plus lent, qui doit AUSSI être baissier. Journalier par défaut (le filtre de la v1).',
+      group: 'Confirmation 2ᵉ TF',
+    }),
+    confirmMaLen: p.int({
+      default: 200,
+      min: 10,
+      max: 400,
+      label: 'Longueur MA de confirmation',
+      description: 'EMA du 2ᵉ TF. 200 sur 1d = EMA200 journalière (la macro de référence).',
+      group: 'Confirmation 2ᵉ TF',
+    }),
+    confirmSlopeBars: p.int({
+      default: 30,
+      min: 0,
+      max: 90,
+      label: 'MA de confirmation en déclin depuis N bougies',
+      description: '0 = exiger seulement le prix sous la MA. 30 sur 1d = EMA200 en déclin depuis 30 jours (v1).',
+      group: 'Confirmation 2ᵉ TF',
+    }),
+
     atrPeriod: p.int({ default: 14, min: 2, max: 100, label: 'Période ATR', group: 'Risque' }),
     stopAtrMult: p.number({
       default: 2.5,
@@ -119,6 +164,7 @@ export default defineStrategy({
   data: (params) => ({
     main: { interval: params.interval },
     trend: { interval: params.trendInterval },
+    confirm: { interval: params.confirmInterval },
   }),
 
   init(ctx) {
@@ -133,14 +179,17 @@ export default defineStrategy({
       atr: ctx.indicator('main', ind.atr(ctx.params.atrPeriod), { plot: 'none' }),
       // EMA de tendance sur son unité de temps dédiée (1d/3d/1w)
       trendMa: ctx.indicator('trend', ind.ema(ctx.params.trendMaLen), { plot: 'none' }),
+      // EMA de confirmation sur le 2ᵉ TF (journalier) — double confirmation
+      confirmMa: ctx.indicator('confirm', ind.ema(ctx.params.confirmMaLen), { plot: 'none' }),
     }
   },
 
   async onCandle(ctx, feedId, candle) {
     if (feedId !== 'main') return
-    const { er, ema, rebuyEma, flow, atr, trendMa } = ctx.locals
+    const { er, ema, rebuyEma, flow, atr, trendMa, confirmMa } = ctx.locals
     if (!er.ready || !ema.ready || !rebuyEma.ready || !atr.ready || (ctx.params.useFlowFilter && !flow.ready)) return
     if (ctx.params.useTrend && !trendMa.ready) return
+    if (ctx.params.useConfirm && !confirmMa.ready) return
 
     const e = ema.value!
     const a = atr.value ?? 0
@@ -155,7 +204,15 @@ export default defineStrategy({
       const slopeOk =
         ctx.params.trendSlopeBars === 0 ||
         (trendMa.value !== null && (trendMa.at(ctx.params.trendSlopeBars) ?? Infinity) > trendMa.value)
-      const bearRegime = !ctx.params.useTrend || (belowTrendMa && slopeOk)
+      const trendBear = !ctx.params.useTrend || (belowTrendMa && slopeOk)
+      // double confirmation : le 2ᵉ TF (journalier) doit AUSSI être baissier
+      const confirmClose = ctx.feed('confirm').candles.close(0)
+      const belowConfirmMa = confirmClose !== null && confirmClose < (confirmMa.value ?? 0)
+      const confirmSlopeOk =
+        ctx.params.confirmSlopeBars === 0 ||
+        (confirmMa.value !== null && (confirmMa.at(ctx.params.confirmSlopeBars) ?? Infinity) > confirmMa.value)
+      const confirmBear = !ctx.params.useConfirm || (belowConfirmMa && confirmSlopeOk)
+      const bearRegime = trendBear && confirmBear
       const cleanTrend = er.value! >= ctx.params.erMin
       const f = flow.value ?? 0.5
       const sellingFlow = !ctx.params.useFlowFilter || f < 0.5
@@ -173,7 +230,7 @@ export default defineStrategy({
         await ctx.order.market({
           side: 'SELL',
           qty,
-          reason: `Régime baissier (tendance ${ctx.params.trendInterval} en déclin, ER ${er.value!.toFixed(2)}, flow ${f.toFixed(2)}, prix < EMA${ctx.params.emaLen}) → vente du BTC pour rachat plus bas`,
+          reason: `Régime baissier (tendance ${ctx.params.trendInterval}${ctx.params.useConfirm ? `+${ctx.params.confirmInterval}` : ''} en déclin, ER ${er.value!.toFixed(2)}, flow ${f.toFixed(2)}, prix < EMA${ctx.params.emaLen}) → vente du BTC pour rachat plus bas`,
           tag: 'entry',
         })
       }
