@@ -64,7 +64,7 @@ export const DEFAULT_SPACES: Record<string, OptimizeSpace> = {
   // 3×3×2 = 18 combinaisons.
   'btc-accumulator': {
     htfSlopeDays: [14, 30, 45],
-    rebuyEmaLen: [60, 75, 100],
+    rebuyEmaLen: [50, 75, 100], // 50 inclus : le refit peut rester conservateur
     emaLen: [50, 100],
   },
 }

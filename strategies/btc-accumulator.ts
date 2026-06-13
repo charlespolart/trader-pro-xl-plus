@@ -48,12 +48,12 @@ export default defineStrategy({
     erMin: p.number({ default: 0.35, min: 0.1, max: 0.8, step: 0.05, label: 'ER minimum', group: 'Régime baissier' }),
     emaLen: p.int({ default: 50, min: 10, max: 200, label: 'EMA locale (vente)', group: 'Régime baissier' }),
     rebuyEmaLen: p.int({
-      default: 75,
+      default: 50,
       min: 10,
       max: 400,
       label: 'EMA de rachat',
       description:
-        "EMA dont le recroisement par le haut déclenche le rachat. Plus LENTE que l'EMA de vente = on tient le short plus longtemps au lieu de racheter au premier sursaut (cause n°1 des trades perdants). 75 = validé (+30 pts de BTC vs 50), mais à re-fitter (valeur sensible).",
+        "EMA dont le recroisement par le haut déclenche le rachat. Défaut 50 (= EMA de vente, neutre/conservateur). Une valeur PLUS LENTE (75-100) tient le short plus longtemps : gagne plus dans les bears qui trendent, perd plus dans les bears qui chopent. Bénéfice OOS réel mais concentré sur peu de gros mouvements → ne pas figer, laisser le refit décider selon le régime récent.",
       group: 'Régime baissier',
     }),
     useHtf: p.bool({ default: true, label: 'Filtre EMA200 1d', group: 'Régime baissier' }),

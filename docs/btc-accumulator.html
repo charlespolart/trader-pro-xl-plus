@@ -205,7 +205,7 @@
         <div class="n buy">2</div>
         <div>
           <h4>La baisse s'essouffle → on RACHÈTE</h4>
-          <p>Quand le prix recroise l'EMA locale par le haut (la chute s'arrête), on rachète du Bitcoin avec <strong>tous les USDT</strong>. Si on a bien vendu plus haut qu'on rachète, on a maintenant <strong>plus de BTC</strong> qu'avant. Puis retour à l'étape 0.</p>
+          <p>Quand le prix recroise l'<strong>EMA de rachat</strong> par le haut, on rachète du Bitcoin avec <strong>tous les USDT</strong>. Si on a bien vendu plus haut qu'on rachète, on a maintenant <strong>plus de BTC</strong> qu'avant. Puis retour à l'étape 0. <span class="muted">(Une EMA de rachat plus lente que l'EMA de vente tient le short plus longtemps — utile dans les bears qui trendent, mais à régler par le refit, pas à figer ; voir « anatomie des pertes ».)</span></p>
         </div>
       </div>
     </div>
@@ -298,7 +298,8 @@
           <tr><td><span class="pname">useHtf</span></td><td><span class="def">oui</span></td><td>Activer le filtre de régime EMA 200 journalière (prix sous l'EMA 200 + en déclin).</td></tr>
           <tr><td><span class="pname">erLen</span></td><td><span class="def">20</span></td><td>Période de l'Efficiency Ratio (qualité de la tendance).</td></tr>
           <tr><td><span class="pname">erMin</span></td><td><span class="def">0,35</span></td><td>Efficacité minimale exigée pour considérer la baisse comme « propre ».</td></tr>
-          <tr><td><span class="pname">emaLen</span></td><td><span class="def">50</span></td><td>EMA locale (4 h) : le prix doit être en dessous pour vendre, la recroiser par le haut déclenche le rachat.</td></tr>
+          <tr><td><span class="pname">emaLen</span></td><td><span class="def">50</span></td><td>EMA locale (4 h) de <strong>vente</strong> : le prix doit passer en dessous pour vendre.</td></tr>
+          <tr><td><span class="pname">rebuyEmaLen</span></td><td><span class="def">50</span></td><td>EMA de <strong>rachat</strong> : la recroiser par le haut déclenche le rachat. Plus lente (75-100) = on tient le short plus longtemps, mais à régler par le refit (voir « anatomie des pertes »).</td></tr>
           <tr><td><span class="pname">useFlowFilter</span></td><td><span class="def">oui</span></td><td>Exiger la confirmation du flux d'ordres (taker-flow vendeur &lt; 0,5).</td></tr>
           <tr><td><span class="pname">flowLen</span></td><td><span class="def">10</span></td><td>Lissage du taker-flow.</td></tr>
 
@@ -350,6 +351,26 @@
       <li><strong>Re-fit recommandé :</strong> ré-optimiser périodiquement les paramètres (comme pour les autres stratégies) plutôt que de les figer.</li>
     </ul>
     <p class="muted" style="margin-top:6px">Fichier de la stratégie : <code>strategies/btc-accumulator.ts</code>.</p>
+  </section>
+
+  <!-- ANATOMIE DES PERTES -->
+  <section>
+    <h2>Anatomie des trades perdants</h2>
+    <p>On a disséqué les 40+ trades perdants pour chercher un pattern évitable. Résultat clair : <strong>ce n'est pas un problème d'entrée, mais de sortie.</strong></p>
+    <div class="grid cols-2" style="margin-top:6px">
+      <div class="card">
+        <h3 style="margin-top:0">À l'entrée : rien ne distingue gagnants et perdants</h3>
+        <p class="muted">ER 0,43 vs 0,43, flow 0,48 vs 0,48, volatilité et profondeur du bear identiques. Les filtres d'entrée ne peuvent pas trier — inutile d'en rajouter.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">À la sortie : tout diverge</h3>
+        <p class="muted">Corrélation <strong>+0,93</strong> entre le gain et la baisse atteinte avant le rachat. Les gagnants tiennent ~70 bougies et captent ~16 % de baisse ; les perdants rachètent en ~9 bougies après seulement ~2 % — des <strong>whipsaws</strong>, rachetés au premier sursaut.</p>
+      </div>
+    </div>
+    <div class="warn" style="margin-top:14px">
+      <h3>⚠ Le piège à éviter : sur-optimiser le signal de rachat</h3>
+      <p style="margin:0">Racheter plus paresseusement (EMA de rachat plus lente) améliore le passé — mais le gain se concentre sur <strong>quelques gros mouvements bien orientés</strong> (surtout 2024-26), et empire dans les marchés sans direction. En walk-forward (validation sur du jamais-vu) le bénéfice survit mais reste <strong>mince et concentré</strong>. Donc : le diagnostic est solide, mais la valeur exacte du rachat <strong>n'est pas figée</strong> — c'est au refit de l'ajuster au régime récent, pas à un réglage sur l'historique qui ne se reproduira pas à l'identique.</p>
+    </div>
   </section>
 
   <!-- REFIT -->
@@ -404,10 +425,10 @@
     <p class="muted">Volontairement restreinte à la zone où la recherche a montré que <em>toutes</em> les combinaisons fonctionnent. En particulier <code>htfSlopeDays</code> ne descend jamais à 0 (ce qui désactiverait le filtre déterminant et ferait saigner la stratégie).</p>
     <div class="grid cols-3" style="margin-top:6px">
       <div class="card"><h3 style="margin-top:0"><code class="mono" style="color:var(--accent)">htfSlopeDays</code></h3><p class="muted">14 · 30 · 45 jours</p></div>
-      <div class="card"><h3 style="margin-top:0"><code class="mono" style="color:var(--accent)">erMin</code></h3><p class="muted">0,35 · 0,45</p></div>
+      <div class="card"><h3 style="margin-top:0"><code class="mono" style="color:var(--accent)">rebuyEmaLen</code></h3><p class="muted">50 · 75 · 100</p></div>
       <div class="card"><h3 style="margin-top:0"><code class="mono" style="color:var(--accent)">emaLen</code></h3><p class="muted">50 · 100</p></div>
     </div>
-    <p class="muted" style="font-size:13.5px; margin-top:10px">3 × 2 × 2 = <strong>12 combinaisons</strong> testées à chaque refit. Le stop ATR, l'intervalle et les filtres de flux restent figés.</p>
+    <p class="muted" style="font-size:13.5px; margin-top:10px">3 × 3 × 2 = <strong>18 combinaisons</strong> testées à chaque refit. <code>rebuyEmaLen</code> (la sortie, cause n°1 des pertes) est inclus : le refit ajuste l'agressivité du rachat au régime récent. Le stop, le plafond de perte et les filtres de flux restent figés.</p>
 
     <h3 style="margin-top:30px">Les paramètres du refit</h3>
     <div class="card" style="padding:6px 4px">

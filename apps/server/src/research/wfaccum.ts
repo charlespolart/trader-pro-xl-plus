@@ -49,8 +49,8 @@ const windows = walkForwardWindows(START, END, { windows: nWindows, isRatio, anc
 
 const base = defaultParams(accumulator.schema)
 const GRID = expandGrid(accumulator.schema, base, {
-  htfSlopeDays: [0, 14, 30, 45],
-  erMin: [0.35, 0.45],
+  htfSlopeDays: [14, 30, 45],
+  rebuyEmaLen: [50, 75, 100], // teste si le rachat paresseux survit OOS, ou si 50 (conservateur) gagne
   emaLen: [50, 100],
 })
 
