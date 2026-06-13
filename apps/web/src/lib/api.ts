@@ -54,6 +54,7 @@ export interface StrategyDTO {
   markets?: MarketType[]
   schema?: ParamSchema
   defaults?: ParamValues
+  backtest?: { denomination?: 'quote' | 'base'; initialBalance?: number; market?: MarketType }
   error?: string
 }
 

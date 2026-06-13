@@ -75,6 +75,7 @@ export class StrategyRegistry {
       markets: item.def.markets,
       schema,
       defaults: defaultParams(schema),
+      backtest: item.def.backtest,
     }
   }
 }

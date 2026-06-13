@@ -38,6 +38,8 @@ export default defineStrategy({
   description:
     "Accumulation de BTC : détient du BTC, vend tout uniquement en régime franchement baissier (ER + flow) pour racheter plus bas. Spot, à lancer en dénomination BASE.",
   markets: ['spot'],
+  // pré-remplit le formulaire de backtest : on raisonne en BTC, capital = 1 BTC
+  backtest: { denomination: 'base', initialBalance: 1, market: 'spot' },
 
   params: {
     interval: p.interval({ default: '4h', label: 'Unité de temps', group: 'Général' }),

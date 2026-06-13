@@ -143,12 +143,24 @@ export interface StrategyHooks<P = ParamValues, L = Record<string, unknown>> {
 }
 
 /** Runtime-erased strategy, as loaded from a strategies/*.ts file. */
+/** Défauts de backtest recommandés par la stratégie (pré-remplit le formulaire). */
+export interface StrategyBacktestDefaults {
+  /** 'base' = mesurer en actif de base (accumulation BTC), spot only */
+  denomination?: 'quote' | 'base'
+  /** capital initial recommandé (en USDT, ou en base si denomination='base') */
+  initialBalance?: number
+  /** marché par défaut à sélectionner */
+  market?: MarketType
+}
+
 export interface StrategyDefinition {
   name: string
   description?: string
   markets: MarketType[]
   schema: ParamSchema
   data: (params: ParamValues) => FeedSpecMap
+  /** défauts recommandés pour le formulaire de backtest */
+  backtest?: StrategyBacktestDefaults
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   hooks: StrategyHooks<any, any>
 }

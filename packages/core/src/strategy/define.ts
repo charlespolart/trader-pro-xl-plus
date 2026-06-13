@@ -1,5 +1,5 @@
 import { isInterval, type MarketType, type ParamValues } from '@tpx/shared'
-import type { FeedSpecMap, StrategyDefinition, StrategyHooks } from './types'
+import type { FeedSpecMap, StrategyBacktestDefaults, StrategyDefinition, StrategyHooks } from './types'
 import { toParamSchema, type InferParams, type ParamBuilders } from './params'
 
 export interface StrategyInput<S extends ParamBuilders, L> extends StrategyHooks<InferParams<S>, L> {
@@ -14,6 +14,8 @@ export interface StrategyInput<S extends ParamBuilders, L> extends StrategyHooks
    * when the schema has an 'interval' param.
    */
   data?: (params: InferParams<S>) => FeedSpecMap
+  /** défauts recommandés pour le formulaire de backtest (dénomination, capital…) */
+  backtest?: StrategyBacktestDefaults
 }
 
 export function defineStrategy<S extends ParamBuilders, L = Record<string, never>>(
@@ -38,6 +40,7 @@ export function defineStrategy<S extends ParamBuilders, L = Record<string, never
     markets: input.markets ?? ['spot', 'futures'],
     schema: toParamSchema(input.params),
     data,
+    backtest: input.backtest,
     hooks: {
       init: input.init,
       onCandle: input.onCandle,

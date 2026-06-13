@@ -82,14 +82,17 @@ export function Backtests() {
     const s = strategies?.find((x) => !x.error)
     if (!s) return
     const now = Date.now()
+    const bt = s.backtest
+    const market = (bt?.market ?? s.markets?.[0] ?? 'spot') as MarketType
+    const denomination = (bt?.denomination ?? 'quote') as 'quote' | 'base'
     setDraft({
       strategyId: s.id,
-      market: (s.markets?.[0] ?? 'spot') as MarketType,
+      market,
       symbol: 'BTCUSDT',
       from: dateToInputValue(now - 180 * 86_400_000),
       to: dateToInputValue(now - 86_400_000),
-      initialBalance: 10_000,
-      denomination: 'quote',
+      initialBalance: bt?.initialBalance ?? 10_000,
+      denomination,
       leverage: 1,
       makerRate: DEFAULT_FEES.spot.makerRate,
       takerRate: DEFAULT_FEES.spot.takerRate,
@@ -216,10 +219,16 @@ function BacktestForm({
   const setStrategy = (id: string): void => {
     const s = strategies.find((x) => x.id === id)
     if (!s) return
+    const bt = s.backtest
+    // la stratégie sélectionnée peut recommander un marché / une dénomination /
+    // un capital de départ (ex : BTC Accumulator → spot, base, 1 BTC)
+    const market = (bt?.market ?? (s.markets?.includes(draft.market) ? draft.market : s.markets?.[0]) ?? 'spot') as MarketType
     onChange({
       ...draft,
       strategyId: id,
-      market: (s.markets?.includes(draft.market) ? draft.market : (s.markets?.[0] ?? 'spot')) as MarketType,
+      market,
+      denomination: market === 'spot' ? (bt?.denomination ?? draft.denomination) : 'quote',
+      initialBalance: bt?.initialBalance ?? draft.initialBalance,
       params: s.schema ? defaultParams(s.schema) : {},
     })
   }
@@ -272,7 +281,17 @@ function BacktestForm({
             <select
               className="input"
               value={draft.denomination}
-              onChange={(e) => onChange({ ...draft, denomination: e.target.value as 'quote' | 'base' })}
+              onChange={(e) => {
+                const denomination = e.target.value as 'quote' | 'base'
+                // ajuste le capital à l'échelle de l'unité (1 BTC vs 10000 USDT)
+                const initialBalance =
+                  denomination === 'base' && draft.initialBalance >= 100
+                    ? 1
+                    : denomination === 'quote' && draft.initialBalance < 100
+                      ? 10_000
+                      : draft.initialBalance
+                onChange({ ...draft, denomination, initialBalance })
+              }}
             >
               <option value="quote">USDT (standard)</option>
               <option value="base">Actif de base (BTC) — accumulation</option>
