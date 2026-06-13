@@ -326,6 +326,26 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
   useEffect(() => {
     const prim = tradeZonesRef.current
     if (!prim) return
+    // les fills sont horodatés à la CLÔTURE de bougie ; la série indexe par
+    // l'OUVERTURE. timeToCoordinate ne connaît que les temps présents dans la
+    // série → on cale chaque borne sur l'ouverture de sa bougie (binary search),
+    // sinon les coordonnées sont nulles et rien n'est dessiné.
+    const openSecs = candles.map((c) => Math.floor(c.openTime / 1000))
+    const snap = (ms: number): UTCTimestamp => {
+      if (openSecs.length === 0) return Math.floor(ms / 1000) as UTCTimestamp
+      const sec = Math.floor(ms / 1000)
+      let lo = 0
+      let hi = openSecs.length - 1
+      let best = openSecs[0]!
+      while (lo <= hi) {
+        const mid = (lo + hi) >> 1
+        if (openSecs[mid]! <= sec) {
+          best = openSecs[mid]!
+          lo = mid + 1
+        } else hi = mid - 1
+      }
+      return best as UTCTimestamp
+    }
     // borne la fin à la dernière bougie chargée : un trade encore ouvert (ou
     // dont la sortie est hors fenêtre) court jusqu'au bord droit visible
     const lastOpen = candleWindow?.to
@@ -333,12 +353,12 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
       tradeZones
         .filter((z) => !candleWindow || z.from <= candleWindow.to)
         .map((z) => ({
-          from: ts(z.from),
-          to: ts(lastOpen !== undefined ? Math.min(z.to, lastOpen) : z.to),
+          from: snap(z.from),
+          to: snap(lastOpen !== undefined ? Math.min(z.to, lastOpen) : z.to),
           win: z.win,
         })),
     )
-  }, [tradeZones, candleWindow])
+  }, [tradeZones, candleWindow, candles])
 
   // ---- hline annotations as price lines
   useEffect(() => {

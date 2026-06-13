@@ -75,6 +75,10 @@ class TradeZonesRenderer {
     const zones = this.primitive.getZones()
     if (!chart || zones.length === 0) return
     const timeScale = chart.timeScale()
+    // timeToCoordinate renvoie le CENTRE d'une bougie ; on élargit d'une
+    // demi-bougie de chaque côté pour couvrir entièrement les bougies d'entrée
+    // et de sortie (un trade sur une seule bougie reste visible).
+    const halfBar = timeScale.options().barSpacing / 2
     target.useBitmapCoordinateSpace((scope) => {
       const ctx = scope.context
       const hr = scope.horizontalPixelRatio
@@ -83,10 +87,10 @@ class TradeZonesRenderer {
         const x1 = timeScale.timeToCoordinate(z.from)
         const x2 = timeScale.timeToCoordinate(z.to)
         if (x1 === null || x2 === null) continue
-        const left = Math.min(x1, x2) * hr
-        const right = Math.max(x1, x2) * hr
+        const left = (Math.min(x1, x2) - halfBar) * hr
+        const right = (Math.max(x1, x2) + halfBar) * hr
         const width = Math.max(1, right - left)
-        ctx.fillStyle = z.win ? 'rgba(38,166,154,0.13)' : 'rgba(239,83,80,0.13)'
+        ctx.fillStyle = z.win ? 'rgba(38,166,154,0.15)' : 'rgba(239,83,80,0.15)'
         ctx.fillRect(left, 0, width, h)
       }
     })
