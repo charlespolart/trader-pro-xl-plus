@@ -70,6 +70,7 @@ interface Props {
 
 export function TradingChart({ candles, indicators = [], markers = [], annotations = [], liveTopic, focusTime, height = 480, className = '' }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const tooltipRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null)
   const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null)
@@ -77,6 +78,9 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
   const markersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null)
   const priceLinesRef = useRef<IPriceLine[]>([])
   const fittedRef = useRef(false)
+  // textes des marqueurs (raisons d'achat/vente) indexés par temps (s) — affichés
+  // au survol seulement, pour ne pas surcharger la chart
+  const markerTextsRef = useRef<Map<number, string[]>>(new Map())
 
   // ---- create / destroy
   useEffect(() => {
@@ -117,7 +121,31 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
     markersRef.current = createSeriesMarkers(candleSeries, [])
     fittedRef.current = false
 
+    // infobulle des raisons d'achat/vente : affichée au survol d'une bougie
+    // qui porte des marqueurs, sinon masquée (chart non surchargée)
+    const onMove = (param: { time?: Time; point?: { x: number; y: number } }): void => {
+      const tip = tooltipRef.current
+      if (!tip) return
+      const texts = param.time !== undefined ? markerTextsRef.current.get(param.time as number) : undefined
+      if (!texts || texts.length === 0 || !param.point) {
+        tip.style.display = 'none'
+        return
+      }
+      tip.innerHTML = texts.map((t) => `<div>${t.replace(/</g, '&lt;')}</div>`).join('')
+      tip.style.display = 'block'
+      const el = containerRef.current
+      const w = el?.clientWidth ?? 0
+      const tw = tip.offsetWidth
+      // garde l'infobulle dans le cadre, à droite du curseur par défaut
+      let left = param.point.x + 14
+      if (left + tw > w - 6) left = param.point.x - tw - 14
+      tip.style.left = `${Math.max(6, left)}px`
+      tip.style.top = `${Math.max(6, param.point.y + 12)}px`
+    }
+    chart.subscribeCrosshairMove(onMove)
+
     return () => {
+      chart.unsubscribeCrosshairMove(onMove)
       chart.remove()
       chartRef.current = null
       candleSeriesRef.current = null
@@ -223,38 +251,45 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [indKey, indicators, candleWindow])
 
-  // ---- markers + label annotations
+  // ---- markers + label annotations (texte affiché au survol, pas en permanent)
   useEffect(() => {
     const plugin = markersRef.current
     if (!plugin) return
+    const texts = new Map<number, string[]>()
+    const addText = (t: number, txt?: string): void => {
+      if (!txt) return
+      const arr = texts.get(t) ?? []
+      arr.push(txt)
+      texts.set(t, arr)
+    }
     const all: SeriesMarker<Time>[] = [
-      ...[...markers, ...patternMarkers].map((m) => ({
-        time: ts(m.time),
-        position: m.position,
-        shape: m.shape,
-        color: m.color,
-        text: m.text,
-      })),
+      ...[...markers, ...patternMarkers].map((m) => {
+        const t = ts(m.time)
+        addText(t as number, m.text)
+        return { time: t, position: m.position, shape: m.shape, color: m.color }
+      }),
       ...annotations
         .filter((a) => a.type === 'marker')
-        .map((a): SeriesMarker<Time> => ({
-          time: ts(a.time),
-          position: a.position === 'above' ? 'aboveBar' : a.position === 'below' ? 'belowBar' : 'inBar',
-          shape: a.shape,
-          color: a.color ?? '#fdd835',
-          text: a.text,
-        })),
+        .map((a): SeriesMarker<Time> => {
+          const t = ts(a.time)
+          addText(t as number, a.text)
+          return {
+            time: t,
+            position: a.position === 'above' ? 'aboveBar' : a.position === 'below' ? 'belowBar' : 'inBar',
+            shape: a.shape,
+            color: a.color ?? '#fdd835',
+          }
+        }),
       ...annotations
         .filter((a) => a.type === 'label')
-        .map((a) => ({
-          time: ts(a.time),
-          position: 'inBar' as const,
-          shape: 'square' as const,
-          color: a.color ?? '#fdd835',
-          text: a.text,
-        })),
+        .map((a) => {
+          const t = ts(a.time)
+          addText(t as number, a.text)
+          return { time: t, position: 'inBar' as const, shape: 'square' as const, color: a.color ?? '#fdd835' }
+        }),
     ].sort((a, b) => (a.time as number) - (b.time as number))
     plugin.setMarkers(all)
+    markerTextsRef.current = texts
   }, [markers, annotations, patternMarkers])
 
   // ---- hline annotations as price lines
@@ -305,5 +340,27 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
     })
   }, [liveTopic])
 
-  return <div ref={containerRef} style={{ height }} className={`w-full ${className}`} />
+  return (
+    <div style={{ position: 'relative', height }} className={`w-full ${className}`}>
+      <div ref={containerRef} style={{ height: '100%' }} />
+      <div
+        ref={tooltipRef}
+        style={{
+          position: 'absolute',
+          display: 'none',
+          pointerEvents: 'none',
+          zIndex: 10,
+          maxWidth: '320px',
+          background: 'rgba(10,13,19,0.95)',
+          border: '1px solid #2a3247',
+          borderRadius: '8px',
+          padding: '7px 10px',
+          fontSize: '12px',
+          lineHeight: '1.45',
+          color: '#e4e7ee',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
+        }}
+      />
+    </div>
+  )
 }
