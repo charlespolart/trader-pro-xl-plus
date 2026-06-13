@@ -107,11 +107,14 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
       wickUpColor: '#26a69a',
       wickDownColor: '#ef5350',
       borderVisible: false,
+      priceLineVisible: false, // pas de ligne pointillée au dernier prix
     })
     const volumeSeries = chart.addSeries(HistogramSeries, {
       priceFormat: { type: 'volume' },
       priceScaleId: 'vol',
       color: '#2a3247',
+      priceLineVisible: false,
+      lastValueVisible: false,
     })
     chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.85, bottom: 0 } })
 
