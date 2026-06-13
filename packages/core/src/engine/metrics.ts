@@ -17,6 +17,8 @@ export interface MetricsInput {
   /** symbol close at start / end of the tested window */
   firstPrice: number
   lastPrice: number
+  /** base-denom : le benchmark buy & hold = garder son BTC = 0 % */
+  baseDenominated?: boolean
 }
 
 export function computeMetrics(input: MetricsInput): BacktestMetrics {
@@ -127,6 +129,12 @@ export function computeMetrics(input: MetricsInput): BacktestMetrics {
     avgTradeDurationMs: durations.length > 0 ? durations.reduce((a, b) => a + b, 0) / durations.length : 0,
     maxConsecutiveWins: maxWinStreak,
     maxConsecutiveLosses: maxLossStreak,
-    buyHoldReturnPct: input.firstPrice > 0 ? ((input.lastPrice - input.firstPrice) / input.firstPrice) * 100 : 0,
+    // base-denom : garder son BTC = 0 % (le benchmark, c'est ne rien faire).
+    // quote : rendement d'un buy & hold du symbole.
+    buyHoldReturnPct: input.baseDenominated
+      ? 0
+      : input.firstPrice > 0
+        ? ((input.lastPrice - input.firstPrice) / input.firstPrice) * 100
+        : 0,
   }
 }

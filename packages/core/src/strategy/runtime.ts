@@ -129,9 +129,12 @@ export class StrategyRuntime {
       if (normalized.price !== undefined) normalized.price = roundPrice(normalized.price)
       if (normalized.stopPrice !== undefined) normalized.stopPrice = roundPrice(normalized.stopPrice)
       if (normalized.qty !== undefined) {
+        const before = normalized.qty
         normalized.qty = roundQty(normalized.qty)
         if (normalized.qty <= 0) {
-          throw new Error(`Order qty rounds to zero (stepSize ${si?.stepSize ?? '?'})`)
+          throw new Error(
+            `Order qty rounds to zero (${normalized.side} ${normalized.type} qty=${before}, tag=${normalized.tag ?? '—'}, stepSize ${si?.stepSize ?? '?'})`,
+          )
         }
         if (si && normalized.qty < si.minQty) {
           throw new Error(`Order qty ${normalized.qty} < minQty ${si.minQty}`)

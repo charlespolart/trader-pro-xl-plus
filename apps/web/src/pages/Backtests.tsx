@@ -21,6 +21,7 @@ interface BtDraft {
   from: string
   to: string
   initialBalance: number
+  denomination: 'quote' | 'base'
   leverage: number
   makerRate: number
   takerRate: number
@@ -50,6 +51,7 @@ export function Backtests() {
         start: inputValueToMs(d.from),
         end: inputValueToMs(d.to) + 86_400_000,
         initialBalance: d.initialBalance,
+        denomination: d.denomination,
         leverage: d.leverage,
         fees: { makerRate: d.makerRate, takerRate: d.takerRate, bnbDiscount: d.bnbDiscount },
         slippagePct: d.slippagePct,
@@ -87,6 +89,7 @@ export function Backtests() {
       from: dateToInputValue(now - 180 * 86_400_000),
       to: dateToInputValue(now - 86_400_000),
       initialBalance: 10_000,
+      denomination: 'quote',
       leverage: 1,
       makerRate: DEFAULT_FEES.spot.makerRate,
       takerRate: DEFAULT_FEES.spot.takerRate,
@@ -264,8 +267,26 @@ function BacktestForm({
         <Field label="Au (inclus)">
           <input className="input" type="date" value={draft.to} onChange={(e) => onChange({ ...draft, to: e.target.value })} />
         </Field>
-        <Field label="Capital initial">
-          <input className="input" type="number" value={draft.initialBalance} onChange={(e) => onChange({ ...draft, initialBalance: Number(e.target.value) })} />
+        {draft.market === 'spot' && (
+          <Field label="Dénomination" hint={draft.denomination === 'base' ? 'performance mesurée en BTC (accumulation)' : 'performance mesurée en USDT'}>
+            <select
+              className="input"
+              value={draft.denomination}
+              onChange={(e) => onChange({ ...draft, denomination: e.target.value as 'quote' | 'base' })}
+            >
+              <option value="quote">USDT (standard)</option>
+              <option value="base">Actif de base (BTC) — accumulation</option>
+            </select>
+          </Field>
+        )}
+        <Field label={draft.denomination === 'base' ? 'Capital initial (en BTC)' : 'Capital initial (USDT)'}>
+          <input
+            className="input"
+            type="number"
+            step={draft.denomination === 'base' ? 0.01 : 1}
+            value={draft.initialBalance}
+            onChange={(e) => onChange({ ...draft, initialBalance: Number(e.target.value) })}
+          />
         </Field>
         {draft.market === 'futures' && (
           <Field label="Levier">

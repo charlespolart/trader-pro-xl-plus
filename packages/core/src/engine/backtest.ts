@@ -58,6 +58,11 @@ export async function runBacktest(opts: RunBacktestOptions): Promise<BacktestEng
   const orderUpdateQueue: string[] = []
   let liquidation: { price: number; time: number } | null = null
 
+  const baseDenom = config.denomination === 'base'
+  if (baseDenom && config.market !== 'spot') {
+    throw new Error("La dénomination 'base' (accumulation BTC) n'est supportée qu'en spot")
+  }
+
   const sim = new SimExchange({
     market: config.market,
     symbol: config.symbol,
@@ -69,6 +74,7 @@ export async function runBacktest(opts: RunBacktestOptions): Promise<BacktestEng
     intrabarPath: config.intrabarPath,
     limitFillRatio: config.limitFillRatio,
     maintenanceMarginRate: config.maintenanceMarginRate,
+    denomination: config.denomination,
     events: {
       onFill: (fill) => fillQueue.push(fill),
       onOrderUpdate: (id) => orderUpdateQueue.push(id),
@@ -128,7 +134,7 @@ export async function runBacktest(opts: RunBacktestOptions): Promise<BacktestEng
   let aggIdx = 0
   let aggDone = aggIter === null
 
-  const tradeBuilder = new TradeBuilder(config.market, config.symbol, leverage)
+  const tradeBuilder = new TradeBuilder(config.market, config.symbol, leverage, {}, baseDenom)
 
   // ---- run state
   const equity: EquityPoint[] = []
@@ -299,7 +305,11 @@ export async function runBacktest(opts: RunBacktestOptions): Promise<BacktestEng
             drawdownPct: equityPeak > 0 ? ((equityPeak - eq) / equityPeak) * 100 : 0,
           })
           totalSamples++
-          if (sim.position().qty !== 0) exposureSamples++
+          // exposition = part du temps « en trade ». En base-denom, être en
+          // trade = avoir vendu son BTC (posQty == 0, on est en USDT) ; sinon
+          // = avoir une position ouverte.
+          const inMarket = baseDenom ? sim.position().qty === 0 : sim.position().qty !== 0
+          if (inMarket) exposureSamples++
         }
         feed.idx++
         break
@@ -333,11 +343,13 @@ export async function runBacktest(opts: RunBacktestOptions): Promise<BacktestEng
     equity,
     trades,
     sampleIntervalMs,
-    totalFees: sim.totalFees,
+    // base-denom : frais cumulés convertis en BTC (approx. au dernier prix)
+    totalFees: baseDenom && lastSamplePrice > 0 ? sim.totalFees / lastSamplePrice : sim.totalFees,
     totalFunding: sim.totalFunding,
     exposureRatio: totalSamples > 0 ? exposureSamples / totalSamples : 0,
     firstPrice,
     lastPrice: lastSamplePrice,
+    baseDenominated: baseDenom,
   })
 
   opts.onProgress?.({ ratio: 1, processedEvents: processed, currentTime: config.end })

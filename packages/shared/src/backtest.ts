@@ -27,8 +27,17 @@ export interface BacktestConfig {
   start: number
   /** ms epoch, exclusive */
   end: number
-  /** in quote currency */
+  /** initial capital — in quote currency by default, in BASE asset when denomination='base' */
   initialBalance: number
+  /**
+   * Comptabilité de la performance :
+   *  - 'quote' (défaut) : tout mesuré en USDT (achète d'abord, vend ensuite).
+   *  - 'base' : tout mesuré en actif de base (BTC) — on DÉTIENT du BTC au
+   *    départ et le but est d'en accumuler. Vendre puis racheter moins cher
+   *    fait monter la courbe d'équité (en BTC). Buy & hold = garder son BTC
+   *    = 0 %. Spot uniquement.
+   */
+  denomination?: 'quote' | 'base'
   /** futures only; 1 on spot */
   leverage: number
   fees: FeeConfig

@@ -32,6 +32,14 @@ export interface SimExchangeOptions {
   limitFillRatio: number
   /** futures: maintenance margin rate for the isolated liquidation approximation */
   maintenanceMarginRate: number
+  /**
+   * 'quote' (défaut) : initialBalance en USDT, équité mesurée en USDT.
+   * 'base' (spot only) : on démarre en DÉTENANT initialBalance unités de base
+   * (BTC), équité mesurée en base. Accumulation : vendre puis racheter moins
+   * cher augmente le nombre de BTC. Vendre le BTC détenu ouvre un « short »
+   * borné (la position spot reste >= 0).
+   */
+  denomination?: 'quote' | 'base'
   events?: SimEvents
 }
 
@@ -95,13 +103,27 @@ export class SimExchange implements ExecutionAdapter {
   totalFunding = 0
   liquidated = false
 
+  private readonly baseDenom: boolean
+  private posEntrySeeded = false
+
   constructor(opts: SimExchangeOptions) {
     this.o = opts
     this.market = opts.market
     this.symbol = opts.symbol
     this.events = opts.events ?? {}
+    this.baseDenom = opts.denomination === 'base'
+    if (this.baseDenom && opts.market !== 'spot') {
+      throw new Error("denomination 'base' n'est supportée qu'en spot")
+    }
     if (opts.market === 'spot') {
-      this.quoteFree = opts.initialBalance
+      if (this.baseDenom) {
+        // on détient le BTC au départ : seed du solde de base ET de la position
+        // (posQty reflète le BTC détenu ; posEntry fixé au 1er prix vu)
+        this.baseFree = opts.initialBalance
+        this.posQty = opts.initialBalance
+      } else {
+        this.quoteFree = opts.initialBalance
+      }
     } else {
       this.wallet = opts.initialBalance
     }
@@ -146,10 +168,20 @@ export class SimExchange implements ExecutionAdapter {
 
   setLastPrice(p: number): void {
     this.lastPriceV = p
+    this.seedPosEntry(p)
+  }
+
+  /** base-denom : fixe le prix d'entrée du BTC initialement détenu au 1er prix vu */
+  private seedPosEntry(price: number): void {
+    if (this.baseDenom && !this.posEntrySeeded && price > 0 && this.posQty > 0) {
+      this.posEntry = price
+      this.posEntrySeeded = true
+    }
   }
 
   /** Candle-mode matching. Call BEFORE the strategy sees the candle. */
   processCandle(c: Candle): void {
+    this.seedPosEntry(c.open)
     this.lastPriceV = c.open
     this.fillPendingMarkets(c.open)
 
@@ -315,9 +347,19 @@ export class SimExchange implements ExecutionAdapter {
 
   equity(): number {
     if (this.market === 'spot') {
-      return this.quoteFree + this.quoteLocked + (this.baseFree + this.baseLocked) * this.lastPriceV
+      const base = this.baseFree + this.baseLocked
+      const quote = this.quoteFree + this.quoteLocked
+      // base-denom : valeur totale exprimée en BTC (le quote détenu se reconvertit
+      // en BTC au prix courant — c'est ce qui fait monter l'équité quand on est
+      // en USDT pendant une baisse)
+      if (this.baseDenom) return this.lastPriceV > 0 ? base + quote / this.lastPriceV : base
+      return quote + base * this.lastPriceV
     }
     return this.wallet + (this.posQty === 0 ? 0 : (this.lastPriceV - this.posEntry) * this.posQty)
+  }
+
+  get isBaseDenominated(): boolean {
+    return this.baseDenom
   }
 
   // ------------------------------------------------------------- internals

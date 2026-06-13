@@ -34,9 +34,15 @@ export class TradeBuilder {
     private readonly symbol: string,
     private readonly leverage: number,
     private readonly ids: { backtestId?: string; botId?: string } = {},
+    /** base-denom : P&L des round-trips exprimé en actif de base (BTC) */
+    private readonly baseDenominated = false,
   ) {}
 
   onFill(fill: Fill): void {
+    if (this.baseDenominated) {
+      this.onFillBaseDenom(fill)
+      return
+    }
     const signed = fill.side === 'BUY' ? fill.qty : -fill.qty
     const posBefore = this.posQty
     const posAfter = posBefore + signed
@@ -83,6 +89,40 @@ export class TradeBuilder {
         this.openTrade(fill, remainder, fill.fee * (1 - closeShare))
       }
     }
+  }
+
+  /**
+   * Base-denom (accumulation BTC) : détenir du BTC est la BASELINE neutre
+   * (= flat), pas un trade. Un trade = une excursion en USDT : VENDRE son BTC
+   * puis le RACHETER. La stratégie vend tout / rachète tout, donc on raisonne
+   * sur l'INTENTION (vente = ouvre/agrandit le short, rachat = ferme), pas sur
+   * le net de quantités — car racheter plus cher rend moins de BTC que vendu
+   * (le net ne reviendrait jamais à zéro). P&L = BTC racheté − BTC vendu, via
+   * pnl_quote / prix de rachat (cf. toRecord).
+   */
+  private onFillBaseDenom(fill: Fill): void {
+    if (fill.side === 'SELL') {
+      if (this.current === null) {
+        this.openTrade(fill, fill.qty) // direction 'short' (ouvert par une vente)
+      } else {
+        this.current.entryQty += fill.qty
+        this.current.entryNotional += fill.qty * fill.price
+        this.current.maxQty = Math.max(this.current.maxQty, this.current.entryQty)
+        this.current.fees += fill.fee
+        this.current.fills.push(fill)
+      }
+      this.posQty = -(this.current?.entryQty ?? 0)
+      return
+    }
+    // BUY = rachat → ferme le short (on revient à détenir du BTC)
+    if (this.current === null) return // achat sans short ouvert : baseline, ignoré
+    this.current.exitQty = this.current.entryQty // exitQty = BTC vendu (pour le P&L base)
+    this.current.exitNotional = this.current.entryQty * fill.price
+    this.current.fees += fill.fee
+    if (fill.reason) this.current.exitReason = fill.reason
+    this.current.fills.push(fill)
+    this.closeTrade(fill.time)
+    this.posQty = 0
   }
 
   /** futures funding transfer (signed; negative = we paid) while a trade is open */
@@ -158,9 +198,19 @@ export class TradeBuilder {
     const avgExit = t.exitQty > 0 ? t.exitNotional / t.exitQty : null
     const dir = t.direction === 'long' ? 1 : -1
     const grossPnl = avgExit === null ? 0 : (avgExit - avgEntry) * t.exitQty * dir
-    const realizedPnl = grossPnl - t.fees + t.funding
-    const marginBase =
+    let realizedPnl = grossPnl - t.fees + t.funding
+    let fees = t.fees
+    let marginBase =
       this.market === 'futures' ? t.entryNotional / Math.max(1, this.leverage) : t.entryNotional
+
+    // base-denom : convertir le P&L (USDT) en BTC accumulé = pnl_quote / prix de rachat.
+    // Vendre q BTC à avgEntry puis racheter à avgExit fait gagner
+    // q·(avgEntry − avgExit)/avgExit BTC = grossPnl_quote / avgExit.
+    if (this.baseDenominated && avgExit !== null && avgExit > 0) {
+      realizedPnl = realizedPnl / avgExit
+      fees = fees / avgExit
+      marginBase = t.maxQty // BTC engagé dans le trade
+    }
     return {
       id: t.id,
       botId: this.ids.botId,
@@ -175,7 +225,7 @@ export class TradeBuilder {
       qty: t.maxQty,
       realizedPnl,
       realizedPnlPct: marginBase > 0 ? (realizedPnl / marginBase) * 100 : 0,
-      fees: t.fees,
+      fees,
       funding: t.funding,
       entryReason: t.entryReason,
       exitReason: t.exitReason,
