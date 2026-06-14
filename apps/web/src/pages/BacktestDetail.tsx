@@ -232,7 +232,7 @@ export function BacktestDetail() {
               <div className="mb-1 text-xs text-zinc-500">
                 Vue d'ensemble ({overviewInterval}) — la zone claire = ce qui est affiché ci-dessous · clic pour s'y rendre
               </div>
-              <OverviewChart candles={overviewCandles} visibleRange={mainRange} onNavigate={onNavigate} height={110} />
+              <OverviewChart candles={overviewCandles} visibleRange={mainRange} onNavigate={onNavigate} height={150} />
             </div>
           )}
           <TradingChart
