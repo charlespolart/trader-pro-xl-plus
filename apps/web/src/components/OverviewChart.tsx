@@ -92,7 +92,13 @@ export function OverviewChart({ candles, visibleRange, onNavigate, height = 120 
     const s = seriesRef.current
     if (!s) return
     s.setData(candles.map((c) => ({ time: ts(c.openTime), open: c.open, high: c.high, low: c.low, close: c.close })))
-    if (candles.length > 0) chartRef.current?.timeScale().fitContent()
+    if (candles.length > 0) {
+      // fit tout de suite ET au frame suivant : si le conteneur a une largeur 0
+      // à la création (montage frais), le 1er fit ne ferait rien → le rAF rattrape
+      // une fois la mise en page faite, sinon le graphe reste vide.
+      chartRef.current?.timeScale().fitContent()
+      requestAnimationFrame(() => chartRef.current?.timeScale().fitContent())
+    }
   }, [candles])
 
   // ---- rectangle de fenêtre (calé sur l'ouverture de bougie d'ensemble)

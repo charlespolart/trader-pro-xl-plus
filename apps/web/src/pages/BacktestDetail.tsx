@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { INTERVALS, INTERVAL_MS, isInterval, type Candle, type Interval } from '@tpx/shared'
 import { api } from '../lib/api'
 import { fmtDate } from '../lib/format'
@@ -75,6 +75,10 @@ export function BacktestDetail() {
     queryKey: ['backtest-overview', id, overviewInterval],
     queryFn: () => api.klines(run!.config.market, run!.config.symbol, overviewInterval!, chartStart, run!.config.end),
     enabled: run !== undefined && run.status === 'done' && overviewInterval !== null,
+    // garde les bougies de l'intervalle précédent pendant le refetch : le bloc ne
+    // se démonte plus à chaque changement de TF (évitait un remontage du graphe à
+    // largeur 0 → graphe vide).
+    placeholderData: keepPreviousData,
   })
 
   // fenêtre visible du graphe principal (ms) ↔ rectangle sur la vue d'ensemble
