@@ -102,6 +102,28 @@ Construire l'infra trade-level pour répliquer ça n'a pas de retour ici.
 - Sinon : refaire le test sur **perp** + une fenêtre de **bear/liquidations**, et en **conditionnel**
   (flux seulement quand funding extrême), avant tout backtest.
 
+## Étape 3bis — test-gate « filtre pour la v2 » (gate.ts)
+
+Question : aux points de VENTE de la v2, une feature aggTrades sépare-t-elle les ventes GAGNANTES
+des whipsaws (PERDANTS), au-delà du flux par bougie ? (fenêtre 8h avant la vente, 53 trades :
+18 gagnants / 35 perdants, aggTrades téléchargés seulement autour des jours de trade ≈ 95 jours, 1,2 Go).
+
+| feature | moy. gagnants | moy. perdants | t-stat |
+|---|---|---|---|
+| flux NET (= takerFlow, contrôle) | −0,034 | −0,031 | −0,24 |
+| flux BALEINE | −0,009 | −0,008 | −0,34 |
+| flux RETAIL | −0,007 | −0,005 | −0,29 |
+| baleine − retail | −0,002 | −0,002 | +0,00 |
+| part volume baleine | +0,108 | +0,087 | +0,91 |
+
+**NO-GO confirmé : aucune feature ne sépare (tous |t| < 1).** Aucun signal aggTrades (même baleine)
+ne distingue un bon short d'un whipsaw à l'entrée. Cohérent avec l'étude de corrélation ET avec la
+vieille analyse des pertes (gagnants/perdants identiques à l'entrée). **→ pas de v3 à filtre aggTrades.**
+Seul angle non testé : un filtre sur le RACHAT (retarder l'exit) — mais le rachat EST l'issue (circulaire),
+et vu que le flux ne sépare ni ne prédit rien, très peu probable. Stop ici sur cette piste.
+
+Disque : `data/aggtrades` = 1,2 Go (95 jours, re-téléchargeables) après les expériences → nettoyable.
+
 ## Reproduire
 
 ```
