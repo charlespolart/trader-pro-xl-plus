@@ -88,10 +88,13 @@ class ViewportRenderer {
       // léger voile bleu sur la fenêtre + bordures
       ctx.fillStyle = 'rgba(59,130,246,0.10)'
       ctx.fillRect(left, 0, right - left, h)
+      // bordures : on borne leur x à [0, w-bw] pour qu'elles restent ENTIÈREMENT
+      // visibles, plaquées au bord, au lieu d'être coupées en deux quand la fenêtre
+      // touche le début/la fin des données.
       const bw = Math.max(1, hr)
       ctx.fillStyle = 'rgba(96,165,250,0.95)'
-      ctx.fillRect(left, 0, bw, h)
-      ctx.fillRect(right - bw, 0, bw, h)
+      ctx.fillRect(Math.max(0, Math.min(left, w - bw)), 0, bw, h)
+      ctx.fillRect(Math.max(0, Math.min(right - bw, w - bw)), 0, bw, h)
     })
   }
 }
