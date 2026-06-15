@@ -205,11 +205,9 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
     chart.subscribeCrosshairMove(onMove)
 
     // émet la fenêtre visible (ms) → la vue d'ensemble dessine le rectangle.
-    // + recale l'échelle de prix : drag de l'axe des prix passe la price scale en
-    // manuel (autoScale off) ; on la repasse en auto dès qu'on navigue dans le temps
-    // pour que le prix suive toujours les bougies visibles (« centrage auto »).
+    // (on NE force PAS autoScale : l'échelle manuelle reste quand on navigue ;
+    // un bouton « ⤢ échelle » permet de la recaler en auto à la demande.)
     const onRange = (range: { from: Time; to: Time } | null): void => {
-      candleSeries.priceScale().applyOptions({ autoScale: true })
       if (!range) {
         onRangeRef.current?.(null)
         return
@@ -492,6 +490,28 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
   return (
     <div style={{ position: 'relative', height }} className={`w-full ${className}`}>
       <div ref={containerRef} style={{ height: '100%' }} />
+      {/* recale l'échelle de prix en auto à la demande (après un drag manuel de l'axe) */}
+      <button
+        type="button"
+        onClick={() => candleSeriesRef.current?.priceScale().applyOptions({ autoScale: true })}
+        title="Recentrer l'échelle des prix (auto)"
+        style={{
+          position: 'absolute',
+          right: 70,
+          bottom: 30,
+          zIndex: 5,
+          fontSize: 11,
+          lineHeight: 1,
+          padding: '4px 7px',
+          borderRadius: 6,
+          background: 'rgba(22,27,40,0.85)',
+          border: '1px solid #2a3247',
+          color: '#9aa3b5',
+          cursor: 'pointer',
+        }}
+      >
+        ⤢ auto
+      </button>
       <div
         ref={tooltipRef}
         style={{
