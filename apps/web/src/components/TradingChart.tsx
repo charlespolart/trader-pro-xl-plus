@@ -61,8 +61,9 @@ interface Props {
   indicators?: IndicatorSeriesDTO[]
   markers?: ChartMarker[]
   annotations?: ChartAnnotation[]
-  /** bandeaux translucides par trade (vert=gagnant, rouge=perdant), temps en ms */
-  tradeZones?: { from: number; to: number; win: boolean }[]
+  /** bandeaux translucides par trade (vert=gagnant, rouge=perdant), temps en ms.
+   *  `lines` = infos du trade affichées au survol du bandeau (entrée/sortie/P&L). */
+  tradeZones?: { from: number; to: number; win: boolean; lines?: string[] }[]
   /** ws topic (candles:market:symbol:interval) for live updates */
   liveTopic?: string
   /** when set/changed, the chart scrolls to center this time (ms) */
@@ -84,6 +85,8 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
   const indSeriesRef = useRef<Map<string, ISeriesApi<'Line'>>>(new Map())
   const markersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null)
   const tradeZonesRef = useRef<TradeZonesPrimitive | null>(null)
+  // zones de trade indexées par temps (s) pour l'infobulle au survol du bandeau
+  const zoneInfoRef = useRef<{ from: number; to: number; lines: string[] }[]>([])
   const priceLinesRef = useRef<IPriceLine[]>([])
   const fittedRef = useRef(false)
   // textes des marqueurs (raisons d'achat/vente) indexés par temps (s) — affichés
@@ -139,17 +142,25 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
     tradeZonesRef.current = tradeZonesPrim
     fittedRef.current = false
 
-    // infobulle des raisons d'achat/vente : affichée au survol d'une bougie
-    // qui porte des marqueurs, sinon masquée (chart non surchargée)
+    // infobulle : au survol, on montre les infos du TRADE si le curseur est dans
+    // son bandeau (entrée/sortie/P&L, sur toute la durée du trade), puis les
+    // marqueurs éventuels (patterns, annotations). Sinon masquée.
     const onMove = (param: { time?: Time; point?: { x: number; y: number } }): void => {
       const tip = tooltipRef.current
       if (!tip) return
-      const texts = param.time !== undefined ? markerTextsRef.current.get(param.time as number) : undefined
-      if (!texts || texts.length === 0 || !param.point) {
+      const sec = param.time as number | undefined
+      const lines: string[] = []
+      if (sec !== undefined) {
+        const zone = zoneInfoRef.current.find((z) => sec >= z.from && sec <= z.to)
+        if (zone) lines.push(...zone.lines)
+        const markerTexts = markerTextsRef.current.get(sec)
+        if (markerTexts) lines.push(...markerTexts)
+      }
+      if (lines.length === 0 || !param.point) {
         tip.style.display = 'none'
         return
       }
-      tip.innerHTML = texts.map((t) => `<div>${t.replace(/</g, '&lt;')}</div>`).join('')
+      tip.innerHTML = lines.map((t) => `<div>${t.replace(/</g, '&lt;')}</div>`).join('')
       tip.style.display = 'block'
       const el = containerRef.current
       const w = el?.clientWidth ?? 0
@@ -368,15 +379,16 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
     // borne la fin à la dernière bougie chargée : un trade encore ouvert (ou
     // dont la sortie est hors fenêtre) court jusqu'au bord droit visible
     const lastOpen = candleWindow?.to
-    prim.setZones(
-      tradeZones
-        .filter((z) => !candleWindow || z.from <= candleWindow.to)
-        .map((z) => ({
-          from: snap(z.from),
-          to: snap(lastOpen !== undefined ? Math.min(z.to, lastOpen) : z.to),
-          win: z.win,
-        })),
-    )
+    const visible = tradeZones.filter((z) => !candleWindow || z.from <= candleWindow.to)
+    const snapped = visible.map((z) => ({
+      from: snap(z.from),
+      to: snap(lastOpen !== undefined ? Math.min(z.to, lastOpen) : z.to),
+      win: z.win,
+      lines: z.lines ?? [],
+    }))
+    prim.setZones(snapped.map(({ from, to, win }) => ({ from, to, win })))
+    // index pour l'infobulle au survol (temps en secondes, mêmes bornes que le dessin)
+    zoneInfoRef.current = snapped.map((z) => ({ from: z.from as number, to: z.to as number, lines: z.lines }))
   }, [tradeZones, candleWindow, candles])
 
   // ---- hline annotations as price lines

@@ -115,20 +115,31 @@ export function BacktestDetail() {
     }
   }, [playing, candles])
 
-  const markers = useMemo(() => (result ? tradesToMarkers(result.trades) : []), [result])
-  // bandeau translucide par trade (entrée→sortie) : vert si gagnant, rouge sinon.
-  // un trade encore ouvert court jusqu'au bord droit (clampé côté chart).
-  const zones = useMemo(
-    () =>
-      result
-        ? result.trades.map((t) => ({
-            from: t.entryTime,
-            to: t.exitTime ?? Number.POSITIVE_INFINITY,
-            win: t.realizedPnl > 0,
-          }))
-        : [],
+  // les flèches restent, mais SANS texte : les infos d'entrée/sortie passent sur
+  // le bandeau du trade (au survol du carré, pas des bougies).
+  const markers = useMemo(
+    () => (result ? tradesToMarkers(result.trades).map((m) => ({ ...m, text: undefined })) : []),
     [result],
   )
+  // bandeau translucide par trade (entrée→sortie) : vert si gagnant, rouge sinon.
+  // un trade encore ouvert court jusqu'au bord droit (clampé côté chart).
+  // `lines` = infos affichées au survol du carré (entrée/sortie/P&L %/montant/raisons).
+  const zones = useMemo(() => {
+    if (!result) return []
+    const isBase = run?.config.denomination === 'base'
+    const unit = isBase ? 'BTC' : 'USDT'
+    const fmtAmt = (v: number): string => `${v >= 0 ? '+' : ''}${isBase ? v.toFixed(5) : v.toFixed(2)} ${unit}`
+    return result.trades.map((t) => {
+      const lines = [
+        `${t.realizedPnl > 0 ? '✓ Trade gagnant' : '✗ Trade perdant'} · ${fmtDate(t.entryTime)} → ${t.exitTime ? fmtDate(t.exitTime) : 'en cours'}`,
+        `Entrée @${t.avgEntryPrice.toPrecision(6)}${t.avgExitPrice !== null ? `  ·  Sortie @${t.avgExitPrice.toPrecision(6)}` : ''}`,
+        `P&L : ${fmtAmt(t.realizedPnl)} (${t.realizedPnlPct >= 0 ? '+' : ''}${t.realizedPnlPct.toFixed(1)}%)`,
+        t.entryReason ? `Entrée : ${t.entryReason}` : null,
+        t.exitReason ? `Sortie : ${t.exitReason}` : null,
+      ].filter((l): l is string => l !== null)
+      return { from: t.entryTime, to: t.exitTime ?? Number.POSITIVE_INFINITY, win: t.realizedPnl > 0, lines }
+    })
+  }, [result, run?.config.denomination])
 
   const view = useMemo(() => {
     if (!candles) return null
