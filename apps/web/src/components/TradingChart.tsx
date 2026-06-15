@@ -553,7 +553,7 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
         title="Réinitialiser le zoom vertical (recentrer)"
         style={{
           position: 'absolute',
-          right: 72,
+          left: 8,
           top: 8,
           zIndex: 5,
           fontSize: 11,
