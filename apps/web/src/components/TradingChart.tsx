@@ -204,8 +204,12 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
     }
     chart.subscribeCrosshairMove(onMove)
 
-    // émet la fenêtre visible (ms) → la vue d'ensemble dessine le rectangle
+    // émet la fenêtre visible (ms) → la vue d'ensemble dessine le rectangle.
+    // + recale l'échelle de prix : drag de l'axe des prix passe la price scale en
+    // manuel (autoScale off) ; on la repasse en auto dès qu'on navigue dans le temps
+    // pour que le prix suive toujours les bougies visibles (« centrage auto »).
     const onRange = (range: { from: Time; to: Time } | null): void => {
+      candleSeries.priceScale().applyOptions({ autoScale: true })
       if (!range) {
         onRangeRef.current?.(null)
         return
