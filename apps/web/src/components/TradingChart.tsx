@@ -106,6 +106,8 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
   // callback de fenêtre visible gardé en ref (l'effet de création ne tourne qu'une fois)
   const onRangeRef = useRef(onVisibleTimeRangeChange)
   onRangeRef.current = onVisibleTimeRangeChange
+  // reset du zoom vertical (marges) exposé au bouton « ⤢ »
+  const resetVZoomRef = useRef<(() => void) | null>(null)
 
   // ---- create / destroy
   useEffect(() => {
@@ -123,9 +125,14 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
         horzLines: { color: '#161b28' },
       },
       timeScale: { timeVisible: true, secondsVisible: false, borderColor: '#232a3b' },
-      // largeur d'échelle fixe = alignée avec la vue d'ensemble (même valeur)
-      rightPriceScale: { borderColor: '#232a3b', minimumWidth: 64 },
+      // largeur d'échelle fixe = alignée avec la vue d'ensemble (même valeur).
+      // autoScale reste ON (centre/ajuste sur les bougies) ; le zoom vertical au
+      // drag de l'axe est géré nous-mêmes via des marges symétriques → centré.
+      rightPriceScale: { borderColor: '#232a3b', minimumWidth: 64, autoScale: true, scaleMargins: { top: 0.12, bottom: 0.12 } },
       crosshair: { mode: 0 },
+      // on désactive le scaling natif de l'axe des prix (il fixe une plage qui
+      // DÉRIVE) ; on le remplace par un zoom centré (voir handlers plus bas).
+      handleScale: { axisPressedMouseMove: { time: true, price: false }, mouseWheel: true, pinch: true },
     })
     const candleSeries = chart.addSeries(CandlestickSeries, {
       upColor: '#26a69a',
@@ -152,6 +159,51 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
     candleSeries.attachPrimitive(tradeZonesPrim)
     tradeZonesRef.current = tradeZonesPrim
     fittedRef.current = false
+
+    // ---- zoom vertical CENTRÉ : drag de l'axe des prix → marges symétriques.
+    // autoScale ajuste la courbe aux bougies visibles ; des marges top=bottom la
+    // gardent au MILIEU, et le drag fait grandir/rétrécir ces marges → la courbe
+    // ne dérive jamais vers le bas, elle reste centrée.
+    const DEFAULT_MARGIN = 0.12
+    let vMargin = DEFAULT_MARGIN
+    const applyVMargin = (): void =>
+      candleSeries.priceScale().applyOptions({ autoScale: true, scaleMargins: { top: vMargin, bottom: vMargin } })
+    resetVZoomRef.current = (): void => {
+      vMargin = DEFAULT_MARGIN
+      applyVMargin()
+    }
+    const axisWidth = (): number => {
+      try {
+        return chart.priceScale('right').width()
+      } catch {
+        return 64
+      }
+    }
+    let dragging = false
+    let startY = 0
+    let startMargin = DEFAULT_MARGIN
+    const onAxisDown = (e: PointerEvent): void => {
+      const rect = el.getBoundingClientRect()
+      if (e.clientX < rect.right - axisWidth() - 2) return // pas sur l'axe des prix
+      dragging = true
+      startY = e.clientY
+      startMargin = vMargin
+      e.preventDefault()
+    }
+    const onAxisMove = (e: PointerEvent): void => {
+      if (!dragging) return
+      const rect = el.getBoundingClientRect()
+      // drag vers le BAS = dézoom (marges plus grandes, courbe plus petite, centrée)
+      const delta = ((e.clientY - startY) / Math.max(1, rect.height)) * 0.9
+      vMargin = Math.min(0.47, Math.max(0, startMargin + delta))
+      applyVMargin()
+    }
+    const onAxisUp = (): void => {
+      dragging = false
+    }
+    el.addEventListener('pointerdown', onAxisDown)
+    window.addEventListener('pointermove', onAxisMove)
+    window.addEventListener('pointerup', onAxisUp)
 
     // infobulle : au survol, on montre les infos du TRADE si le curseur est dans
     // son bandeau (P&L % en gros/coloré en tête, puis dates/prix, puis raisons),
@@ -219,6 +271,10 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
     return () => {
       chart.unsubscribeCrosshairMove(onMove)
       chart.timeScale().unsubscribeVisibleTimeRangeChange(onRange)
+      el.removeEventListener('pointerdown', onAxisDown)
+      window.removeEventListener('pointermove', onAxisMove)
+      window.removeEventListener('pointerup', onAxisUp)
+      resetVZoomRef.current = null
       chart.remove()
       chartRef.current = null
       candleSeriesRef.current = null
@@ -490,11 +546,11 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
   return (
     <div style={{ position: 'relative', height }} className={`w-full ${className}`}>
       <div ref={containerRef} style={{ height: '100%' }} />
-      {/* recale l'échelle de prix en auto à la demande (après un drag manuel de l'axe) */}
+      {/* réinitialise le zoom vertical (recentre la courbe à la marge par défaut) */}
       <button
         type="button"
-        onClick={() => candleSeriesRef.current?.priceScale().applyOptions({ autoScale: true })}
-        title="Recentrer l'échelle des prix (auto)"
+        onClick={() => resetVZoomRef.current?.()}
+        title="Réinitialiser le zoom vertical (recentrer)"
         style={{
           position: 'absolute',
           right: 70,
