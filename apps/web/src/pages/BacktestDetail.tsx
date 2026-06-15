@@ -123,22 +123,30 @@ export function BacktestDetail() {
   )
   // bandeau translucide par trade (entrée→sortie) : vert si gagnant, rouge sinon.
   // un trade encore ouvert court jusqu'au bord droit (clampé côté chart).
-  // `lines` = infos affichées au survol du carré (entrée/sortie/P&L %/montant/raisons).
+  // `info` = détail affiché au survol du carré (P&L %/montant coloré, dates, prix, raisons).
   const zones = useMemo(() => {
     if (!result) return []
     const isBase = run?.config.denomination === 'base'
     const unit = isBase ? 'BTC' : 'USDT'
-    const fmtAmt = (v: number): string => `${v >= 0 ? '+' : ''}${isBase ? v.toFixed(5) : v.toFixed(2)} ${unit}`
-    return result.trades.map((t) => {
-      const lines = [
-        `${t.realizedPnl > 0 ? '✓ Trade gagnant' : '✗ Trade perdant'} · ${fmtDate(t.entryTime)} → ${t.exitTime ? fmtDate(t.exitTime) : 'en cours'}`,
-        `Entrée @${t.avgEntryPrice.toPrecision(6)}${t.avgExitPrice !== null ? `  ·  Sortie @${t.avgExitPrice.toPrecision(6)}` : ''}`,
-        `P&L : ${fmtAmt(t.realizedPnl)} (${t.realizedPnlPct >= 0 ? '+' : ''}${t.realizedPnlPct.toFixed(1)}%)`,
-        t.entryReason ? `Entrée : ${t.entryReason}` : null,
-        t.exitReason ? `Sortie : ${t.exitReason}` : null,
-      ].filter((l): l is string => l !== null)
-      return { from: t.entryTime, to: t.exitTime ?? Number.POSITIVE_INFINITY, win: t.realizedPnl > 0, lines }
-    })
+    const p2 = (n: number): string => String(n).padStart(2, '0')
+    const compact = (t: number): string => {
+      const d = new Date(t)
+      return `${p2(d.getUTCDate())}/${p2(d.getUTCMonth() + 1)}/${String(d.getUTCFullYear()).slice(2)} ${p2(d.getUTCHours())}:${p2(d.getUTCMinutes())}`
+    }
+    return result.trades.map((t) => ({
+      from: t.entryTime,
+      to: t.exitTime ?? Number.POSITIVE_INFINITY,
+      win: t.realizedPnl > 0,
+      info: {
+        win: t.realizedPnl > 0,
+        pct: `${t.realizedPnlPct >= 0 ? '+' : ''}${t.realizedPnlPct.toFixed(1)}%`,
+        pnl: `${t.realizedPnl >= 0 ? '+' : ''}${isBase ? t.realizedPnl.toFixed(5) : t.realizedPnl.toFixed(2)} ${unit}`,
+        period: `${compact(t.entryTime)} → ${t.exitTime ? compact(t.exitTime) : 'en cours'}`,
+        prices: `Entrée @${t.avgEntryPrice.toPrecision(6)}${t.avgExitPrice !== null ? `  ·  Sortie @${t.avgExitPrice.toPrecision(6)}` : ''}`,
+        entryReason: t.entryReason,
+        exitReason: t.exitReason,
+      },
+    }))
   }, [result, run?.config.denomination])
 
   const view = useMemo(() => {

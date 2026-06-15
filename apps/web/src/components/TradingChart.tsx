@@ -31,6 +31,17 @@ export interface ChartMarker {
   text?: string
 }
 
+/** détail d'un trade affiché au survol de son bandeau (chaînes déjà formatées) */
+export interface TradeZoneInfo {
+  win: boolean
+  pct: string // "+9.4%"
+  pnl: string // "+0.14446 BTC"
+  period: string // "14/11 07:59 → 27/11 07:59"
+  prices: string // "Entrée @98632.8 · Sortie @90002.3"
+  entryReason?: string
+  exitReason?: string
+}
+
 /** entry/exit markers (with reasons) from round-trip trades */
 export function tradesToMarkers(trades: TradeRecord[]): ChartMarker[] {
   const out: ChartMarker[] = []
@@ -62,8 +73,8 @@ interface Props {
   markers?: ChartMarker[]
   annotations?: ChartAnnotation[]
   /** bandeaux translucides par trade (vert=gagnant, rouge=perdant), temps en ms.
-   *  `lines` = infos du trade affichées au survol du bandeau (entrée/sortie/P&L). */
-  tradeZones?: { from: number; to: number; win: boolean; lines?: string[] }[]
+   *  `info` = détail du trade affiché au survol du bandeau. */
+  tradeZones?: { from: number; to: number; win: boolean; info?: TradeZoneInfo }[]
   /** ws topic (candles:market:symbol:interval) for live updates */
   liveTopic?: string
   /** when set/changed, the chart scrolls to center this time (ms) */
@@ -86,7 +97,7 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
   const markersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null)
   const tradeZonesRef = useRef<TradeZonesPrimitive | null>(null)
   // zones de trade indexées par temps (s) pour l'infobulle au survol du bandeau
-  const zoneInfoRef = useRef<{ from: number; to: number; lines: string[] }[]>([])
+  const zoneInfoRef = useRef<{ from: number; to: number; info: TradeZoneInfo }[]>([])
   const priceLinesRef = useRef<IPriceLine[]>([])
   const fittedRef = useRef(false)
   // textes des marqueurs (raisons d'achat/vente) indexés par temps (s) — affichés
@@ -143,24 +154,44 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
     fittedRef.current = false
 
     // infobulle : au survol, on montre les infos du TRADE si le curseur est dans
-    // son bandeau (entrée/sortie/P&L, sur toute la durée du trade), puis les
-    // marqueurs éventuels (patterns, annotations). Sinon masquée.
+    // son bandeau (P&L % en gros/coloré en tête, puis dates/prix, puis raisons),
+    // suivies des marqueurs éventuels (patterns, annotations). Sinon masquée.
+    const esc = (s: string): string => s.replace(/</g, '&lt;')
     const onMove = (param: { time?: Time; point?: { x: number; y: number } }): void => {
       const tip = tooltipRef.current
       if (!tip) return
       const sec = param.time as number | undefined
-      const lines: string[] = []
-      if (sec !== undefined) {
-        const zone = zoneInfoRef.current.find((z) => sec >= z.from && sec <= z.to)
-        if (zone) lines.push(...zone.lines)
-        const markerTexts = markerTextsRef.current.get(sec)
-        if (markerTexts) lines.push(...markerTexts)
-      }
-      if (lines.length === 0 || !param.point) {
+      const zone = sec !== undefined ? zoneInfoRef.current.find((z) => sec >= z.from && sec <= z.to) : undefined
+      const markerTexts = sec !== undefined ? markerTextsRef.current.get(sec) : undefined
+      if ((!zone && !markerTexts) || !param.point) {
         tip.style.display = 'none'
         return
       }
-      tip.innerHTML = lines.map((t) => `<div>${t.replace(/</g, '&lt;')}</div>`).join('')
+      let html = ''
+      if (zone) {
+        const i = zone.info
+        const col = i.win ? '#26a69a' : '#ef5350'
+        const bg = i.win ? 'rgba(38,166,154,.14)' : 'rgba(239,83,80,.14)'
+        html +=
+          `<div style="display:flex;align-items:center;gap:8px">` +
+          `<span style="font-size:19px;font-weight:700;color:${col};line-height:1">${esc(i.pct)}</span>` +
+          `<span style="font-size:10px;letter-spacing:.07em;text-transform:uppercase;font-weight:700;color:${col};background:${bg};border-radius:5px;padding:2px 7px">${i.win ? 'Gagnant' : 'Perdant'}</span>` +
+          `<span style="margin-left:auto;font-size:13px;font-weight:600;color:${col}">${esc(i.pnl)}</span>` +
+          `</div>` +
+          `<div style="color:#6b7488;font-size:11px;margin-top:6px">${esc(i.period)}</div>` +
+          `<div style="color:#9aa3b5;font-size:12px;margin-top:1px">${esc(i.prices)}</div>`
+        if (i.entryReason || i.exitReason) {
+          html += `<div style="border-top:1px solid #2a3247;margin-top:8px;padding-top:7px;font-size:11.5px;color:#aab2c2;line-height:1.45">`
+          if (i.entryReason) html += `<div><span style="color:#6b7488;font-weight:600">Entrée&nbsp;·&nbsp;</span>${esc(i.entryReason)}</div>`
+          if (i.exitReason) html += `<div style="margin-top:4px"><span style="color:#6b7488;font-weight:600">Sortie&nbsp;·&nbsp;</span>${esc(i.exitReason)}</div>`
+          html += `</div>`
+        }
+      }
+      if (markerTexts) {
+        const sep = zone ? 'border-top:1px solid #2a3247;margin-top:8px;padding-top:7px;' : ''
+        html += `<div style="${sep}font-size:12px;color:#cfd5e2">${markerTexts.map((t) => `<div>${esc(t)}</div>`).join('')}</div>`
+      }
+      tip.innerHTML = html
       tip.style.display = 'block'
       const el = containerRef.current
       const w = el?.clientWidth ?? 0
@@ -384,11 +415,13 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
       from: snap(z.from),
       to: snap(lastOpen !== undefined ? Math.min(z.to, lastOpen) : z.to),
       win: z.win,
-      lines: z.lines ?? [],
+      info: z.info,
     }))
     prim.setZones(snapped.map(({ from, to, win }) => ({ from, to, win })))
     // index pour l'infobulle au survol (temps en secondes, mêmes bornes que le dessin)
-    zoneInfoRef.current = snapped.map((z) => ({ from: z.from as number, to: z.to as number, lines: z.lines }))
+    zoneInfoRef.current = snapped
+      .filter((z): z is typeof z & { info: TradeZoneInfo } => z.info !== undefined)
+      .map((z) => ({ from: z.from as number, to: z.to as number, info: z.info }))
   }, [tradeZones, candleWindow, candles])
 
   // ---- hline annotations as price lines
