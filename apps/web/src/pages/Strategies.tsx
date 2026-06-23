@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { RotateCcw } from 'lucide-react'
 import { api } from '../lib/api'
-import { Badge, Card, Empty } from '../components/ui'
+import { Badge, Card, Empty, PageHeader } from '../components/ui'
 
 export function Strategies() {
   const qc = useQueryClient()
@@ -13,23 +14,26 @@ export function Strategies() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-bold">Stratégies</h1>
-        <button className="btn-ghost" onClick={() => reload.mutate()} disabled={reload.isPending}>
-          ⟳ Recharger depuis le disque
-        </button>
-      </div>
-      <div className="text-sm text-zinc-500">
-        Les stratégies sont des fichiers TypeScript dans <code className="rounded bg-panel2 px-1">strategies/</code>. Même code en backtest et en
-        live.
-      </div>
+      <PageHeader
+        title="Stratégies"
+        subtitle={
+          <>
+            Fichiers TypeScript dans <code className="rounded bg-panel2 px-1 text-zinc-300">strategies/</code> — même code en backtest et en live.
+          </>
+        }
+        actions={
+          <button className="btn-ghost" onClick={() => reload.mutate()} disabled={reload.isPending}>
+            <RotateCcw size={15} /> Recharger
+          </button>
+        }
+      />
 
       {!strategies || strategies.length === 0 ? (
         <Empty>Aucune stratégie trouvée</Empty>
       ) : (
         <div className="grid grid-cols-2 gap-4">
           {strategies.map((s) => (
-            <Card key={s.id}>
+            <Card key={s.id} className="transition-colors hover:border-zinc-600">
               {s.error !== undefined ? (
                 <div>
                   <div className="font-semibold">{s.id}</div>

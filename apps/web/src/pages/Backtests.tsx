@@ -10,8 +10,9 @@ import {
 } from '@tpx/shared'
 import { api, type StrategyDTO } from '../lib/api'
 import { useProgress } from '../lib/ws'
+import { Plus, Trash2 } from 'lucide-react'
 import { dateToInputValue, fmtDate, fmtPct, inputValueToMs, pnlClass } from '../lib/format'
-import { Badge, Card, Empty, Field, Modal, ProgressBar } from '../components/ui'
+import { Badge, Card, Empty, Field, Modal, PageHeader, ProgressBar } from '../components/ui'
 import { ParamsForm } from '../components/ParamsForm'
 
 interface BtDraft {
@@ -108,18 +109,21 @@ export function Backtests() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-bold">Backtests</h1>
-        <button className="btn-primary" onClick={newDraft}>
-          + Nouveau backtest
-        </button>
-      </div>
+      <PageHeader
+        title="Backtests"
+        subtitle="Historique des simulations et leurs performances"
+        actions={
+          <button className="btn-primary" onClick={newDraft}>
+            <Plus size={16} /> Nouveau backtest
+          </button>
+        }
+      />
 
-      <Card>
+      <Card bodyClassName={!runs || runs.length === 0 ? 'p-4' : 'p-0'}>
         {!runs || runs.length === 0 ? (
           <Empty>Aucun backtest</Empty>
         ) : (
-          <table className="w-full">
+          <table>
             <thead>
               <tr>
                 <th>Label</th>
@@ -165,12 +169,12 @@ export function Backtests() {
                     <td>
                       <div className="flex justify-end gap-1.5">
                         {active ? (
-                          <button className="btn-ghost" onClick={() => act.mutate({ id: r.id, del: false })}>
+                          <button className="btn-ghost btn-sm" onClick={() => act.mutate({ id: r.id, del: false })}>
                             Annuler
                           </button>
                         ) : (
-                          <button className="btn-danger" onClick={() => confirm('Supprimer ce backtest ?') && act.mutate({ id: r.id, del: true })}>
-                            🗑
+                          <button className="btn-danger btn-sm btn-icon" title="Supprimer" onClick={() => confirm('Supprimer ce backtest ?') && act.mutate({ id: r.id, del: true })}>
+                            <Trash2 size={15} />
                           </button>
                         )}
                       </div>

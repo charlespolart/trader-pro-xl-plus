@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { DEFAULT_FEES, defaultParams, type MarketType, type ParamDef, type ParamValues } from '@tpx/shared'
 import { api, type StrategyDTO } from '../lib/api'
+import { Plus, Trash2 } from 'lucide-react'
 import { dateToInputValue, fmtDate, inputValueToMs } from '../lib/format'
-import { Badge, Card, Empty, Field, Modal, ProgressBar } from '../components/ui'
+import { Badge, Card, Empty, Field, Modal, PageHeader, ProgressBar } from '../components/ui'
 
 interface SweepRow {
   enabled: boolean
@@ -151,18 +152,21 @@ export function Optimizer() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-bold">Optimiseur</h1>
-        <button className="btn-primary" onClick={newDraft}>
-          + Nouvelle optimisation
-        </button>
-      </div>
+      <PageHeader
+        title="Optimiseur"
+        subtitle="Balayage de paramètres avec walk-forward anti-overfitting"
+        actions={
+          <button className="btn-primary" onClick={newDraft}>
+            <Plus size={16} /> Nouvelle optimisation
+          </button>
+        }
+      />
 
-      <Card>
+      <Card bodyClassName={!rows || rows.length === 0 ? 'p-4' : 'p-0'}>
         {!rows || rows.length === 0 ? (
           <Empty>Aucune optimisation</Empty>
         ) : (
-          <table className="w-full">
+          <table>
             <thead>
               <tr>
                 <th>Label</th>
@@ -197,12 +201,12 @@ export function Optimizer() {
                   <td>
                     <div className="flex justify-end gap-1.5">
                       {r.status === 'running' ? (
-                        <button className="btn-ghost" onClick={() => act.mutate({ id: r.id, del: false })}>
+                        <button className="btn-ghost btn-sm" onClick={() => act.mutate({ id: r.id, del: false })}>
                           Annuler
                         </button>
                       ) : (
-                        <button className="btn-danger" onClick={() => confirm('Supprimer ?') && act.mutate({ id: r.id, del: true })}>
-                          🗑
+                        <button className="btn-danger btn-sm btn-icon" title="Supprimer" onClick={() => confirm('Supprimer ?') && act.mutate({ id: r.id, del: true })}>
+                          <Trash2 size={15} />
                         </button>
                       )}
                     </div>

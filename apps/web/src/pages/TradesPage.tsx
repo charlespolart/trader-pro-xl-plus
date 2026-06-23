@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import type { TradeRecord } from '@tpx/shared'
 import { api } from '../lib/api'
 import { useBots } from '../lib/ws'
-import { Card } from '../components/ui'
+import { Card, PageHeader } from '../components/ui'
 import { TradesTable } from '../components/TradesTable'
 
 export function TradesPage() {
@@ -27,18 +27,21 @@ export function TradesPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-bold">Trades (réels & paper)</h1>
-        <select className="input w-64" value={botId} onChange={(e) => setBotId(e.target.value)}>
-          <option value="">Tous les bots</option>
-          {bots.map((b) => (
-            <option key={b.config.id} value={b.config.id}>
-              {b.config.name}
-            </option>
-          ))}
-        </select>
-      </div>
-      <Card>
+      <PageHeader
+        title="Trades"
+        subtitle="Trades réels & paper, tous bots confondus"
+        actions={
+          <select className="input w-56" value={botId} onChange={(e) => setBotId(e.target.value)}>
+            <option value="">Tous les bots</option>
+            {bots.map((b) => (
+              <option key={b.config.id} value={b.config.id}>
+                {b.config.name}
+              </option>
+            ))}
+          </select>
+        }
+      />
+      <Card bodyClassName="p-0">
         <TradesTable trades={records} />
       </Card>
     </div>

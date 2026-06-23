@@ -3,8 +3,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { INTERVALS, type Interval, type MarketType } from '@tpx/shared'
 import { api } from '../lib/api'
 import { useProgress } from '../lib/ws'
+import { Download } from 'lucide-react'
 import { dateToInputValue, fmtDate, fmtNum, inputValueToMs } from '../lib/format'
-import { Badge, Card, Empty, Field, ProgressBar } from '../components/ui'
+import { Badge, Card, Empty, Field, PageHeader, ProgressBar } from '../components/ui'
 
 export function DataManager() {
   const qc = useQueryClient()
@@ -46,11 +47,10 @@ export function DataManager() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-lg font-bold">Gestionnaire de données</h1>
-      <div className="text-sm text-zinc-500">
-        Les backtests téléchargent automatiquement ce qui leur manque. Cette page sert à pré-charger en masse (ZIP Binance Vision) et à
-        visualiser la couverture locale.
-      </div>
+      <PageHeader
+        title="Gestionnaire de données"
+        subtitle="Les backtests téléchargent ce qui leur manque. Ici : pré-chargement en masse (ZIP Binance Vision) et couverture locale."
+      />
 
       <Card title="Télécharger">
         <div className="flex flex-wrap items-end gap-3">
@@ -87,7 +87,7 @@ export function DataManager() {
             <input className="input w-40" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
           </Field>
           <button className="btn-primary" onClick={() => submit.mutate()} disabled={submit.isPending}>
-            ⇩ Télécharger
+            <Download size={16} /> Télécharger
           </button>
         </div>
       </Card>
@@ -127,11 +127,11 @@ export function DataManager() {
         </Card>
       </div>
 
-      <Card title="Téléchargements">
+      <Card title="Téléchargements" bodyClassName={!jobs || jobs.length === 0 ? 'p-4' : 'p-0'}>
         {!jobs || jobs.length === 0 ? (
           <Empty>Aucun téléchargement</Empty>
         ) : (
-          <table className="w-full">
+          <table>
             <thead>
               <tr>
                 <th>Label</th>

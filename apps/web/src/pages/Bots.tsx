@@ -4,8 +4,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { defaultParams, type BotConfig, type BotRiskConfig, type MarketType, type ParamValues } from '@tpx/shared'
 import { api, type StrategyDTO } from '../lib/api'
 import { useBots } from '../lib/ws'
+import { Pencil, Play, Plus, Square, Trash2 } from 'lucide-react'
 import { fmtNum, pnlClass } from '../lib/format'
-import { Badge, Card, Empty, Field, Modal } from '../components/ui'
+import { Badge, Card, Empty, Field, Modal, PageHeader } from '../components/ui'
 import { ParamsForm } from '../components/ParamsForm'
 
 interface BotDraft {
@@ -94,18 +95,21 @@ export function Bots() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-bold">Bots</h1>
-        <button className="btn-primary" onClick={newDraft}>
-          + Nouveau bot
-        </button>
-      </div>
+      <PageHeader
+        title="Bots"
+        subtitle="Configurez et pilotez vos bots de trading (paper, testnet, live)"
+        actions={
+          <button className="btn-primary" onClick={newDraft}>
+            <Plus size={16} /> Nouveau bot
+          </button>
+        }
+      />
 
-      <Card>
+      <Card bodyClassName={infos.length === 0 ? 'p-4' : 'p-0'}>
         {infos.length === 0 ? (
           <Empty>Aucun bot configuré</Empty>
         ) : (
-          <table className="w-full">
+          <table>
             <thead>
               <tr>
                 <th>Nom</th>
@@ -144,37 +148,38 @@ export function Bots() {
                       <div className="flex justify-end gap-1.5">
                         {stopped && (
                           <>
-                            <button className="btn-success" onClick={() => action.mutate({ id: b.config.id, act: 'start' })}>
-                              ▶
+                            <button className="btn-success btn-sm btn-icon" title="Démarrer" onClick={() => action.mutate({ id: b.config.id, act: 'start' })}>
+                              <Play size={15} />
                             </button>
-                            <button className="btn-ghost" onClick={() => editDraft(b.config)}>
-                              ✎
+                            <button className="btn btn-sm btn-icon" title="Modifier" onClick={() => editDraft(b.config)}>
+                              <Pencil size={15} />
                             </button>
                             <button
-                              className="btn-danger"
+                              className="btn-danger btn-sm btn-icon"
+                              title="Supprimer"
                               onClick={() => confirm(`Supprimer le bot "${b.config.name}" ?`) && action.mutate({ id: b.config.id, act: 'delete' })}
                             >
-                              🗑
+                              <Trash2 size={15} />
                             </button>
                           </>
                         )}
                         {b.status === 'paused_risk' && (
-                          <button className="btn-ghost" onClick={() => action.mutate({ id: b.config.id, act: 'resume' })}>
+                          <button className="btn-ghost btn-sm" onClick={() => action.mutate({ id: b.config.id, act: 'resume' })}>
                             Reprendre
                           </button>
                         )}
                         {!stopped && (
                           <>
-                            <button className="btn-ghost" onClick={() => action.mutate({ id: b.config.id, act: 'stop' })}>
-                              ⏹ Stop
+                            <button className="btn-ghost btn-sm" onClick={() => action.mutate({ id: b.config.id, act: 'stop' })}>
+                              <Square size={14} /> Stop
                             </button>
                             <button
-                              className="btn-danger"
+                              className="btn-danger btn-sm"
                               onClick={() =>
                                 confirm('Arrêter ET fermer la position au marché ?') && action.mutate({ id: b.config.id, act: 'stop-close' })
                               }
                             >
-                              ⏹ + Fermer
+                              <Square size={14} /> Fermer
                             </button>
                           </>
                         )}
