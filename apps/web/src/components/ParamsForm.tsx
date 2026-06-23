@@ -23,9 +23,11 @@ export function ParamsForm({ schema, values, onChange }: Props) {
       {[...groups.entries()].map(([group, defs]) => (
         <div key={group}>
           <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">{group}</div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="columns-2 gap-x-3">
             {defs.map(([key, def]) => (
-              <ParamField key={key} name={key} def={def} value={values[key] ?? def.default} onChange={(v) => set(key, v)} />
+              <div key={key} className="mb-3 break-inside-avoid">
+                <ParamField name={key} def={def} value={values[key] ?? def.default} onChange={(v) => set(key, v)} />
+              </div>
             ))}
           </div>
         </div>
@@ -54,7 +56,7 @@ function ParamField({ name, def, value, onChange }: { name: string; def: ParamDe
       )
     case 'bool':
       return (
-        <label className="flex cursor-pointer items-center gap-2 self-end py-2 text-sm text-zinc-300">
+        <label className="flex cursor-pointer items-center gap-2 py-2 text-sm text-zinc-300">
           <input type="checkbox" checked={Boolean(value)} onChange={(e) => onChange(e.target.checked)} className="accent-blue-500" />
           {label}
         </label>
