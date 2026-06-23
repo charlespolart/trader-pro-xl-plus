@@ -7,6 +7,7 @@ import { useBots } from '../lib/ws'
 import { Pencil, Play, Plus, Square, Trash2 } from 'lucide-react'
 import { fmtNum, pnlClass } from '../lib/format'
 import { Badge, Card, Empty, Field, Modal, PageHeader } from '../components/ui'
+import { alertDialog, confirmDialog } from '../components/dialog'
 import { ParamsForm } from '../components/ParamsForm'
 
 interface BotDraft {
@@ -56,13 +57,13 @@ export function Bots() {
       const list = await api.bots()
       useBots.getState().setAll(list)
     },
-    onError: (e) => alert(e instanceof Error ? e.message : String(e)),
+    onError: (e) => void alertDialog({ title: 'Erreur', message: e instanceof Error ? e.message : String(e), tone: 'danger' }),
   })
 
   const newDraft = (): void => {
     const s = strategies?.find((x) => !x.error)
     if (!s) {
-      alert('Aucune stratégie valide disponible')
+      void alertDialog({ message: 'Aucune stratégie valide disponible.' })
       return
     }
     setDraft({
@@ -157,7 +158,10 @@ export function Bots() {
                             <button
                               className="btn-danger btn-sm btn-icon"
                               title="Supprimer"
-                              onClick={() => confirm(`Supprimer le bot "${b.config.name}" ?`) && action.mutate({ id: b.config.id, act: 'delete' })}
+                              onClick={async () => {
+                                if (await confirmDialog({ title: 'Supprimer le bot', message: `Supprimer définitivement « ${b.config.name} » ?`, confirmLabel: 'Supprimer', tone: 'danger' }))
+                                  action.mutate({ id: b.config.id, act: 'delete' })
+                              }}
                             >
                               <Trash2 size={15} />
                             </button>
@@ -175,9 +179,10 @@ export function Bots() {
                             </button>
                             <button
                               className="btn-danger btn-sm"
-                              onClick={() =>
-                                confirm('Arrêter ET fermer la position au marché ?') && action.mutate({ id: b.config.id, act: 'stop-close' })
-                              }
+                              onClick={async () => {
+                                if (await confirmDialog({ title: 'Fermer la position', message: 'Arrêter le bot ET fermer sa position au marché ?', confirmLabel: 'Arrêter & fermer', tone: 'danger' }))
+                                  action.mutate({ id: b.config.id, act: 'stop-close' })
+                              }}
                             >
                               <Square size={14} /> Fermer
                             </button>

@@ -7,6 +7,7 @@ import { useBots, wsClient } from '../lib/ws'
 import { Check, ChevronLeft, Play } from 'lucide-react'
 import { fmtDate, fmtNum, fmtPrice, pnlClass } from '../lib/format'
 import { Badge, Card, Empty, Field, PageHeader, Stat } from '../components/ui'
+import { alertDialog } from '../components/dialog'
 import { TradingChart } from '../components/TradingChart'
 import { TradesTable } from '../components/TradesTable'
 
@@ -209,13 +210,13 @@ function RefitCard({ botId }: { botId: string }) {
       return api.setRefitConfig(botId, { ...draft!, space })
     },
     onSuccess: invalidate,
-    onError: (e) => alert(e instanceof Error ? e.message : String(e)),
+    onError: (e) => void alertDialog({ title: 'Erreur', message: e instanceof Error ? e.message : String(e), tone: 'danger' }),
   })
   const runNow = useMutation({ mutationFn: () => api.runRefit(botId), onSuccess: invalidate })
   const apply = useMutation({
     mutationFn: () => api.applyRefit(botId),
     onSuccess: (r) => {
-      if (!r.applied) alert('Non appliqué : le bot a une position ouverte — réessayez quand il est flat.')
+      if (!r.applied) void alertDialog({ title: 'Refit non appliqué', message: 'Le bot a une position ouverte — réessayez quand il est à plat.' })
       invalidate()
     },
   })

@@ -5,6 +5,7 @@ import { api } from '../lib/api'
 import { useBots } from '../lib/ws'
 import { fmtNum, fmtPct, fmtPrice, pnlClass } from '../lib/format'
 import { Badge, Card, Empty, PageHeader, Stat } from '../components/ui'
+import { confirmDialog } from '../components/dialog'
 
 export function Dashboard() {
   const bots = Object.values(useBots((s) => s.infos))
@@ -27,10 +28,36 @@ export function Dashboard() {
         subtitle="Vue d'ensemble des bots et des derniers backtests"
         actions={
           <>
-            <button className="btn-danger" onClick={() => confirm('Activer le kill switch ? (les positions restent ouvertes)') && kill.mutate(false)}>
+            <button
+              className="btn-danger"
+              onClick={async () => {
+                if (
+                  await confirmDialog({
+                    title: 'Kill switch',
+                    message: 'Arrêter tous les bots ? Les positions ouvertes sont conservées.',
+                    confirmLabel: 'Activer',
+                    tone: 'danger',
+                  })
+                )
+                  kill.mutate(false)
+              }}
+            >
               <OctagonAlert size={16} /> Kill switch
             </button>
-            <button className="btn-kill" onClick={() => confirm('Kill switch + FERMETURE de toutes les positions au marché ?') && kill.mutate(true)}>
+            <button
+              className="btn-kill"
+              onClick={async () => {
+                if (
+                  await confirmDialog({
+                    title: 'Tout fermer',
+                    message: 'Arrêter tous les bots ET fermer toutes les positions au marché ? Action immédiate et irréversible.',
+                    confirmLabel: 'Tout fermer',
+                    tone: 'danger',
+                  })
+                )
+                  kill.mutate(true)
+              }}
+            >
               <Power size={16} /> Tout fermer
             </button>
           </>

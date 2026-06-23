@@ -6,6 +6,7 @@ import { api, type StrategyDTO } from '../lib/api'
 import { Plus, Trash2 } from 'lucide-react'
 import { dateToInputValue, fmtDate, inputValueToMs } from '../lib/format'
 import { Badge, Card, Empty, Field, Modal, PageHeader, ProgressBar } from '../components/ui'
+import { confirmDialog } from '../components/dialog'
 
 interface SweepRow {
   enabled: boolean
@@ -205,7 +206,14 @@ export function Optimizer() {
                           Annuler
                         </button>
                       ) : (
-                        <button className="btn-danger btn-sm btn-icon" title="Supprimer" onClick={() => confirm('Supprimer ?') && act.mutate({ id: r.id, del: true })}>
+                        <button
+                          className="btn-danger btn-sm btn-icon"
+                          title="Supprimer"
+                          onClick={async () => {
+                            if (await confirmDialog({ title: "Supprimer l'optimisation", message: 'Supprimer cette optimisation et ses résultats ?', confirmLabel: 'Supprimer', tone: 'danger' }))
+                              act.mutate({ id: r.id, del: true })
+                          }}
+                        >
                           <Trash2 size={15} />
                         </button>
                       )}

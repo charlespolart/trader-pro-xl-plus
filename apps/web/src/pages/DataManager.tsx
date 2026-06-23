@@ -6,6 +6,7 @@ import { useProgress } from '../lib/ws'
 import { Download } from 'lucide-react'
 import { dateToInputValue, fmtDate, fmtNum, inputValueToMs } from '../lib/format'
 import { Badge, Card, Empty, Field, PageHeader, ProgressBar } from '../components/ui'
+import { alertDialog } from '../components/dialog'
 
 export function DataManager() {
   const qc = useQueryClient()
@@ -37,7 +38,7 @@ export function DataManager() {
           : { kind, market, symbol, start: inputValueToMs(from), end: inputValueToMs(to) + 86_400_000 },
       ),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['download-jobs'] }),
-    onError: (e) => alert(e instanceof Error ? e.message : String(e)),
+    onError: (e) => void alertDialog({ title: 'Erreur', message: e instanceof Error ? e.message : String(e), tone: 'danger' }),
   })
 
   const cancel = useMutation({

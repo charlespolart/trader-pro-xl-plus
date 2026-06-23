@@ -14,10 +14,12 @@ import { PatternLab } from './pages/PatternLab'
 import { DataManager } from './pages/DataManager'
 import { TradesPage } from './pages/TradesPage'
 import { Settings } from './pages/Settings'
+import { DialogHost } from './components/dialog'
 
 export default function App() {
   return (
-    <Routes>
+    <>
+      <Routes>
       <Route path="/login" element={<Login />} />
       <Route element={<Layout />}>
         <Route path="/" element={<Dashboard />} />
@@ -35,6 +37,8 @@ export default function App() {
         <Route path="/settings" element={<Settings />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
-    </Routes>
+      </Routes>
+      <DialogHost />
+    </>
   )
 }

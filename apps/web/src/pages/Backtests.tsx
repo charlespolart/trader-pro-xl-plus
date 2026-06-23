@@ -13,6 +13,7 @@ import { useProgress } from '../lib/ws'
 import { Plus, Trash2 } from 'lucide-react'
 import { dateToInputValue, fmtDate, fmtPct, inputValueToMs, pnlClass } from '../lib/format'
 import { Badge, Card, Empty, Field, Modal, PageHeader, ProgressBar } from '../components/ui'
+import { confirmDialog } from '../components/dialog'
 import { ParamsForm } from '../components/ParamsForm'
 
 interface BtDraft {
@@ -173,7 +174,14 @@ export function Backtests() {
                             Annuler
                           </button>
                         ) : (
-                          <button className="btn-danger btn-sm btn-icon" title="Supprimer" onClick={() => confirm('Supprimer ce backtest ?') && act.mutate({ id: r.id, del: true })}>
+                          <button
+                            className="btn-danger btn-sm btn-icon"
+                            title="Supprimer"
+                            onClick={async () => {
+                              if (await confirmDialog({ title: 'Supprimer le backtest', message: 'Supprimer ce backtest et ses résultats ?', confirmLabel: 'Supprimer', tone: 'danger' }))
+                                act.mutate({ id: r.id, del: true })
+                            }}
+                          >
                             <Trash2 size={15} />
                           </button>
                         )}

@@ -5,6 +5,7 @@ import { api, type PatternScanResult } from '../lib/api'
 import { ChevronLeft, ChevronRight, Search } from 'lucide-react'
 import { dateToInputValue, fmtDate, inputValueToMs } from '../lib/format'
 import { Card, Empty, Field, PageHeader, Spinner } from '../components/ui'
+import { alertDialog } from '../components/dialog'
 import { TradingChart, type ChartMarker } from '../components/TradingChart'
 
 /**
@@ -47,7 +48,7 @@ export function PatternLab() {
       setCursor(0)
       setFocusTime(undefined)
     },
-    onError: (e) => alert(e instanceof Error ? e.message : String(e)),
+    onError: (e) => void alertDialog({ title: 'Erreur', message: e instanceof Error ? e.message : String(e), tone: 'danger' }),
   })
 
   const filtered = useMemo(() => {

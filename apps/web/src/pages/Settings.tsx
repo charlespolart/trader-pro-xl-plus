@@ -5,6 +5,7 @@ import { OctagonAlert, Power } from 'lucide-react'
 import { api } from '../lib/api'
 import { fmtNum } from '../lib/format'
 import { Badge, Card, Field, PageHeader } from '../components/ui'
+import { alertDialog, confirmDialog } from '../components/dialog'
 
 export function Settings() {
   const qc = useQueryClient()
@@ -82,7 +83,7 @@ function CredentialsCard({ name, title, configured, onDone }: { name: 'live' | '
       setSecret('')
       onDone()
     },
-    onError: (e) => alert(e instanceof Error ? e.message : String(e)),
+    onError: (e) => void alertDialog({ title: 'Erreur', message: e instanceof Error ? e.message : String(e), tone: 'danger' }),
   })
   const remove = useMutation({ mutationFn: () => api.deleteCredentials(name), onSuccess: onDone })
 
@@ -106,7 +107,12 @@ function CredentialsCard({ name, title, configured, onDone }: { name: 'live' | '
       )}
       <div className="mt-auto flex justify-end gap-2 pt-1">
         {configured && (
-          <button className="btn-danger" onClick={() => confirm('Supprimer ces clés ?') && remove.mutate()}>
+          <button
+            className="btn-danger"
+            onClick={async () => {
+              if (await confirmDialog({ title: 'Supprimer les clés', message: 'Supprimer ces clés API ?', confirmLabel: 'Supprimer', tone: 'danger' })) remove.mutate()
+            }}
+          >
             Supprimer
           </button>
         )}
@@ -168,12 +174,21 @@ function RiskCard({
             </button>
           ) : (
             <>
-              <button className="btn-danger" onClick={() => confirm('Activer le kill switch ?') && kill.mutate({ active: true, close: false })}>
+              <button
+                className="btn-danger"
+                onClick={async () => {
+                  if (await confirmDialog({ title: 'Kill switch', message: 'Arrêter tous les bots ? Les positions ouvertes sont conservées.', confirmLabel: 'Activer', tone: 'danger' }))
+                    kill.mutate({ active: true, close: false })
+                }}
+              >
                 <OctagonAlert size={16} /> Kill switch
               </button>
               <button
                 className="btn-kill"
-                onClick={() => confirm('Kill switch + fermeture de TOUTES les positions ?') && kill.mutate({ active: true, close: true })}
+                onClick={async () => {
+                  if (await confirmDialog({ title: 'Tout fermer', message: 'Arrêter tous les bots ET fermer toutes les positions au marché ? Action immédiate et irréversible.', confirmLabel: 'Tout fermer', tone: 'danger' }))
+                    kill.mutate({ active: true, close: true })
+                }}
               >
                 <Power size={16} /> Tout fermer
               </button>
