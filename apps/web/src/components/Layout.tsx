@@ -1,20 +1,33 @@
 import { useEffect } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  ArrowLeftRight,
+  Bot,
+  CandlestickChart,
+  Database,
+  FunctionSquare,
+  History,
+  LayoutDashboard,
+  OctagonAlert,
+  Settings,
+  SlidersHorizontal,
+  type LucideIcon,
+} from 'lucide-react'
 import { api } from '../lib/api'
 import { useBots, useConnection, wsClient } from '../lib/ws'
 import { fmtNum } from '../lib/format'
 
-const nav = [
-  { to: '/', label: 'Dashboard', icon: '◧' },
-  { to: '/bots', label: 'Bots', icon: '🤖' },
-  { to: '/strategies', label: 'Stratégies', icon: 'ƒ' },
-  { to: '/backtests', label: 'Backtests', icon: '⏮' },
-  { to: '/optimizer', label: 'Optimiseur', icon: '◬' },
-  { to: '/patterns', label: 'Patterns', icon: '⧗' },
-  { to: '/trades', label: 'Trades', icon: '⇄' },
-  { to: '/data', label: 'Données', icon: '⛁' },
-  { to: '/settings', label: 'Réglages', icon: '⚙' },
+const nav: { to: string; label: string; icon: LucideIcon }[] = [
+  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/bots', label: 'Bots', icon: Bot },
+  { to: '/strategies', label: 'Stratégies', icon: FunctionSquare },
+  { to: '/backtests', label: 'Backtests', icon: History },
+  { to: '/optimizer', label: 'Optimiseur', icon: SlidersHorizontal },
+  { to: '/patterns', label: 'Patterns', icon: CandlestickChart },
+  { to: '/trades', label: 'Trades', icon: ArrowLeftRight },
+  { to: '/data', label: 'Données', icon: Database },
+  { to: '/settings', label: 'Réglages', icon: Settings },
 ]
 
 export function Layout() {
@@ -47,28 +60,28 @@ export function Layout() {
 
   return (
     <div className="flex h-full">
-      <aside className="flex w-52 shrink-0 flex-col border-r border-edge bg-panel">
-        <div className="px-4 py-4 text-base font-bold tracking-tight">
+      <aside className="flex w-56 shrink-0 flex-col border-r border-edge bg-panel">
+        <div className="px-5 py-5 text-base font-bold tracking-tight">
           Trader <span className="text-accent">Pro XL+</span>
         </div>
-        <nav className="flex-1 space-y-0.5 px-2">
+        <nav className="flex-1 space-y-0.5 px-3">
           {nav.map((n) => (
             <NavLink
               key={n.to}
               to={n.to}
               end={n.to === '/'}
               className={({ isActive }) =>
-                `flex items-center gap-2.5 rounded-md px-3 py-2 text-sm ${
-                  isActive ? 'bg-accent/15 text-accent' : 'text-zinc-400 hover:bg-panel2 hover:text-zinc-200'
+                `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  isActive ? 'bg-accent/10 text-accent' : 'text-zinc-400 hover:bg-panel2/70 hover:text-zinc-100'
                 }`
               }
             >
-              <span className="w-4 text-center">{n.icon}</span>
+              <n.icon size={18} strokeWidth={2} className="shrink-0" />
               {n.label}
             </NavLink>
           ))}
         </nav>
-        <div className="space-y-2 border-t border-edge p-3 text-xs text-zinc-500">
+        <div className="space-y-2 border-t border-edge px-4 py-3 text-xs text-zinc-500">
           <div className="flex items-center gap-2">
             <span className={`h-2 w-2 rounded-full ${connected ? 'bg-up' : 'bg-down'}`} />
             {connected ? 'Connecté' : 'Déconnecté'}
@@ -82,14 +95,16 @@ export function Layout() {
 
       <div className="flex min-w-0 flex-1 flex-col">
         {account?.killSwitchActive && (
-          <div className="flex items-center justify-between bg-down/20 px-4 py-2 text-sm text-down">
-            <span className="font-semibold">🛑 KILL SWITCH ACTIF — tous les bots sont arrêtés</span>
-            <button className="btn-ghost" onClick={() => kill.mutate()} disabled={kill.isPending}>
+          <div className="flex items-center justify-between gap-4 border-b border-down/30 bg-down/15 px-5 py-2.5 text-sm text-down">
+            <span className="flex items-center gap-2 font-semibold">
+              <OctagonAlert size={16} /> Kill switch actif — tous les bots sont arrêtés
+            </span>
+            <button className="btn-ghost btn-sm" onClick={() => kill.mutate()} disabled={kill.isPending}>
               Désactiver
             </button>
           </div>
         )}
-        <main className="min-h-0 flex-1 overflow-y-auto p-5">
+        <main className="min-h-0 flex-1 overflow-y-auto p-6">
           <Outlet />
         </main>
       </div>
