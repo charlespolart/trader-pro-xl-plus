@@ -88,8 +88,7 @@ export function PatternLab() {
       />
 
       <Card>
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-end gap-3">
+        <div className="flex flex-wrap items-end gap-3">
           <Field label="Marché">
             <select className="input w-28" value={market} onChange={(e) => setMarket(e.target.value as MarketType)}>
               <option value="spot">spot</option>
@@ -135,12 +134,9 @@ export function PatternLab() {
           <Field label="Tendance min (%)">
             <input className="input w-20" type="number" step="0.1" value={trendMinPct} onChange={(e) => setTrendMinPct(e.target.value)} />
           </Field>
-          </div>
-          <div className="flex justify-end">
-            <button className="btn-primary" onClick={() => scan.mutate()} disabled={scan.isPending}>
-              {scan.isPending ? <Spinner /> : <Search size={16} />} Scanner
-            </button>
-          </div>
+          <button className="btn-primary ml-auto" onClick={() => scan.mutate()} disabled={scan.isPending}>
+            {scan.isPending ? <Spinner /> : <Search size={16} />} Scanner
+          </button>
         </div>
       </Card>
 

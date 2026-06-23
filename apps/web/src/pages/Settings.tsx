@@ -22,7 +22,7 @@ export function Settings() {
     <div className="space-y-5">
       <PageHeader title="Réglages" subtitle="Clés API, risque global, frais de paper trading et état du système" />
 
-      <div className="grid grid-cols-2 items-start gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <CredentialsCard name="live" title="Clés API Binance — LIVE" configured={settings?.credentials.live ?? false} onDone={invalidate} />
         <CredentialsCard name="testnet" title="Clés API Binance — Testnet" configured={settings?.credentials.testnet ?? false} onDone={invalidate} />
       </div>
@@ -87,29 +87,32 @@ function CredentialsCard({ name, title, configured, onDone }: { name: 'live' | '
   const remove = useMutation({ mutationFn: () => api.deleteCredentials(name), onSuccess: onDone })
 
   return (
-    <Card title={title} actions={<Badge value={configured ? 'running' : 'stopped'} label={configured ? 'configurées' : 'absentes'} />}>
-      <div className="space-y-3">
-        <Field label="API Key">
-          <input className="input" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder={configured ? '••••••••' : ''} />
-        </Field>
-        <Field label="Secret">
-          <input className="input" type="password" value={secret} onChange={(e) => setSecret(e.target.value)} placeholder={configured ? '••••••••' : ''} />
-        </Field>
-        {name === 'live' && (
-          <div className="text-[11px] text-zinc-500">
-            Conseil : créez une clé restreinte (trading uniquement, pas de retrait) avec whitelist IP de votre VPS.
-          </div>
-        )}
-        <div className="flex justify-end gap-2">
-          {configured && (
-            <button className="btn-danger" onClick={() => confirm('Supprimer ces clés ?') && remove.mutate()}>
-              Supprimer
-            </button>
-          )}
-          <button className="btn-primary" onClick={() => save.mutate()} disabled={apiKey === '' || secret === '' || save.isPending}>
-            Enregistrer (chiffré)
-          </button>
+    <Card
+      title={title}
+      actions={<Badge value={configured ? 'running' : 'stopped'} label={configured ? 'configurées' : 'absentes'} />}
+      className="flex flex-col"
+      bodyClassName="flex flex-1 flex-col gap-3 p-4"
+    >
+      <Field label="API Key">
+        <input className="input" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder={configured ? '••••••••' : ''} />
+      </Field>
+      <Field label="Secret">
+        <input className="input" type="password" value={secret} onChange={(e) => setSecret(e.target.value)} placeholder={configured ? '••••••••' : ''} />
+      </Field>
+      {name === 'live' && (
+        <div className="text-[11px] text-zinc-500">
+          Conseil : créez une clé restreinte (trading uniquement, pas de retrait) avec whitelist IP de votre VPS.
         </div>
+      )}
+      <div className="mt-auto flex justify-end gap-2 pt-1">
+        {configured && (
+          <button className="btn-danger" onClick={() => confirm('Supprimer ces clés ?') && remove.mutate()}>
+            Supprimer
+          </button>
+        )}
+        <button className="btn-primary" onClick={() => save.mutate()} disabled={apiKey === '' || secret === '' || save.isPending}>
+          Enregistrer (chiffré)
+        </button>
       </div>
     </Card>
   )

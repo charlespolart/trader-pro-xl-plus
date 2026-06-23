@@ -15,94 +15,98 @@
   --color-accent: #3b82f6;
 }
 
-html,
-body,
-#root {
-  height: 100%;
+/* Base element styles live in @layer base so Tailwind utilities (e.g. text-right
+   on a <th>) always win — unlayered rules would otherwise override utilities. */
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-surface text-zinc-200 antialiased;
+    font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    font-feature-settings: 'tnum' 1; /* tabular numbers across the app */
+  }
+
+  ::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #2c3548;
+    border-radius: 5px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #3a455c;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  table {
+    @apply w-full border-collapse;
+  }
+  thead th {
+    @apply text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-500 px-3 py-2.5 border-b border-edge whitespace-nowrap;
+  }
+  tbody td {
+    @apply px-3 py-2.5 text-sm text-zinc-300 border-b border-edge/50 whitespace-nowrap;
+  }
+  tbody tr {
+    @apply transition-colors hover:bg-panel2/40;
+  }
+  tbody tr:last-child td {
+    @apply border-b-0;
+  }
 }
 
-body {
-  @apply bg-surface text-zinc-200 antialiased;
-  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  font-feature-settings: 'tnum' 1; /* tabular numbers across the app */
-}
+/* Component classes in @layer components so utility classes can still override
+   them on individual elements (e.g. `card` + `hover:border-zinc-600`). */
+@layer components {
+  .card {
+    @apply bg-panel border border-edge rounded-xl;
+  }
 
-::-webkit-scrollbar {
-  width: 9px;
-  height: 9px;
-}
-::-webkit-scrollbar-thumb {
-  background: #2c3548;
-  border-radius: 5px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #3a455c;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
+  .input,
+  select.input {
+    @apply w-full bg-panel2 border border-edge rounded-lg px-3 py-2 text-sm text-zinc-100 outline-none transition-colors placeholder:text-zinc-500 focus:border-accent;
+  }
+  .label {
+    @apply block text-xs font-medium text-zinc-400 mb-1.5;
+  }
 
-/* --- Surfaces --- */
-.card {
-  @apply bg-panel border border-edge rounded-xl;
-}
-
-/* --- Form controls --- */
-.input,
-select.input {
-  @apply w-full bg-panel2 border border-edge rounded-lg px-3 py-2 text-sm text-zinc-100 outline-none transition-colors placeholder:text-zinc-500 focus:border-accent;
-}
-.label {
-  @apply block text-xs font-medium text-zinc-400 mb-1.5;
-}
-
-/* --- Buttons: one loud action (kill), everything else restrained --- */
-.btn,
-.btn-primary,
-.btn-ghost,
-.btn-danger,
-.btn-success,
-.btn-kill {
-  @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors cursor-pointer select-none disabled:opacity-40 disabled:cursor-not-allowed;
-}
-.btn {
-  @apply bg-panel2 border border-edge text-zinc-200 hover:border-zinc-500 hover:text-white;
-}
-.btn-primary {
-  @apply bg-accent text-white hover:bg-blue-500;
-}
-.btn-ghost {
-  @apply bg-transparent border border-edge text-zinc-300 hover:bg-panel2 hover:text-white;
-}
-.btn-danger {
-  @apply bg-transparent border border-down/40 text-down hover:bg-down hover:text-white hover:border-down;
-}
-.btn-success {
-  @apply bg-up text-white hover:brightness-110;
-}
-.btn-kill {
-  @apply bg-down text-white border border-down hover:brightness-110;
-}
-.btn-sm {
-  @apply px-2.5 py-1.5 text-xs gap-1;
-}
-.btn-icon {
-  @apply h-8 w-8 p-0;
-}
-
-/* --- Tables --- */
-table {
-  @apply w-full border-collapse;
-}
-thead th {
-  @apply text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-500 px-3 py-2.5 border-b border-edge whitespace-nowrap;
-}
-tbody td {
-  @apply px-3 py-2.5 text-sm text-zinc-300 border-b border-edge/50 whitespace-nowrap;
-}
-tbody tr {
-  @apply transition-colors hover:bg-panel2/40;
-}
-tbody tr:last-child td {
-  @apply border-b-0;
+  .btn,
+  .btn-primary,
+  .btn-ghost,
+  .btn-danger,
+  .btn-success,
+  .btn-kill {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors cursor-pointer select-none disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+  .btn {
+    @apply bg-panel2 border border-edge text-zinc-200 hover:border-zinc-500 hover:text-white;
+  }
+  .btn-primary {
+    @apply bg-accent text-white hover:bg-blue-500;
+  }
+  .btn-ghost {
+    @apply bg-transparent border border-edge text-zinc-300 hover:bg-panel2 hover:text-white;
+  }
+  .btn-danger {
+    @apply bg-transparent border border-down/40 text-down hover:bg-down hover:text-white hover:border-down;
+  }
+  .btn-success {
+    @apply bg-up text-white hover:brightness-110;
+  }
+  .btn-kill {
+    @apply bg-down text-white border border-down hover:brightness-110;
+  }
+  .btn-sm {
+    @apply px-2.5 py-1.5 text-xs gap-1;
+  }
+  .btn-icon {
+    @apply h-8 w-8 p-0;
+  }
 }
