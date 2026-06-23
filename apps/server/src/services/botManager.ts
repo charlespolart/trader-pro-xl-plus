@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { eq } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import {
   bots as botsTable,
   botState as botStateTable,
@@ -33,7 +33,7 @@ import { BinanceAccount, BinanceMarketData, BinanceRest, CandleStore } from '@tp
 import { hub } from '../wsHub'
 import { registry } from '../strategies'
 import { liveFeeds } from './liveFeeds'
-import { BinanceLiveAdapter, UserStreamRouter } from './liveAdapter'
+import { BinanceLiveAdapter, UserStreamRouter, type RestingOrderRef } from './liveAdapter'
 import { sendTelegram } from './telegram'
 import type { CredentialsService } from './credentials'
 import type { SettingsService } from './settings'
@@ -258,7 +258,27 @@ class BotRunner {
     }
 
     if (this.rawExec instanceof BinanceLiveAdapter) {
-      const notes = await this.rawExec.reconcile()
+      // ordres au REPOS connus du bot (DB) → reconcile pourra rattraper un fill
+      // survenu pendant l'arrêt (ex. le stop de rachat déclenché alors que le
+      // bot était down). Spot uniquement utile, mais inoffensif sinon.
+      const restingRows = await db
+        .select()
+        .from(ordersTable)
+        .where(
+          and(
+            eq(ordersTable.botId, config.id),
+            inArray(ordersTable.status, ['NEW', 'TRIGGER_PENDING', 'PARTIALLY_FILLED']),
+          ),
+        )
+      const resting: RestingOrderRef[] = restingRows
+        .filter((o) => o.side === 'BUY' || o.side === 'SELL')
+        .map((o) => ({
+          clientId: o.clientId,
+          side: o.side as 'BUY' | 'SELL',
+          executedQty: o.executedQty,
+          cumQuote: o.cumQuote,
+        }))
+      const notes = await this.rawExec.reconcile(resting)
       for (const n of notes) this.pushLog({ time: Date.now(), level: 'warn', message: `Réconciliation: ${n}` })
     }
 

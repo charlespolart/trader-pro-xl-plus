@@ -44,6 +44,17 @@ export function clientPrefix(botId: string): string {
   return `tpx_${botId.replace(/-/g, '').slice(0, 10)}_`
 }
 
+/** ordre au repos connu du bot (depuis la DB), passé à reconcile() pour
+ *  rattraper un éventuel fill survenu pendant l'arrêt (spot). */
+export interface RestingOrderRef {
+  clientId: string
+  side: 'BUY' | 'SELL'
+  /** quantité déjà exécutée connue du bot (dernier état persisté) */
+  executedQty: number
+  /** quote cumulé déjà connu du bot */
+  cumQuote: number
+}
+
 /**
  * Real-money / testnet execution adapter. The bot owns a virtual slice of the
  * account: position, realized pnl and fees are tracked from the user-data
@@ -101,14 +112,30 @@ export class BinanceLiveAdapter implements ExecutionAdapter {
   }
 
   /** Re-adopt resting orders after a restart; cross-check futures position. */
-  async reconcile(): Promise<string[]> {
+  /**
+   * Re-adopt resting orders after a restart and rattraper les fills manqués
+   * pendant l'arrêt.
+   * - Ordres encore ouverts : ré-adoptés (le bot reprend son stop en attente).
+   * - Futures : la position réelle de l'exchange fait foi (corrige tout écart,
+   *   y compris un fill manqué — positionAmt est la vérité-terrain isolée).
+   * - Spot : pas de « position » côté exchange (la balance inclut du BTC hors-bot,
+   *   on ne peut PAS l'adopter). On règle plutôt les fills manqués sur les ordres
+   *   au REPOS connus du bot (`resting`, depuis la DB) qui ne sont PLUS ouverts :
+   *   on interroge leur état final et on applique le delta exécuté à la position.
+   *   Bookkeeping pur (pas d'émission de fill → aucun effet de bord/ordre re-soumis) ;
+   *   l'état de la stratégie se ré-aligne ensuite via les balances réelles.
+   * Tout est gardé : une erreur d'API est loggée et n'empêche jamais le démarrage.
+   */
+  async reconcile(resting: RestingOrderRef[] = []): Promise<string[]> {
     const notes: string[] = []
+    const stillOpen = new Set<string>()
     const raw = await this.o.account.openOrders(this.symbol)
     for (const r of raw) {
       const cid = r.clientOrderId ?? r.origClientOrderId ?? ''
       if (!cid.startsWith(this.prefix)) continue
       const order = this.mapRawOrder(r, cid)
       this.orders.set(cid, order)
+      stillOpen.add(cid)
       notes.push(`re-adopted open order ${cid} (${order.type} ${order.side} ${order.qty})`)
     }
     if (this.market === 'futures') {
@@ -122,8 +149,47 @@ export class BinanceLiveAdapter implements ExecutionAdapter {
         this.posQty = exchangeQty
         this.posEntry = p?.entryPrice ?? this.posEntry
       }
+      return notes
+    }
+    // ---- SPOT : régler les ordres au repos qui ne sont plus ouverts
+    for (const ro of resting) {
+      if (stillOpen.has(ro.clientId)) continue // toujours ouvert → ré-adopté, rien à faire
+      try {
+        const ex = await this.o.account.getOrder(this.symbol, { clientOrderId: ro.clientId })
+        const exExec = Number(ex.executedQty ?? 0)
+        const delta = exExec - ro.executedQty // ce qui s'est exécuté EN PLUS pendant l'arrêt
+        if (delta > this.o.symbolInfo.stepSize / 2) {
+          const exCum = Number(ex.cummulativeQuoteQty ?? ex.cumQuote ?? 0)
+          const missedQuote = exCum - ro.cumQuote
+          const price = missedQuote > 0 ? missedQuote / delta : Number(ex.price) || this.lastPriceV
+          if (price > 0) {
+            this.settleSpotFill(ro.side, delta, price)
+            notes.push(
+              `fill manqué pendant l'arrêt rattrapé : ${ro.side} ${delta} @ ${price.toFixed(2)} ` +
+                `(ordre ${ro.clientId}, ${String(ex.status)}) → position re-synchronisée à ${this.posQty}`,
+            )
+          }
+        }
+      } catch (e) {
+        notes.push(`réconciliation ordre ${ro.clientId} impossible (${e instanceof Error ? e.message : String(e)}) — ignoré`)
+      }
     }
     return notes
+  }
+
+  /** applique un fill manqué à la position spot — bookkeeping seul, sans émettre
+   *  d'événement (pas d'effet de bord). Les frais sont ignorés (en BNB ils ne
+   *  rognent pas la base ; sinon l'écart est de l'ordre du basis point). */
+  private settleSpotFill(side: 'BUY' | 'SELL', qty: number, price: number): void {
+    if (side === 'BUY') {
+      const newQty = this.posQty + qty
+      this.posEntry = newQty > 0 ? (this.posEntry * this.posQty + price * qty) / newQty : 0
+      this.posQty = newQty
+    } else {
+      this.realizedNet += (price - this.posEntry) * qty
+      this.posQty = Math.max(0, this.posQty - qty)
+      if (this.posQty === 0) this.posEntry = 0
+    }
   }
 
   // ----------------------------------------------------- ExecutionAdapter
