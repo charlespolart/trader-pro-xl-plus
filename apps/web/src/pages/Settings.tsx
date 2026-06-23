@@ -145,17 +145,20 @@ function RiskCard({
 
   return (
     <Card title="Risque global (tous bots live confondus)">
-      <div className="flex flex-wrap items-end gap-3">
-        <Field label="Exposition totale max (quote)" hint="vide = illimité">
-          <input className="input w-48" type="number" value={exposure} onChange={(e) => setExposure(e.target.value)} />
-        </Field>
-        <Field label="Perte journalière max (quote)" hint="vide = illimité">
-          <input className="input w-48" type="number" value={dailyLoss} onChange={(e) => setDailyLoss(e.target.value)} />
-        </Field>
-        <button className="btn-primary" onClick={() => save.mutate()} disabled={save.isPending}>
-          Enregistrer
-        </button>
-        <div className="ml-auto flex gap-2">
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <Field label="Exposition totale max (quote)">
+            <input className="input w-48" type="number" placeholder="vide = illimité" value={exposure} onChange={(e) => setExposure(e.target.value)} />
+          </Field>
+          <Field label="Perte journalière max (quote)">
+            <input className="input w-48" type="number" placeholder="vide = illimité" value={dailyLoss} onChange={(e) => setDailyLoss(e.target.value)} />
+          </Field>
+          <button className="btn-primary" onClick={() => save.mutate()} disabled={save.isPending}>
+            Enregistrer
+          </button>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 border-t border-edge pt-4">
+          <span className="mr-auto text-xs text-zinc-500">Arrêt d'urgence — coupe tous les bots live</span>
           {killSwitchActive ? (
             <button className="btn-success" onClick={() => kill.mutate({ active: false, close: false })}>
               Désactiver le kill switch
