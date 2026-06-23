@@ -117,8 +117,8 @@ export function Bots() {
                 <th>Marché / Paire</th>
                 <th>Mode</th>
                 <th>Statut</th>
-                <th>Équité</th>
-                <th>PnL total</th>
+                <th className="text-right">Équité</th>
+                <th className="text-right">PnL total</th>
                 <th className="text-right">Actions</th>
               </tr>
             </thead>
@@ -142,8 +142,8 @@ export function Bots() {
                       <Badge value={b.status} />
                       {b.statusReason !== undefined && <div className="text-[11px] text-zinc-500">{b.statusReason}</div>}
                     </td>
-                    <td>{fmtNum(b.equity)}</td>
-                    <td className={pnlClass(b.realizedPnlTotal)}>{fmtNum(b.realizedPnlTotal)}</td>
+                    <td className="text-right tabular-nums">{fmtNum(b.equity)}</td>
+                    <td className={`text-right tabular-nums ${pnlClass(b.realizedPnlTotal)}`}>{fmtNum(b.realizedPnlTotal)}</td>
                     <td>
                       <div className="flex justify-end gap-1.5">
                         {stopped && (

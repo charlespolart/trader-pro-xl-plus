@@ -114,10 +114,10 @@ export function OptimizationDetail() {
                   <th>In-sample</th>
                   <th>Out-of-sample</th>
                   <th>Meilleurs paramètres (IS)</th>
-                  <th>Score IS</th>
-                  <th>Profit OOS</th>
-                  <th>Trades OOS</th>
-                  <th>DD OOS</th>
+                  <th className="text-right">Score IS</th>
+                  <th className="text-right">Profit OOS</th>
+                  <th className="text-right">Trades OOS</th>
+                  <th className="text-right">DD OOS</th>
                 </tr>
               </thead>
               <tbody>
@@ -133,10 +133,10 @@ export function OptimizationDetail() {
                     <td className="max-w-80 truncate font-mono text-xs" title={JSON.stringify(w.bestParams)}>
                       {JSON.stringify(w.bestParams)}
                     </td>
-                    <td>{fmtNum(w.isScore)}</td>
-                    <td className={pnlClass(w.oosMetrics?.netProfitPct)}>{w.oosMetrics ? fmtPct(w.oosMetrics.netProfitPct) : '—'}</td>
-                    <td>{w.oosMetrics?.totalTrades ?? '—'}</td>
-                    <td className="text-down">{w.oosMetrics ? fmtPct(-w.oosMetrics.maxDrawdownPct) : '—'}</td>
+                    <td className="text-right tabular-nums">{fmtNum(w.isScore)}</td>
+                    <td className={`text-right tabular-nums ${pnlClass(w.oosMetrics?.netProfitPct)}`}>{w.oosMetrics ? fmtPct(w.oosMetrics.netProfitPct) : '—'}</td>
+                    <td className="text-right tabular-nums">{w.oosMetrics?.totalTrades ?? '—'}</td>
+                    <td className="text-right tabular-nums text-down">{w.oosMetrics ? fmtPct(-w.oosMetrics.maxDrawdownPct) : '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -169,13 +169,13 @@ export function OptimizationDetail() {
                     {paramKeys.map((k) => (
                       <th key={k}>{k}</th>
                     ))}
-                    <th>Score</th>
-                    <th>Profit %</th>
-                    <th>Trades</th>
-                    <th>Win rate</th>
-                    <th>Max DD</th>
-                    <th>Sharpe</th>
-                    <th>PF</th>
+                    <th className="text-right">Score</th>
+                    <th className="text-right">Profit %</th>
+                    <th className="text-right">Trades</th>
+                    <th className="text-right">Win rate</th>
+                    <th className="text-right">Max DD</th>
+                    <th className="text-right">Sharpe</th>
+                    <th className="text-right">PF</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -187,13 +187,13 @@ export function OptimizationDetail() {
                           {String(r.params[k])}
                         </td>
                       ))}
-                      <td className="font-semibold">{Number.isFinite(r.score) ? fmtNum(r.score) : '—'}</td>
-                      <td className={pnlClass(r.metrics?.netProfitPct)}>{r.metrics ? fmtPct(r.metrics.netProfitPct) : (r.error ?? '—')}</td>
-                      <td>{r.metrics?.totalTrades ?? '—'}</td>
-                      <td>{r.metrics ? `${r.metrics.winRate.toFixed(0)} %` : '—'}</td>
-                      <td className="text-down">{r.metrics ? fmtPct(-r.metrics.maxDrawdownPct) : '—'}</td>
-                      <td>{fmtNum(r.metrics?.sharpe ?? null)}</td>
-                      <td>{fmtNum(r.metrics?.profitFactor ?? null)}</td>
+                      <td className="text-right font-semibold tabular-nums">{Number.isFinite(r.score) ? fmtNum(r.score) : '—'}</td>
+                      <td className={`text-right tabular-nums ${pnlClass(r.metrics?.netProfitPct)}`}>{r.metrics ? fmtPct(r.metrics.netProfitPct) : (r.error ?? '—')}</td>
+                      <td className="text-right tabular-nums">{r.metrics?.totalTrades ?? '—'}</td>
+                      <td className="text-right tabular-nums">{r.metrics ? `${r.metrics.winRate.toFixed(0)} %` : '—'}</td>
+                      <td className="text-right tabular-nums text-down">{r.metrics ? fmtPct(-r.metrics.maxDrawdownPct) : '—'}</td>
+                      <td className="text-right tabular-nums">{fmtNum(r.metrics?.sharpe ?? null)}</td>
+                      <td className="text-right tabular-nums">{fmtNum(r.metrics?.profitFactor ?? null)}</td>
                     </tr>
                   ))}
                 </tbody>

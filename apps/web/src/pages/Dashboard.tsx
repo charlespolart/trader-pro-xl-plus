@@ -38,9 +38,9 @@ export function Dashboard() {
       />
 
       <div className="grid grid-cols-4 gap-4">
-        <Stat label="Bots actifs" value={running.length} />
+        <Stat label="Bots actifs" value={running.length} sub="En cours d'exécution" />
         <Stat label="PnL réalisé aujourd'hui" value={fmtNum(pnlToday)} tone={pnlToday === 0 ? 'default' : pnlToday > 0 ? 'up' : 'down'} sub="Tous bots confondus" />
-        <Stat label="Exposition live" value={`${fmtNum(account?.totalExposureQuote ?? 0, 0)} USDT`} />
+        <Stat label="Exposition live" value={`${fmtNum(account?.totalExposureQuote ?? 0, 0)} USDT`} sub="Notional engagé" />
         <Stat label="Solde BNB" value={account?.configured ? fmtNum(account.bnbBalance ?? 0, 4) : '—'} sub="Réserve de frais" />
       </div>
 

@@ -131,10 +131,10 @@ export function Backtests() {
                 <th>Paire</th>
                 <th>Période</th>
                 <th>Statut</th>
-                <th>Profit</th>
-                <th>Trades</th>
-                <th>Max DD</th>
-                <th>PF</th>
+                <th className="text-right">Profit</th>
+                <th className="text-right">Trades</th>
+                <th className="text-right">Max DD</th>
+                <th className="text-right">PF</th>
                 <th className="text-right">Actions</th>
               </tr>
             </thead>
@@ -162,10 +162,10 @@ export function Backtests() {
                       {active ? <ProgressBar ratio={ratio} /> : <Badge value={status} />}
                       {(p?.error ?? r.error) !== undefined && <div className="text-[11px] text-down">{p?.error ?? r.error}</div>}
                     </td>
-                    <td className={pnlClass(r.metrics?.netProfitPct)}>{r.metrics ? fmtPct(r.metrics.netProfitPct) : '—'}</td>
-                    <td>{r.metrics?.totalTrades ?? '—'}</td>
-                    <td className="text-down">{r.metrics ? fmtPct(-r.metrics.maxDrawdownPct) : '—'}</td>
-                    <td>{r.metrics?.profitFactor?.toFixed(2) ?? '—'}</td>
+                    <td className={`text-right tabular-nums ${pnlClass(r.metrics?.netProfitPct)}`}>{r.metrics ? fmtPct(r.metrics.netProfitPct) : '—'}</td>
+                    <td className="text-right tabular-nums">{r.metrics?.totalTrades ?? '—'}</td>
+                    <td className="text-right tabular-nums text-down">{r.metrics ? fmtPct(-r.metrics.maxDrawdownPct) : '—'}</td>
+                    <td className="text-right tabular-nums">{r.metrics?.profitFactor?.toFixed(2) ?? '—'}</td>
                     <td>
                       <div className="flex justify-end gap-1.5">
                         {active ? (
