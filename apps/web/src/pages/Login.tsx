@@ -24,9 +24,12 @@ export function Login() {
 
   return (
     <div className="flex h-full items-center justify-center">
-      <form onSubmit={submit} className="card w-80 space-y-4 p-6">
-        <div className="text-center text-lg font-bold">
-          Trader <span className="text-accent">Pro XL+</span>
+      <form onSubmit={submit} className="card w-80 space-y-5 p-7">
+        <div className="text-center">
+          <div className="text-xl font-bold tracking-tight">
+            Trader <span className="text-accent">Pro XL+</span>
+          </div>
+          <div className="mt-1 text-sm text-zinc-500">Connexion à votre espace</div>
         </div>
         <input
           type="password"
@@ -37,7 +40,7 @@ export function Login() {
           onChange={(e) => setPassword(e.target.value)}
         />
         {error !== '' && <div className="text-sm text-down">{error}</div>}
-        <button type="submit" className="btn-primary w-full justify-center" disabled={busy}>
+        <button type="submit" className="btn-primary w-full" disabled={busy}>
           Connexion
         </button>
       </form>

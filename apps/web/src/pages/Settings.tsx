@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { MarketType } from '@tpx/shared'
+import { OctagonAlert, Power } from 'lucide-react'
 import { api } from '../lib/api'
 import { fmtNum } from '../lib/format'
-import { Badge, Card, Field } from '../components/ui'
+import { Badge, Card, Field, PageHeader } from '../components/ui'
 
 export function Settings() {
   const qc = useQueryClient()
@@ -19,7 +20,7 @@ export function Settings() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-lg font-bold">Réglages</h1>
+      <PageHeader title="Réglages" subtitle="Clés API, risque global, frais de paper trading et état du système" />
 
       <div className="grid grid-cols-2 gap-4">
         <CredentialsCard name="live" title="Clés API Binance — LIVE" configured={settings?.credentials.live ?? false} onDone={invalidate} />
@@ -162,13 +163,13 @@ function RiskCard({
           ) : (
             <>
               <button className="btn-danger" onClick={() => confirm('Activer le kill switch ?') && kill.mutate({ active: true, close: false })}>
-                🛑 Kill switch
+                <OctagonAlert size={16} /> Kill switch
               </button>
               <button
-                className="btn-danger"
+                className="btn-kill"
                 onClick={() => confirm('Kill switch + fermeture de TOUTES les positions ?') && kill.mutate({ active: true, close: true })}
               >
-                🛑 + Tout fermer
+                <Power size={16} /> Tout fermer
               </button>
             </>
           )}

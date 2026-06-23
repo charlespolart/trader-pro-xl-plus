@@ -2,9 +2,10 @@ import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import type { BacktestMetrics, ParamValues } from '@tpx/shared'
+import { ChevronLeft } from 'lucide-react'
 import { api } from '../lib/api'
 import { fmtDate, fmtNum, fmtPct, pnlClass } from '../lib/format'
-import { Badge, Card, Empty, Spinner } from '../components/ui'
+import { Badge, Card, Empty, PageHeader, Spinner, Stat } from '../components/ui'
 
 interface ComboResult {
   params: ParamValues
@@ -64,50 +65,49 @@ export function OptimizationDetail() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h1 className="text-lg font-bold">{row.label ?? `Optimisation ${row.id.slice(0, 8)}`}</h1>
-          <Badge value={row.status} />
-          <span className="text-sm text-zinc-400">
-            {row.strategyId} · {row.symbol} · {row.done}/{row.total} runs · {fmtDate(row.createdAt)}
+      <PageHeader
+        title={
+          <span className="inline-flex items-center gap-2.5">
+            {row.label ?? `Optimisation ${row.id.slice(0, 8)}`}
+            <Badge value={row.status} />
           </span>
-        </div>
-        <Link to="/optimizer" className="btn-ghost">
-          ← Optimiseur
-        </Link>
-      </div>
+        }
+        subtitle={`${row.strategyId} · ${row.symbol} · ${row.done}/${row.total} runs · ${fmtDate(row.createdAt)}`}
+        actions={
+          <Link to="/optimizer" className="btn-ghost">
+            <ChevronLeft size={15} /> Optimiseur
+          </Link>
+        }
+      />
 
       {row.error !== null && <div className="rounded-md border border-down/40 bg-down/10 px-3 py-2 text-sm text-down">{row.error}</div>}
 
       {artifact?.kind === 'walkforward' && artifact.summary && (
         <>
           <div className="grid grid-cols-4 gap-4">
-            <Card>
-              <div className="text-[11px] text-zinc-500">Fenêtres OOS positives</div>
-              <div className="text-xl font-bold">
-                {artifact.summary.positiveOos}/{artifact.summary.windows}
-              </div>
-            </Card>
-            <Card>
-              <div className="text-[11px] text-zinc-500">Profit OOS moyen / fenêtre</div>
-              <div className={`text-xl font-bold ${pnlClass(artifact.summary.avgOosNetProfitPct)}`}>{fmtPct(artifact.summary.avgOosNetProfitPct)}</div>
-            </Card>
-            <Card>
-              <div className="text-[11px] text-zinc-500">Rendement OOS composé</div>
-              <div className={`text-xl font-bold ${pnlClass(artifact.summary.compoundedOosReturnPct)}`}>{fmtPct(artifact.summary.compoundedOosReturnPct)}</div>
-            </Card>
-            <Card>
-              <div className="text-[11px] text-zinc-500">Verdict</div>
-              <div className="text-sm font-semibold">
-                {artifact.summary.positiveOos / artifact.summary.windows >= 0.6 && artifact.summary.compoundedOosReturnPct > 0
-                  ? '✅ Robuste hors-échantillon'
-                  : '⚠️ Probable overfitting — méfiance'}
-              </div>
-            </Card>
+            <Stat label="Fenêtres OOS positives" value={`${artifact.summary.positiveOos}/${artifact.summary.windows}`} />
+            <Stat
+              label="Profit OOS moyen / fenêtre"
+              value={fmtPct(artifact.summary.avgOosNetProfitPct)}
+              tone={artifact.summary.avgOosNetProfitPct === 0 ? 'default' : artifact.summary.avgOosNetProfitPct > 0 ? 'up' : 'down'}
+            />
+            <Stat
+              label="Rendement OOS composé"
+              value={fmtPct(artifact.summary.compoundedOosReturnPct)}
+              tone={artifact.summary.compoundedOosReturnPct === 0 ? 'default' : artifact.summary.compoundedOosReturnPct > 0 ? 'up' : 'down'}
+            />
+            <div className="card p-4">
+              <div className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">Verdict</div>
+              {artifact.summary.positiveOos / artifact.summary.windows >= 0.6 && artifact.summary.compoundedOosReturnPct > 0 ? (
+                <div className="mt-1.5 text-sm font-semibold text-up">Robuste hors-échantillon</div>
+              ) : (
+                <div className="mt-1.5 text-sm font-semibold text-amber-400">Probable overfitting — méfiance</div>
+              )}
+            </div>
           </div>
 
-          <Card title="Fenêtres walk-forward">
-            <table className="w-full">
+          <Card title="Fenêtres walk-forward" bodyClassName="p-0">
+            <table>
               <thead>
                 <tr>
                   <th>#</th>
@@ -156,12 +156,13 @@ export function OptimizationDetail() {
               <option value="totalTrades">Tri : trades</option>
             </select>
           }
+          bodyClassName={sorted.length === 0 ? 'p-4' : 'p-0'}
         >
           {sorted.length === 0 ? (
             <Empty>Pas de résultats</Empty>
           ) : (
             <div className="max-h-[600px] overflow-auto">
-              <table className="w-full">
+              <table>
                 <thead className="sticky top-0 bg-panel">
                   <tr>
                     <th>#</th>

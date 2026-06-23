@@ -2,8 +2,9 @@ import { useMemo, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { INTERVALS, type Interval, type MarketType } from '@tpx/shared'
 import { api, type PatternScanResult } from '../lib/api'
+import { ChevronLeft, ChevronRight, Search } from 'lucide-react'
 import { dateToInputValue, fmtDate, inputValueToMs } from '../lib/format'
-import { Card, Empty, Field, Spinner } from '../components/ui'
+import { Card, Empty, Field, PageHeader, Spinner } from '../components/ui'
 import { TradingChart, type ChartMarker } from '../components/TradingChart'
 
 /**
@@ -81,11 +82,10 @@ export function PatternLab() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-lg font-bold">Laboratoire de patterns</h1>
-      <div className="text-sm text-zinc-500">
-        Scanne les détecteurs de chandeliers sur une plage et vérifie chaque détection une par une — mêmes détecteurs, mêmes
-        seuils que dans les stratégies.
-      </div>
+      <PageHeader
+        title="Laboratoire de patterns"
+        subtitle="Scanne les détecteurs de chandeliers sur une plage et vérifie chaque détection une par une — mêmes détecteurs, mêmes seuils que dans les stratégies."
+      />
 
       <Card>
         <div className="flex flex-wrap items-end gap-3">
@@ -135,7 +135,7 @@ export function PatternLab() {
             <input className="input w-20" type="number" step="0.1" value={trendMinPct} onChange={(e) => setTrendMinPct(e.target.value)} />
           </Field>
           <button className="btn-primary" onClick={() => scan.mutate()} disabled={scan.isPending}>
-            {scan.isPending ? <Spinner /> : '🔎'} Scanner
+            {scan.isPending ? <Spinner /> : <Search size={16} />} Scanner
           </button>
         </div>
       </Card>
@@ -181,14 +181,14 @@ export function PatternLab() {
               actions={
                 filtered.length > 0 ? (
                   <div className="flex items-center gap-2 text-sm">
-                    <button className="btn-ghost" onClick={() => goTo(cursor - 1)}>
-                      ←
+                    <button className="btn-ghost btn-sm btn-icon" onClick={() => goTo(cursor - 1)}>
+                      <ChevronLeft size={15} />
                     </button>
                     <span className="text-zinc-400">
                       {focusTime !== undefined ? cursor + 1 : '—'} / {filtered.length}
                     </span>
-                    <button className="btn-ghost" onClick={() => goTo(focusTime === undefined ? 0 : cursor + 1)}>
-                      →
+                    <button className="btn-ghost btn-sm btn-icon" onClick={() => goTo(focusTime === undefined ? 0 : cursor + 1)}>
+                      <ChevronRight size={15} />
                     </button>
                   </div>
                 ) : undefined

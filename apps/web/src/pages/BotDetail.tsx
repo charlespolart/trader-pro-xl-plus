@@ -4,8 +4,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { LogEntry, TradeRecord } from '@tpx/shared'
 import { api, type RefitConfigDTO } from '../lib/api'
 import { useBots, wsClient } from '../lib/ws'
+import { Check, ChevronLeft, Play } from 'lucide-react'
 import { fmtDate, fmtNum, fmtPrice, pnlClass } from '../lib/format'
-import { Badge, Card, Empty, Field } from '../components/ui'
+import { Badge, Card, Empty, Field, PageHeader, Stat } from '../components/ui'
 import { TradingChart } from '../components/TradingChart'
 import { TradesTable } from '../components/TradesTable'
 
@@ -60,54 +61,47 @@ export function BotDetail() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h1 className="text-lg font-bold">{cfg.name}</h1>
-          <Badge value={cfg.market} />
-          <Badge value={cfg.mode} />
-          <Badge value={info.status} />
-          {info.statusReason !== undefined && <span className="text-xs text-zinc-500">{info.statusReason}</span>}
-        </div>
-        <Link to="/bots" className="btn-ghost">
-          ← Bots
-        </Link>
-      </div>
+      <PageHeader
+        title={
+          <span className="inline-flex items-center gap-2.5">
+            {cfg.name}
+            <Badge value={cfg.market} />
+            <Badge value={cfg.mode} />
+            <Badge value={info.status} />
+          </span>
+        }
+        subtitle={info.statusReason !== undefined ? info.statusReason : `${cfg.strategyId} · ${cfg.symbol}`}
+        actions={
+          <Link to="/bots" className="btn-ghost">
+            <ChevronLeft size={15} /> Bots
+          </Link>
+        }
+      />
 
       <div className="grid grid-cols-5 gap-4">
-        <Card>
-          <div className="text-[11px] text-zinc-500">Équité</div>
-          <div className="text-lg font-bold">{fmtNum(info.equity)}</div>
-        </Card>
-        <Card>
-          <div className="text-[11px] text-zinc-500">Position</div>
-          <div className="text-lg font-bold">
-            {info.position && info.position.qty !== 0 ? (
+        <Stat label="Équité" value={fmtNum(info.equity)} />
+        <Stat
+          label="Position"
+          value={
+            info.position && info.position.qty !== 0 ? (
               <span className={info.position.qty > 0 ? 'text-up' : 'text-down'}>
                 {info.position.qty > 0 ? 'LONG' : 'SHORT'} {Math.abs(info.position.qty)}
               </span>
             ) : (
               <span className="text-zinc-500">flat</span>
-            )}
-          </div>
-          {info.position && info.position.qty !== 0 && (
-            <div className="text-xs text-zinc-500">
-              @ {fmtPrice(info.position.entryPrice)} · uPnL{' '}
-              <span className={pnlClass(info.position.unrealizedPnl)}>{fmtNum(info.position.unrealizedPnl)}</span>
-            </div>
-          )}
-        </Card>
-        <Card>
-          <div className="text-[11px] text-zinc-500">PnL aujourd'hui</div>
-          <div className={`text-lg font-bold ${pnlClass(info.realizedPnlToday)}`}>{fmtNum(info.realizedPnlToday)}</div>
-        </Card>
-        <Card>
-          <div className="text-[11px] text-zinc-500">PnL total</div>
-          <div className={`text-lg font-bold ${pnlClass(info.realizedPnlTotal)}`}>{fmtNum(info.realizedPnlTotal)}</div>
-        </Card>
-        <Card>
-          <div className="text-[11px] text-zinc-500">Ordres ouverts</div>
-          <div className="text-lg font-bold">{info.openOrders.length}</div>
-        </Card>
+            )
+          }
+          sub={
+            info.position && info.position.qty !== 0 ? (
+              <>
+                @ {fmtPrice(info.position.entryPrice)} · uPnL <span className={pnlClass(info.position.unrealizedPnl)}>{fmtNum(info.position.unrealizedPnl)}</span>
+              </>
+            ) : undefined
+          }
+        />
+        <Stat label="PnL aujourd'hui" value={fmtNum(info.realizedPnlToday)} tone={info.realizedPnlToday === 0 ? 'default' : info.realizedPnlToday > 0 ? 'up' : 'down'} />
+        <Stat label="PnL total" value={fmtNum(info.realizedPnlTotal)} tone={info.realizedPnlTotal === 0 ? 'default' : info.realizedPnlTotal > 0 ? 'up' : 'down'} />
+        <Stat label="Ordres ouverts" value={info.openOrders.length} />
       </div>
 
       {running && chart ? (
@@ -128,8 +122,8 @@ export function BotDetail() {
       )}
 
       {info.openOrders.length > 0 && (
-        <Card title="Ordres ouverts">
-          <table className="w-full">
+        <Card title="Ordres ouverts" bodyClassName="p-0">
+          <table>
             <thead>
               <tr>
                 <th>Type</th>
@@ -160,7 +154,7 @@ export function BotDetail() {
         </Card>
       )}
 
-      <Card title="Trades">
+      <Card title="Trades" bodyClassName="p-0">
         <TradesTable trades={tradeRecords} />
       </Card>
 
@@ -233,8 +227,8 @@ function RefitCard({ botId }: { botId: string }) {
     <Card
       title="Refit périodique des paramètres"
       actions={
-        <button className="btn-ghost" onClick={() => runNow.mutate()} disabled={runNow.isPending}>
-          ▶ Lancer maintenant
+        <button className="btn-ghost btn-sm" onClick={() => runNow.mutate()} disabled={runNow.isPending}>
+          <Play size={15} /> Lancer maintenant
         </button>
       }
     >
@@ -289,8 +283,8 @@ function RefitCard({ botId }: { botId: string }) {
             <div className="mb-2 font-semibold text-amber-400">Proposition en attente ({fmtDate(state.proposal.at)})</div>
             <pre className="mb-2 overflow-x-auto text-xs text-zinc-300">{state.proposal.report}</pre>
             <div className="flex gap-2">
-              <button className="btn-success" onClick={() => apply.mutate()} disabled={apply.isPending}>
-                ✓ Appliquer (si flat)
+              <button className="btn-success btn-sm" onClick={() => apply.mutate()} disabled={apply.isPending}>
+                <Check size={15} /> Appliquer (si flat)
               </button>
               <button className="btn-ghost" onClick={() => discard.mutate()}>
                 Rejeter

@@ -2,9 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { INTERVALS, INTERVAL_MS, isInterval, type Candle, type Interval } from '@tpx/shared'
+import { ChevronLeft, Clapperboard, Pause, Play, X } from 'lucide-react'
 import { api } from '../lib/api'
 import { fmtDate } from '../lib/format'
-import { Badge, Card, Empty, Spinner } from '../components/ui'
+import { Badge, Card, Empty, PageHeader, Spinner } from '../components/ui'
 import { TradingChart, tradesToMarkers } from '../components/TradingChart'
 import { OverviewChart } from '../components/OverviewChart'
 import { MetricsGrid } from '../components/MetricsGrid'
@@ -175,21 +176,21 @@ export function BacktestDetail() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h1 className="text-lg font-bold">{run.config.label ?? run.config.strategyId}</h1>
-          <Badge value={run.config.market} />
-          <span className="text-sm text-zinc-400">
-            {run.config.symbol} · {fmtDate(run.config.start).split(' ')[0]} → {fmtDate(run.config.end).split(' ')[0]} ·{' '}
-            {run.config.fillMode === 'aggtrades' ? 'fills aggTrades' : 'fills bougies'} ·{' '}
-            {run.config.fees.bnbDiscount ? 'frais BNB' : 'frais standard'}
+      <PageHeader
+        title={
+          <span className="inline-flex items-center gap-2.5">
+            {run.config.label ?? run.config.strategyId}
+            <Badge value={run.config.market} />
+            <Badge value={run.status} />
           </span>
-          <Badge value={run.status} />
-        </div>
-        <Link to="/backtests" className="btn-ghost">
-          ← Backtests
-        </Link>
-      </div>
+        }
+        subtitle={`${run.config.symbol} · ${fmtDate(run.config.start).split(' ')[0]} → ${fmtDate(run.config.end).split(' ')[0]} · ${run.config.fillMode === 'aggtrades' ? 'fills aggTrades' : 'fills bougies'} · ${run.config.fees.bnbDiscount ? 'frais BNB' : 'frais standard'}`}
+        actions={
+          <Link to="/backtests" className="btn-ghost">
+            <ChevronLeft size={15} /> Backtests
+          </Link>
+        }
+      />
 
       {run.error !== undefined && <div className="rounded-md border border-down/40 bg-down/10 px-3 py-2 text-sm text-down">{run.error}</div>}
       {result.run.status === 'done' && run.metrics && (
@@ -209,7 +210,7 @@ export function BacktestDetail() {
                   <select
                     value={overviewInterval}
                     onChange={(e) => setOverviewSel(e.target.value as Interval)}
-                    className="rounded border border-zinc-700 bg-zinc-900 px-1.5 py-1 text-xs text-zinc-200"
+                    className="rounded-md border border-edge bg-panel2 px-2 py-1 text-xs text-zinc-200 outline-none focus:border-accent"
                   >
                     {overviewOptions.map((i) => (
                       <option key={i} value={i}>
@@ -229,13 +230,13 @@ export function BacktestDetail() {
                     onChange={(e) => setReplay(Number(e.target.value))}
                     className="w-64 accent-blue-500"
                   />
-                  <button className="btn-ghost" onClick={() => setPlaying((p) => !p)}>
-                    {playing ? '⏸' : '▶'}
+                  <button className="btn-ghost btn-sm btn-icon" onClick={() => setPlaying((p) => !p)}>
+                    {playing ? <Pause size={15} /> : <Play size={15} />}
                   </button>
                 </>
               )}
               <button
-                className="btn-ghost"
+                className="btn-ghost btn-sm"
                 onClick={() => {
                   if (replay === null) {
                     setReplay(0)
@@ -245,7 +246,15 @@ export function BacktestDetail() {
                   }
                 }}
               >
-                {replay === null ? '🎬 Replay' : '✕ Quitter le replay'}
+                {replay === null ? (
+                  <>
+                    <Clapperboard size={15} /> Replay
+                  </>
+                ) : (
+                  <>
+                    <X size={15} /> Quitter le replay
+                  </>
+                )}
               </button>
             </div>
           }

@@ -3,8 +3,9 @@ import { Link, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import Editor from '@monaco-editor/react'
 import type { ParamDef } from '@tpx/shared'
+import { ChevronLeft, Save } from 'lucide-react'
 import { api } from '../lib/api'
-import { Badge, Card, Empty, Spinner } from '../components/ui'
+import { Badge, Card, Empty, PageHeader, Spinner } from '../components/ui'
 
 export function StrategyDetail() {
   const { id = '' } = useParams()
@@ -39,24 +40,34 @@ export function StrategyDetail() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h1 className="text-lg font-bold">{strategy?.name ?? id}</h1>
-          {strategy?.markets?.map((m) => <Badge key={m} value={m} />)}
-          {strategy?.error !== undefined && <span className="text-sm text-down">{strategy.error}</span>}
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-zinc-500">{saveMsg}</span>
-          <button className="btn-primary" onClick={() => save.mutate()} disabled={save.isPending || source === sourceData.source}>
-            💾 Sauvegarder & recharger
-          </button>
-          <Link to="/strategies" className="btn-ghost">
-            ← Stratégies
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        title={
+          <span className="inline-flex items-center gap-2.5">
+            {strategy?.name ?? id}
+            {strategy?.markets?.map((m) => <Badge key={m} value={m} />)}
+          </span>
+        }
+        subtitle={
+          strategy?.error !== undefined ? (
+            <span className="text-down">{strategy.error}</span>
+          ) : (
+            'Éditeur de code — sauvegarde et recharge la stratégie à chaud'
+          )
+        }
+        actions={
+          <>
+            {saveMsg !== '' && <span className="text-xs text-zinc-500">{saveMsg}</span>}
+            <button className="btn-primary" onClick={() => save.mutate()} disabled={save.isPending || source === sourceData.source}>
+              <Save size={15} /> Sauvegarder
+            </button>
+            <Link to="/strategies" className="btn-ghost">
+              <ChevronLeft size={15} /> Stratégies
+            </Link>
+          </>
+        }
+      />
 
-      <Card className="overflow-hidden p-0">
+      <Card className="overflow-hidden" bodyClassName="p-0">
         <Editor
           height="560px"
           language="typescript"
@@ -68,11 +79,11 @@ export function StrategyDetail() {
       </Card>
 
       {strategy?.schema && (
-        <Card title="Paramètres exposés">
+        <Card title="Paramètres exposés" bodyClassName={Object.keys(strategy.schema).length === 0 ? 'p-4' : 'p-0'}>
           {Object.keys(strategy.schema).length === 0 ? (
             <Empty>Aucun paramètre</Empty>
           ) : (
-            <table className="w-full">
+            <table>
               <thead>
                 <tr>
                   <th>Clé</th>
