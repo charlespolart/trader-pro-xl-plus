@@ -34,7 +34,7 @@ Production sur VPS : `bun run build` puis `bun run start` — le serveur sert l'
 | `packages/core` | Indicateurs, API de stratégie, runtime, exchange simulé, moteur de backtest, métriques, optimiseur |
 | `packages/db` | Schéma Drizzle + migrations Postgres |
 | `packages/data` | Clients Binance (REST/WS, spot + futures + testnets), Binance Vision, stores de données |
-| `apps/server` | API Hono + WS, gestionnaire de bots, moteurs live, runner de backtests (workers Bun) |
+| `apps/backend` | API Hono + WS, gestionnaire de bots, moteurs live, runner de backtests (workers Bun) |
 | `apps/web` | UI React 19 + Tailwind 4 + Lightweight Charts v5 |
 | `strategies/` | Vos stratégies (3 exemples fournis) |
 

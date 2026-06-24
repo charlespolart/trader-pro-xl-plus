@@ -4,7 +4,7 @@
  * FIGÉE sans confirmation vs avec. Pas de ré-optim (le WF précédent a montré
  * qu'elle nuit) — on teste juste si le 2ᵉ filtre tient hors-échantillon.
  *
- *   bun apps/server/src/research/wfconfirm.ts [windows] [isRatio]
+ *   bun apps/backend/src/research/wfconfirm.ts [windows] [isRatio]
  */
 import { resolve } from 'node:path'
 import { runBacktest, walkForwardWindows } from '@tpx/core'

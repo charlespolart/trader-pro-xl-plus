@@ -3,7 +3,7 @@
  * Thèse : à l'approche par le bas d'un palier rond, le prix résiste/rechute.
  * Test : approche d'un rond (high entre dans la bande sous le niveau) → rejet
  * vs cassure + rendement forward, comparé au baseline. Robuste (toutes barres).
- *   bun apps/server/src/research/sr3.ts
+ *   bun apps/backend/src/research/sr3.ts
  */
 import { resolve } from 'node:path'
 import { PgDataProvider } from '@tpx/data'

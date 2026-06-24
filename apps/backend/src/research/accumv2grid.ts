@@ -4,7 +4,7 @@
  * timeframe) et pas un pic isolé (sur-ajustement). On balaie trendMaLen ×
  * trendSlopeBars sur IS / OOS / full / bear22.
  *
- *   bun apps/server/src/research/accumv2grid.ts
+ *   bun apps/backend/src/research/accumv2grid.ts
  */
 import { resolve } from 'node:path'
 import { runBacktest } from '@tpx/core'

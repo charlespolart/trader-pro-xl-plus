@@ -4,7 +4,7 @@
  * du flux net par bougie qu'on a déjà (le contrôle) ?
  *
  * Télécharge les aggTrades seulement autour des jours de trade (coût borné).
- *   bun apps/server/src/research/aggflow/gate.ts [start] [end]
+ *   bun apps/backend/src/research/aggflow/gate.ts [start] [end]
  */
 import { resolve } from 'node:path'
 import { runBacktest } from '@tpx/core'

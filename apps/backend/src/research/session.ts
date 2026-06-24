@@ -2,7 +2,7 @@
  * Effet « session / heure de la journée » sur BTC.
  * A) marché : volatilité & drift par créneau 4h UTC (robuste, ~16k bougies).
  * B) strat  : les trades de la v2 ventilés par session d'entrée (caveat sample).
- *   bun apps/server/src/research/session.ts
+ *   bun apps/backend/src/research/session.ts
  */
 import { resolve } from 'node:path'
 import { runBacktest } from '@tpx/core'

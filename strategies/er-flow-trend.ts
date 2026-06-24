@@ -3,7 +3,7 @@ import { defineStrategy, ind, p } from '@tpx/core'
 /**
  * ER-Flow Trend — suivi de tendance filtré par efficacité et order-flow.
  *
- * Issue de la campagne de recherche 2026-06 (apps/server/src/research/) :
+ * Issue de la campagne de recherche 2026-06 (apps/backend/src/research/) :
  *  - régime : prix vs EMA200 1d (long au-dessus, short en dessous)
  *  - qualité de tendance : Efficiency Ratio de Kaufman ≥ seuil (le marché
  *    avance « efficacement », pas du bruit)

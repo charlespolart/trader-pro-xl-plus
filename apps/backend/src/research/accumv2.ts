@@ -4,7 +4,7 @@
  * dédié et configurable (1d/3d/1w). On vérifie d'abord la parité (v2 1d/200/30
  * doit ≈ v1), puis on teste si monter en 3d/1w aide.
  *
- *   bun apps/server/src/research/accumv2.ts
+ *   bun apps/backend/src/research/accumv2.ts
  */
 import { resolve } from 'node:path'
 import { runBacktest, type StrategyDefinition } from '@tpx/core'

@@ -8,8 +8,8 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "generate": "bun --env-file=../../.env run drizzle-kit generate",
-    "migrate": "bun --env-file=../../.env run drizzle-kit migrate"
+    "generate": "bun --env-file=../../apps/backend/.env run drizzle-kit generate",
+    "migrate": "bun --env-file=../../apps/backend/.env run drizzle-kit migrate"
   },
   "dependencies": {
     "@tpx/shared": "workspace:*",

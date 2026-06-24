@@ -2,7 +2,7 @@
  * Balayage de paramètres d'une famille sur une période — contrôle de plateau.
  * Un edge structurel doit avoir une MÉDIANE de grid saine, pas juste un pic.
  *
- *   bun apps/server/src/research/sweep.ts ertrend is
+ *   bun apps/backend/src/research/sweep.ts ertrend is
  */
 import { resolve } from 'node:path'
 import { expandGrid, runBacktest } from '@tpx/core'

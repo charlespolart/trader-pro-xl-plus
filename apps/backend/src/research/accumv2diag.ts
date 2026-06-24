@@ -5,7 +5,7 @@
  * récolteur de bear. On vérifie : repro exacte, compare v1/v2 sur 2 fenêtres,
  * décompose année par année, et localise le pire drawdown.
  *
- *   bun apps/server/src/research/accumv2diag.ts
+ *   bun apps/backend/src/research/accumv2diag.ts
  */
 import { resolve } from 'node:path'
 import { runBacktest, type StrategyDefinition } from '@tpx/core'

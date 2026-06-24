@@ -1,7 +1,7 @@
 import { resolve } from 'node:path'
 
 function repoRoot(): string {
-  // apps/server/src → repo root
+  // apps/backend/src → repo root
   return resolve(import.meta.dir, '../../..')
 }
 

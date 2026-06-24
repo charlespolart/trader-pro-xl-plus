@@ -7,8 +7,8 @@
         "typescript": "^5.8.3",
       },
     },
-    "apps/server": {
-      "name": "@tpx/server",
+    "apps/backend": {
+      "name": "@tpx/backend",
       "version": "0.1.0",
       "dependencies": {
         "@tpx/core": "workspace:*",
@@ -302,13 +302,13 @@
 
     "@tanstack/react-query": ["@tanstack/react-query@5.101.0", "", { "dependencies": { "@tanstack/query-core": "5.101.0" }, "peerDependencies": { "react": "^18 || ^19" } }, "sha512-rLlJXSpkqfizLWgkR5+eLeIk0MvTx/meEIR7LRjxic+qxiQP8zVjq7BqQkiCMNLQBlLfuOLqqr6KO5GtrDlmSg=="],
 
+    "@tpx/backend": ["@tpx/backend@workspace:apps/backend"],
+
     "@tpx/core": ["@tpx/core@workspace:packages/core"],
 
     "@tpx/data": ["@tpx/data@workspace:packages/data"],
 
     "@tpx/db": ["@tpx/db@workspace:packages/db"],
-
-    "@tpx/server": ["@tpx/server@workspace:apps/server"],
 
     "@tpx/shared": ["@tpx/shared@workspace:packages/shared"],
 

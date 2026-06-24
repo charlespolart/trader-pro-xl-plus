@@ -3,7 +3,7 @@
  * REJET DIRECT (le prix tape le niveau) + les rachats réels de la v2.
  * Question : une résistance significative ajoute-t-elle de l'info AU-DELÀ du
  * simple « on est en bear » ? (compare fwd touche-résistance vs baseline bear)
- *   bun apps/server/src/research/sr2.ts
+ *   bun apps/backend/src/research/sr2.ts
  */
 import { resolve } from 'node:path'
 import { runBacktest } from '@tpx/core'

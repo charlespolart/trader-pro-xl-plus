@@ -1,7 +1,7 @@
 /**
  * Vente fractionnée : balaye sellFraction sur la v3 → couple (rendement, drawdown).
  * f=1 doit ≈ la v2 (+90%/-29% sur 2019→2026) = contrôle de parité.
- *   bun apps/server/src/research/fractest.ts
+ *   bun apps/backend/src/research/fractest.ts
  */
 import { resolve } from 'node:path'
 import { runBacktest } from '@tpx/core'

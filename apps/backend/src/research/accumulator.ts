@@ -2,7 +2,7 @@
  * Backtest du BTC Accumulator en dénomination BASE (BTC) sur plusieurs
  * régimes. Mesure : combien de BTC accumulés vs « garder son BTC » (= 0 %).
  *
- *   bun apps/server/src/research/accumulator.ts
+ *   bun apps/backend/src/research/accumulator.ts
  */
 import { resolve } from 'node:path'
 import { runBacktest } from '@tpx/core'

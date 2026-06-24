@@ -5,7 +5,7 @@
  * pente) : si l'IS le préfère, on verra s'il survit en OOS — c'est le test
  * d'overfitting du filtre de pente lui-même.
  *
- *   bun apps/server/src/research/wfaccum.ts [windows] [isRatio] [anchored]
+ *   bun apps/backend/src/research/wfaccum.ts [windows] [isRatio] [anchored]
  */
 import { resolve } from 'node:path'
 import { expandGrid, runBacktest, walkForwardWindows } from '@tpx/core'

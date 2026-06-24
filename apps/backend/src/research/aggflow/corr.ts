@@ -3,8 +3,8 @@
  * Le flux au niveau du TRADE (CVD stratifié par taille) prédit-il le rendement
  * forward AU-DELÀ du taker-flow par bougie qu'on a déjà ?
  *
- *   bun apps/server/src/research/aggflow/corr.ts [start] [end] [barMinutes]
- *   ex: bun apps/server/src/research/aggflow/corr.ts 2024-10-25 2024-11-15 60
+ *   bun apps/backend/src/research/aggflow/corr.ts [start] [end] [barMinutes]
+ *   ex: bun apps/backend/src/research/aggflow/corr.ts 2024-10-25 2024-11-15 60
  *
  * NB : le 1er run télécharge les aggTrades depuis data.binance.vision (lourd).
  */

@@ -4,7 +4,7 @@
  * corrections de bull (2019-2020) → réduire le drawdown sans tuer le rendement.
  * Compare useConfirm OFF (3d seul) vs ON (3d+1d) sur plusieurs fenêtres + années.
  *
- *   bun apps/server/src/research/accumv2confirm.ts
+ *   bun apps/backend/src/research/accumv2confirm.ts
  */
 import { resolve } from 'node:path'
 import { runBacktest } from '@tpx/core'

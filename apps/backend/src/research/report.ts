@@ -1,6 +1,6 @@
 /**
  * Point de perf + RISQUE sur BTC Accumulator v2 (défauts).
- *   bun apps/server/src/research/report.ts
+ *   bun apps/backend/src/research/report.ts
  */
 import { resolve } from 'node:path'
 import { runBacktest } from '@tpx/core'

@@ -9,14 +9,14 @@
     "strategies"
   ],
   "scripts": {
-    "db:up": "docker compose up -d postgres",
-    "db:down": "docker compose down",
+    "db:up": "docker compose -f ops/docker-compose.yml up -d postgres",
+    "db:down": "docker compose -f ops/docker-compose.yml down",
     "db:generate": "bun run --cwd packages/db generate",
     "db:migrate": "bun run --cwd packages/db migrate",
-    "dev:server": "bun run --cwd apps/server dev",
+    "dev:backend": "bun run --cwd apps/backend dev",
     "dev:web": "bun run --cwd apps/web dev",
     "build": "bun run --cwd apps/web build",
-    "start": "bun run --cwd apps/server start",
+    "start": "bun run --cwd apps/backend start",
     "test": "bun test",
     "typecheck": "bun run --filter '*' typecheck"
   },

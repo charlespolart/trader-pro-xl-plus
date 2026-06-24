@@ -2,8 +2,8 @@
  * Runner de recherche : exécute les familles candidates sur des périodes
  * nommées et imprime un tableau comparatif.
  *
- *   bun apps/server/src/research/run.ts all --period=is
- *   bun apps/server/src/research/run.ts rsipull flow --period=is,bear22
+ *   bun apps/backend/src/research/run.ts all --period=is
+ *   bun apps/backend/src/research/run.ts rsipull flow --period=is,bear22
  */
 import { resolve } from 'node:path'
 import { runBacktest } from '@tpx/core'

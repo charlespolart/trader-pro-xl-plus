@@ -11,7 +11,7 @@
  * la proximité d'une résistance au-dessus prédit-elle une RECHUTE (rendement
  * forward négatif = on aurait dû tenir) ?
  *
- *   bun apps/server/src/research/sr.ts
+ *   bun apps/backend/src/research/sr.ts
  */
 import { resolve } from 'node:path'
 import { PgDataProvider } from '@tpx/data'

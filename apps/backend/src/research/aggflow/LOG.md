@@ -127,8 +127,8 @@ Disque : `data/aggtrades` = 1,2 Go (95 jours, re-téléchargeables) après les e
 ## Reproduire
 
 ```
-bun apps/server/src/research/aggflow/corr.ts 2024-10-25 2024-11-15 60   # 1h
-bun apps/server/src/research/aggflow/corr.ts 2024-10-25 2024-11-15 15   # 15min
+bun apps/backend/src/research/aggflow/corr.ts 2024-10-25 2024-11-15 60   # 1h
+bun apps/backend/src/research/aggflow/corr.ts 2024-10-25 2024-11-15 15   # 15min
 ```
 (aggTrades de cette fenêtre désormais en cache local). NB : Bun jette parfois un
 `UNKNOWN_CERTIFICATE_VERIFICATION_ERROR` transitoire sur le 1er fichier Vision → relancer.

@@ -10,7 +10,7 @@
  * v2 3d-figé (3d/60/8). Question : la ré-optim garde-t-elle le 3d, et bat-elle
  * les références fixes ?
  *
- *   bun apps/server/src/research/wfaccumv2.ts [windows] [isRatio] [anchored]
+ *   bun apps/backend/src/research/wfaccumv2.ts [windows] [isRatio] [anchored]
  */
 import { resolve } from 'node:path'
 import { runBacktest, walkForwardWindows } from '@tpx/core'

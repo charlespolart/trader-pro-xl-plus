@@ -4,7 +4,7 @@
  * gagnants vs perdants pour repérer un pattern évitable (mauvaise entrée ?
  * mauvaise sortie ?).
  *
- *   bun apps/server/src/research/losers.ts
+ *   bun apps/backend/src/research/losers.ts
  */
 import { resolve } from 'node:path'
 import { ind, runBacktest } from '@tpx/core'
