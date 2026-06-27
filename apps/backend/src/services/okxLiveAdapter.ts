@@ -22,6 +22,8 @@ import {
   toInstId,
   type OkxAccount,
   type OkxOrderEvent,
+  type OkxPrivateEvent,
+  type OkxPrivateStream,
   type OkxRestOrder,
 } from '@tpx/data'
 
@@ -474,5 +476,57 @@ function mapRestOrdType(r: OkxRestOrder): OrderType {
       return r.px !== undefined && Number(r.px) > 0 ? 'STOP_LIMIT' : 'STOP_MARKET'
     default:
       return 'LIMIT'
+  }
+}
+
+/**
+ * Fans out a single OKX private socket to the live adapters of one account.
+ * One router per account (OKX unified account carries spot + swap), so every
+ * bot on that account shares the socket. Only `orders` / `orders-algo` channels
+ * are routed; each event is delivered to the adapter whose `clientIdPrefix` is a
+ * prefix of the order's `clOrdId` (or `algoClOrdId` for algo orders).
+ */
+export class OkxUserStreamRouter {
+  private adapters = new Map<string, OKXLiveAdapter>()
+
+  constructor(
+    private readonly stream: OkxPrivateStream | null,
+    private readonly onError: (e: Error) => void,
+  ) {
+    this.stream?.onEvent((ev) => this.dispatch(ev))
+  }
+
+  async start(): Promise<void> {
+    await this.stream?.start()
+  }
+  stop(): void {
+    this.stream?.stop()
+  }
+  register(a: OKXLiveAdapter): void {
+    this.adapters.set(a.clientIdPrefix, a)
+  }
+  unregister(a: OKXLiveAdapter): void {
+    this.adapters.delete(a.clientIdPrefix)
+  }
+  get size(): number {
+    return this.adapters.size
+  }
+
+  dispatch(ev: OkxPrivateEvent): void {
+    if (ev.channel !== 'orders' && ev.channel !== 'orders-algo') return
+    try {
+      for (const o of ev.data) {
+        const cid = o.clOrdId || (o as { algoClOrdId?: string }).algoClOrdId || ''
+        const adapter = this.find(cid)
+        adapter?.handleOrderEvent(o)
+      }
+    } catch (err) {
+      this.onError(err instanceof Error ? err : new Error(String(err)))
+    }
+  }
+
+  private find(clientId: string): OKXLiveAdapter | undefined {
+    for (const [prefix, a] of this.adapters) if (clientId.startsWith(prefix)) return a
+    return undefined
   }
 }
