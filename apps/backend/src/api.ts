@@ -16,7 +16,7 @@ import {
   type SymbolInfo,
 } from '@tpx/shared'
 import { ALL_PATTERNS, candlePatterns, type PatternName } from '@tpx/core'
-import { BinanceAccount, BinanceMarketData, BinanceRest, CandleStore } from '@tpx/data'
+import { BinanceAccount, BinanceMarketData, BinanceRest, CandleStore, OkxAccount, OkxRest, instType, toInstId } from '@tpx/data'
 import { authEnabled, env } from './env'
 import { issueToken } from './crypto'
 import { registry } from './strategies'
@@ -446,6 +446,20 @@ export function buildApi(s: Services): Hono {
     }
     accountCache.set(cacheKey, { at: Date.now(), data })
     return c.json(data)
+  })
+
+  // live OKX maker/taker/level for a symbol (or null when no creds/unknown symbol)
+  api.get('/fees/:name/:market/:symbol', async (c) => {
+    const name = c.req.param('name') as 'live' | 'testnet'
+    const creds = await s.credentials.get(name)
+    if (!creds) return c.json(null)
+    const market = asMarket(c.req.param('market'))
+    const symbol = c.req.param('symbol').toUpperCase()
+    const si = await new BinanceMarketData(new BinanceRest({ market })).symbolInfo(symbol)
+    if (!si) return c.json(null)
+    const instId = toInstId(si.baseAsset, si.quoteAsset, market)
+    const account = new OkxAccount(new OkxRest({ demo: name === 'testnet', credentials: creds }))
+    return c.json(await account.tradeFee(instType(market), instId))
   })
 
   // ------------------------------------------------------------------ risk

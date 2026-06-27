@@ -29,11 +29,20 @@ import {
   type TradeRecord,
 } from '@tpx/shared'
 import { SimExchange, StrategyRuntime, TradeBuilder, type ExecutionAdapter } from '@tpx/core'
-import { BinanceAccount, BinanceMarketData, BinanceRest, CandleStore } from '@tpx/data'
+import {
+  BinanceMarketData,
+  BinanceRest,
+  CandleStore,
+  OkxAccount,
+  OkxPrivateStream,
+  OkxRest,
+  toInstId,
+  type OkxCredentials,
+} from '@tpx/data'
 import { hub } from '../wsHub'
 import { registry } from '../strategies'
 import { liveFeeds } from './liveFeeds'
-import { BinanceLiveAdapter, UserStreamRouter, type RestingOrderRef } from './liveAdapter'
+import { OKXLiveAdapter, OkxUserStreamRouter, type RestingOrderRef } from './okxLiveAdapter'
 import { sendTelegram } from './telegram'
 import type { CredentialsService } from './credentials'
 import type { SettingsService } from './settings'
@@ -102,7 +111,7 @@ class BotRunner {
   readonly recentAnnotations: ChartAnnotation[] = []
 
   private runtime!: StrategyRuntime
-  private rawExec!: SimExchange | BinanceLiveAdapter
+  private rawExec!: SimExchange | OKXLiveAdapter
   private tradeBuilder!: TradeBuilder
   private symbolInfoV!: SymbolInfo
   private unsubs: (() => void)[] = []
@@ -182,17 +191,36 @@ class BotRunner {
     } else {
       const creds = await manager.credentials.get(config.mode === 'live' ? 'live' : 'testnet')
       if (!creds) throw new Error(`Aucune clé API configurée pour le mode ${config.mode}`)
-      const account = new BinanceAccount(new BinanceRest({ market: config.market, testnet, credentials: creds }))
+      const instId = toInstId(symbolInfo.baseAsset, symbolInfo.quoteAsset, config.market)
+      const rest = new OkxRest({ demo: testnet, credentials: creds })
+      const account = new OkxAccount(rest)
+      let instrument
+      try {
+        instrument = await account.instrument(instId)
+      } catch {
+        throw new Error(`Symbole non listé sur OKX : ${config.symbol} (${instId})`)
+      }
+      // Overlay the OKX execution rules onto the Binance-sourced symbolInfo: the
+      // base/quote/precision come from the DATA side, but tick/step/min/contract/
+      // leverage must match the venue we actually trade on (execution + strategy
+      // rounding go through this value).
+      this.symbolInfoV = {
+        ...symbolInfo,
+        tickSize: instrument.tickSize,
+        stepSize: instrument.stepSize,
+        minQty: instrument.minQty,
+        contractSize: instrument.contractSize,
+        maxLeverage: instrument.maxLeverage,
+      }
       if (config.market === 'futures') {
-        await account.setIsolatedMargin(config.symbol).catch(() => {})
-        await account.setLeverage(config.symbol, config.leverage)
+        await account.setLeverage(instId, config.leverage, 'isolated').catch(() => {})
       }
       manager.ensureBalancePolling(config.mode, config.market, account)
-      const adapter = new BinanceLiveAdapter({
+      const adapter = new OKXLiveAdapter({
         market: config.market,
-        testnet,
+        demo: testnet,
         symbol: config.symbol,
-        symbolInfo,
+        symbolInfo: this.symbolInfoV,
         botId: config.id,
         allocation: config.allocation,
         leverage: config.leverage,
@@ -205,7 +233,7 @@ class BotRunner {
       })
       adapter.setLastPrice(lastPrice)
       this.rawExec = adapter
-      const router = await manager.getRouter(config.mode, config.market, creds)
+      const router = await manager.getRouter(config.mode, creds)
       router.register(adapter)
     }
 
@@ -257,7 +285,7 @@ class BotRunner {
       }
     }
 
-    if (this.rawExec instanceof BinanceLiveAdapter) {
+    if (this.rawExec instanceof OKXLiveAdapter) {
       // ordres au REPOS connus du bot (DB) → reconcile pourra rattraper un fill
       // survenu pendant l'arrêt (ex. le stop de rachat déclenché alors que le
       // bot était down). Spot uniquement utile, mais inoffensif sinon.
@@ -309,7 +337,7 @@ class BotRunner {
               sim.setTime(Date.now())
               sim.processAggTrade(trade.price, trade.qty)
             })
-          } else if (this.rawExec instanceof BinanceLiveAdapter && feed.symbol === config.symbol) {
+          } else if (this.rawExec instanceof OKXLiveAdapter && feed.symbol === config.symbol) {
             this.rawExec.setLastPrice(trade.price)
           }
           if (feed.trades && liveDispatch) {
@@ -665,8 +693,8 @@ class BotRunner {
       await this.runtime.stop().catch(() => {})
     } finally {
       await this.saveState().catch(() => {})
-      if (this.rawExec instanceof BinanceLiveAdapter) {
-        this.deps.manager.releaseAdapter(this.deps.config.mode, this.deps.config.market, this.rawExec)
+      if (this.rawExec instanceof OKXLiveAdapter) {
+        this.deps.manager.releaseAdapter(this.deps.config.mode, this.rawExec)
       }
       this.status = opts.killed ? 'killed' : 'stopped'
       this.statusReason = opts.reason
@@ -764,7 +792,7 @@ export class BotManager {
   globalRisk: GlobalRiskConfig = { killSwitchActive: false }
 
   private runners = new Map<string, BotRunner>()
-  private routers = new Map<string, UserStreamRouter>()
+  private routers = new Map<string, OkxUserStreamRouter>()
   private balanceCache = new Map<string, { at: number; balances: Balance[] }>()
   private balancePollers = new Map<string, ReturnType<typeof setInterval>>()
 
@@ -976,35 +1004,35 @@ export class BotManager {
 
   // --------------------------------------------------- shared live plumbing
 
-  async getRouter(mode: BotConfig['mode'], market: MarketType, creds: { apiKey: string; secret: string }): Promise<UserStreamRouter> {
-    const key = `${mode}:${market}`
-    let router = this.routers.get(key)
+  async getRouter(mode: BotConfig['mode'], creds: OkxCredentials): Promise<OkxUserStreamRouter> {
+    // One router per account: the OKX unified account carries spot + swap, so a
+    // single private socket fans out to every bot in that mode.
+    let router = this.routers.get(mode)
     if (!router) {
-      router = new UserStreamRouter(market, mode === 'testnet', creds, (err) => {
-        console.error(`User stream ${key} error:`, err.message)
-      })
-      this.routers.set(key, router)
+      const onError = (err: Error) => console.error(`User stream ${mode} error:`, err.message)
+      router = new OkxUserStreamRouter(new OkxPrivateStream(creds, mode === 'testnet', onError), onError)
+      this.routers.set(mode, router)
       await router.start()
     }
     return router
   }
 
-  releaseAdapter(mode: BotConfig['mode'], market: MarketType, adapter: BinanceLiveAdapter): void {
-    const router = this.routers.get(`${mode}:${market}`)
+  releaseAdapter(mode: BotConfig['mode'], adapter: OKXLiveAdapter): void {
+    const router = this.routers.get(mode)
     if (!router) return
     router.unregister(adapter)
     if (router.size === 0) {
       router.stop()
-      this.routers.delete(`${mode}:${market}`)
+      this.routers.delete(mode)
     }
   }
 
-  ensureBalancePolling(mode: BotConfig['mode'], market: MarketType, account: BinanceAccount): void {
+  ensureBalancePolling(mode: BotConfig['mode'], market: MarketType, account: OkxAccount): void {
     const key = `${mode}:${market}`
     if (this.balancePollers.has(key)) return
     const poll = async (): Promise<void> => {
       try {
-        const balances = market === 'spot' ? await account.spotBalances() : await account.futuresBalances()
+        const balances = await account.balances(market)
         this.balanceCache.set(key, { at: Date.now(), balances })
       } catch {
         /* keep stale */
