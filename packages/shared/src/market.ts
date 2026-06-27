@@ -83,5 +83,7 @@ export interface SymbolInfo {
   minNotional: number
   /** futures only */
   maxLeverage?: number
+  /** OKX SWAP contract value in base currency (ctVal); undefined/1 for spot */
+  contractSize?: number
   status: string
 }
