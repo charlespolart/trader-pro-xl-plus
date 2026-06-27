@@ -5,6 +5,7 @@ import {
   type MarketType,
   type Order,
   type OrderRequest,
+  type OrderType,
   type Position,
   type SymbolInfo,
 } from '@tpx/shared'
@@ -21,6 +22,7 @@ import {
   toInstId,
   type OkxAccount,
   type OkxOrderEvent,
+  type OkxRestOrder,
 } from '@tpx/data'
 
 export interface LiveAdapterEvents {
@@ -42,14 +44,14 @@ export interface LiveAdapterOptions {
   getBalances: () => readonly Balance[]
 }
 
-/** ordre au repos connu du bot (depuis la DB), passé à reconcile() pour
- *  rattraper un éventuel fill survenu pendant l'arrêt (spot). */
+/** A resting order known to the bot (from the DB), passed to reconcile() to
+ *  catch up on any fill that happened while the bot was down (spot). */
 export interface RestingOrderRef {
   clientId: string
   side: 'BUY' | 'SELL'
-  /** quantité déjà exécutée connue du bot (dernier état persisté) */
+  /** executed quantity last persisted by the bot */
   executedQty: number
-  /** quote cumulé déjà connu du bot */
+  /** cumulative quote last known to the bot */
   cumQuote: number
 }
 
@@ -111,21 +113,26 @@ export class OKXLiveAdapter implements ExecutionAdapter {
   }
 
   /**
-   * Re-adopt resting orders after a restart and rattraper les fills manqués
-   * pendant l'arrêt.
-   * - Ordres encore ouverts : ré-adoptés (le bot reprend son stop en attente).
-   * - Futures : la position réelle de l'exchange fait foi (corrige tout écart,
-   *   y compris un fill manqué — la position isolée est la vérité-terrain).
-   * - Spot : pas de « position » côté exchange (la balance inclut du BTC hors-bot,
-   *   on ne peut PAS l'adopter). Le rattrapage des fills manqués sur les ordres
-   *   au REPOS connus du bot exigerait un getOrder par-ordre, pas encore
-   *   implémenté côté OkxAccount → on logge et on saute (spec §14, follow-up).
-   * Tout est gardé : une erreur d'API est loggée et n'empêche jamais le démarrage.
+   * Re-adopt resting orders after a restart and catch up on fills missed while
+   * the bot was down.
+   * - Still-open regular orders: re-adopted (the bot resumes tracking them).
+   * - Resting ALGO (stop/TP) orders: OKX keeps these in a SEPARATE pending list
+   *   (`openAlgoOrders`), so they are re-adopted too. Without this, a stop that
+   *   fires after a restart would reach `handleOrderEvent` with an unknown
+   *   clOrdId and be dropped, leaving a phantom futures position.
+   * - Futures: the exchange's real position is the source of truth (it corrects
+   *   any divergence, including a missed fill — the isolated position is ground
+   *   truth).
+   * - Spot: there is no exchange-side "position" (the balance includes off-bot
+   *   coins, so it cannot be adopted). Catching up on missed fills for the bot's
+   *   known RESTING orders would need a per-order getOrder, not yet implemented
+   *   on OkxAccount -> we log and skip (spec §14, follow-up).
+   * Everything is guarded: an API error is logged and never blocks startup.
    */
   async reconcile(resting: RestingOrderRef[] = []): Promise<string[]> {
     const notes: string[] = []
     const stillOpen = new Set<string>()
-    // `openOrders` ne renvoie que les ordres réguliers (non-algo) → type LIMIT.
+    // `openOrders` only returns regular (non-algo) orders.
     const raw = await this.o.account.openOrders(this.instId)
     for (const r of raw) {
       const cid = r.clOrdId ?? ''
@@ -134,6 +141,17 @@ export class OKXLiveAdapter implements ExecutionAdapter {
       this.orders.set(cid, order)
       stillOpen.add(cid)
       notes.push(`re-adopted open order ${cid} (${order.type} ${order.side})`)
+    }
+    // Resting ALGO (stop/TP) orders live in a separate OKX pending list. Re-adopt
+    // them so a stop firing after a restart is attributed instead of dropped.
+    const algos = await this.o.account.openAlgoOrders(this.instId)
+    for (const r of algos) {
+      const cid = r.algoClOrdId ?? r.clOrdId ?? ''
+      if (!cid.startsWith(this.prefix)) continue
+      const order = this.mapRawOrder(r, cid)
+      this.orders.set(cid, order)
+      stillOpen.add(cid)
+      notes.push(`re-adopted resting algo order ${cid} (${order.type} ${order.side})`)
     }
     if (this.market === 'futures') {
       const positions = await this.o.account.positions(this.instId, this.ctVal)
@@ -148,14 +166,14 @@ export class OKXLiveAdapter implements ExecutionAdapter {
       }
       return notes
     }
-    // ---- SPOT : rattrapage des fills manqués sur les ordres au repos clôturés.
-    // OkxAccount n'expose pas encore de getOrder(instId, { clOrdId }) → on ne peut
-    // pas lire l'état final d'un ordre qui n'est plus ouvert. Reporté (spec §14).
+    // ---- SPOT: catch up on missed fills for resting orders that are now closed.
+    // OkxAccount does not expose a getOrder(instId, { clOrdId }) yet, so we cannot
+    // read the final state of an order that is no longer open. Deferred (spec §14).
     for (const ro of resting) {
       if (stillOpen.has(ro.clientId)) continue
       notes.push(
-        `réconciliation ordre ${ro.clientId} ignorée : getOrder OKX non implémenté ` +
-          `(rattrapage du fill manqué reporté — spec §14)`,
+        `reconciliation of order ${ro.clientId} skipped: OKX getOrder not implemented ` +
+          `(missed-fill catch-up deferred — spec §14)`,
       )
     }
     return notes
@@ -259,12 +277,26 @@ export class OKXLiveAdapter implements ExecutionAdapter {
 
   // -------------------------------------------------- private channel routing
 
-  /** private `orders` channel push (one per fill or state change) */
+  /**
+   * private `orders` channel push (one per fill or state change).
+   *
+   * RESIDUAL RISK (confirm in demo — spec §14): when an algo (stop/TP) order
+   * TRIGGERS, OKX places a NEW regular order to do the actual fill. We rely on
+   * that regular order carrying our `clOrdId` prefix on the `orders` channel so
+   * the fill is attributed here. If OKX instead assigns a fresh clOrdId without
+   * our prefix, a triggered-stop fill would early-return below and be dropped.
+   * This is the honest residual risk and must be confirmed against the demo API.
+   */
   handleOrderEvent(ev: OkxOrderEvent): void {
     const order = this.orders.get(ev.clOrdId)
     if (!order) return
     order.status = mapOkxState(ev.state, order.type, order.executedQty)
-    order.executedQty = Number(ev.accFillSz ?? order.executedQty)
+    // accFillSz is in CONTRACTS on futures but order.qty is in BASE; convert to
+    // keep both consistent. Spot accFillSz is already in base coin units.
+    order.executedQty =
+      this.market === 'futures'
+        ? contractsToBase(Number(ev.accFillSz ?? 0), this.ctVal)
+        : Number(ev.accFillSz ?? order.executedQty)
     order.updatedAt = Date.now()
 
     const d = parseFill(ev, this.market, this.ctVal)
@@ -288,30 +320,33 @@ export class OKXLiveAdapter implements ExecutionAdapter {
     return 0
   }
 
-  /** Re-adopt a still-open (non-algo) order from `orders-pending`. The push
-   *  shape only carries identity/state/accumulated fills, so type defaults to
-   *  LIMIT (algo/trigger orders come from a separate endpoint). */
-  private mapRawOrder(ev: OkxOrderEvent, clOrdId: string): Order {
-    const executedQty =
-      this.market === 'futures'
-        ? contractsToBase(Number(ev.accFillSz ?? 0), this.ctVal)
-        : Number(ev.accFillSz ?? 0)
+  /** Re-adopt a resting order returned by `orders-pending` / `orders-algo-pending`.
+   *  Builds a faithful `Order` from the REST shape. For algo (trigger) orders the
+   *  stop-vs-TP subtype is best-effort — the point is that the order is PRESENT
+   *  (status TRIGGER_PENDING) so its later fill is attributed. `ocoGroup` cannot
+   *  be recovered from OKX (the Binance template couldn't either — that's parity). */
+  private mapRawOrder(r: OkxRestOrder, clOrdId: string): Order {
+    const type = mapRestOrdType(r)
+    const toBase = (s: string | undefined) =>
+      this.market === 'futures' ? contractsToBase(Number(s ?? 0), this.ctVal) : Number(s ?? 0)
+    const executedQty = toBase(r.accFillSz)
     const order: Order = {
       id: clOrdId,
       clientId: clOrdId,
       botId: this.o.botId,
       market: this.market,
       symbol: this.symbol,
-      side: ev.side === 'sell' ? 'SELL' : 'BUY',
-      type: 'LIMIT',
-      status: mapOkxState(ev.state, 'LIMIT', executedQty),
-      qty: executedQty,
+      side: r.side === 'sell' ? 'SELL' : 'BUY',
+      type,
+      status: mapOkxState(r.state, type, executedQty),
+      qty: toBase(r.sz),
       executedQty,
       cumQuote: 0,
-      price: ev.avgPx !== undefined && Number(ev.avgPx) > 0 ? Number(ev.avgPx) : undefined,
+      price: r.px !== undefined && Number(r.px) > 0 ? Number(r.px) : undefined,
+      stopPrice: r.triggerPx !== undefined && Number(r.triggerPx) > 0 ? Number(r.triggerPx) : undefined,
       timeInForce: 'GTC',
       reduceOnly: false,
-      exchangeOrderId: ev.ordId,
+      exchangeOrderId: r.ordId ?? r.algoId,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     }
@@ -423,5 +458,21 @@ export class OKXLiveAdapter implements ExecutionAdapter {
         await this.cancel(sib.id).catch(() => {})
       }
     }
+  }
+}
+
+/** Map an OKX REST `ordType` to a TPX OrderType. For `trigger`, a real `px`
+ *  (limit price) means a stop/TP-limit; otherwise it is a stop/TP-market.
+ *  The stop-vs-TP distinction cannot be recovered from OKX, so STOP_* is used. */
+function mapRestOrdType(r: OkxRestOrder): OrderType {
+  switch (r.ordType) {
+    case 'market':
+      return 'MARKET'
+    case 'post_only':
+      return 'LIMIT_MAKER'
+    case 'trigger':
+      return r.px !== undefined && Number(r.px) > 0 ? 'STOP_LIMIT' : 'STOP_MARKET'
+    default:
+      return 'LIMIT'
   }
 }

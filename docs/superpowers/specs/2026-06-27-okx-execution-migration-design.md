@@ -315,6 +315,12 @@ Chaque phase finit avec **typecheck + tests verts**.
 - **Changement d'API OKX** annoncé « effective June 9 & 11, 2026 » : relire avant le cutover.
 - **`pnl` perp** dans les events de fill : confirmer la sémantique (réalisé sur réduction)
   pour aligner `realizedNet`.
+- **Propagation du `clOrdId` au déclenchement d'un ordre algo (stop/TP)** : quand un ordre
+  algo se déclenche, OKX place un NOUVEL ordre régulier pour exécuter le fill. `reconcile()`
+  ré-adopte désormais les ordres algo au repos (clé = `algoClOrdId`), mais il faut **confirmer
+  en démo** que l'ordre régulier déclenché porte bien notre préfixe `clOrdId` sur le canal
+  `orders`. Si OKX assigne un `clOrdId` frais sans préfixe, le fill du stop déclenché pourrait
+  rester non attribué (`handleOrderEvent` early-return). Risque résiduel honnête — à vérifier.
 
 ## 15. Décisions actées
 

@@ -59,3 +59,20 @@ export interface OkxPrivateEvent {
   channel: string
   data: OkxOrderEvent[]
 }
+
+/** A resting order returned by the orders-pending / orders-algo-pending REST endpoints. */
+export interface OkxRestOrder {
+  instId: string
+  ordId?: string
+  algoId?: string
+  clOrdId?: string
+  algoClOrdId?: string
+  ordType: string
+  side: 'buy' | 'sell'
+  sz: string
+  px?: string
+  triggerPx?: string
+  state: string
+  accFillSz?: string
+  avgPx?: string
+}

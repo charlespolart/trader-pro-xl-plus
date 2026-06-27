@@ -3,7 +3,7 @@ import type { ExchangeInstrument, ExchangePosition } from '../exchange/types'
 import { OkxInstruments } from './instruments'
 import type { OkxRest } from './rest'
 import { contractsToBase, instType } from './symbols'
-import type { OkxInstType, OkxOrderAck, OkxOrderEvent } from './types'
+import type { OkxInstType, OkxOrderAck, OkxRestOrder } from './types'
 
 interface RawBalanceDetail {
   ccy: string
@@ -116,12 +116,12 @@ export class OkxAccount {
     })
   }
 
-  async openOrders(instId: string): Promise<OkxOrderEvent[]> {
-    return this.rest.signed<OkxOrderEvent>('GET', '/api/v5/trade/orders-pending', { instId })
+  async openOrders(instId: string): Promise<OkxRestOrder[]> {
+    return this.rest.signed<OkxRestOrder>('GET', '/api/v5/trade/orders-pending', { instId })
   }
 
-  async openAlgoOrders(instId: string): Promise<OkxOrderEvent[]> {
-    return this.rest.signed<OkxOrderEvent>('GET', '/api/v5/trade/orders-algo-pending', { instId, ordType: 'trigger' })
+  async openAlgoOrders(instId: string): Promise<OkxRestOrder[]> {
+    return this.rest.signed<OkxRestOrder>('GET', '/api/v5/trade/orders-algo-pending', { instId, ordType: 'trigger' })
   }
 
   private checkAck(ack: OkxOrderAck | undefined): OkxOrderAck {

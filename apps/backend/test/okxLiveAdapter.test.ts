@@ -8,21 +8,21 @@ const SI: SymbolInfo = {
   minNotional: 5, status: 'TRADING', contractSize: 0.01,
 }
 
-function fakeAccount(captured: Record<string, unknown>[]) {
+function fakeAccount(captured: Record<string, unknown>[], algoOrders: Record<string, unknown>[] = []) {
   return {
     placeOrder: async (body: Record<string, unknown>) => { captured.push(body); return { ordId: 'o1', clOrdId: String(body.clOrdId), sCode: '0', sMsg: '' } },
     placeAlgoOrder: async (body: Record<string, unknown>) => { captured.push(body); return { ordId: '', algoId: 'a1', clOrdId: '', algoClOrdId: String(body.algoClOrdId), sCode: '0', sMsg: '' } },
     cancelOrder: async () => {}, cancelAlgoOrder: async () => {},
-    openOrders: async () => [], openAlgoOrders: async () => [],
+    openOrders: async () => [], openAlgoOrders: async () => algoOrders,
     positions: async () => [], instrument: async () => ({ instId: 'BTC-USDT-SWAP', tickSize: 0.1, stepSize: 1, minQty: 1, contractSize: 0.01, maxLeverage: 125 }),
   } as unknown as import('@tpx/data').OkxAccount
 }
 
-function mkAdapter(captured: Record<string, unknown>[]) {
+function mkAdapter(captured: Record<string, unknown>[], algoOrders: Record<string, unknown>[] = []) {
   const fills: unknown[] = []
   const adapter = new OKXLiveAdapter({
     market: 'futures', demo: true, symbol: 'BTCUSDT', symbolInfo: SI, botId: 'bot-123',
-    allocation: 1000, leverage: 10, account: fakeAccount(captured),
+    allocation: 1000, leverage: 10, account: fakeAccount(captured, algoOrders),
     events: { onFill: (f) => fills.push(f), onOrderUpdate: () => {} },
     getBalances: () => [],
   })
@@ -48,8 +48,25 @@ describe('OKXLiveAdapter', () => {
       instId: 'BTC-USDT-SWAP', clOrdId: order.clientId, ordId: 'o1', state: 'filled', side: 'buy',
       fillSz: '5', fillPx: '50000', fillFee: '-0.025', fillFeeCcy: 'USDT', fillPnl: '0', fillTime: '1782637737000', accFillSz: '5',
     })
-    await Promise.resolve() // fee normalization is async
     expect(fills.length).toBe(1)
     expect(adapter.position().qty).toBeCloseTo(0.05, 6)
+  })
+
+  it('re-adopts a resting algo (stop) order on reconcile so its later fill is attributed', async () => {
+    const captured: Record<string, unknown>[] = []
+    const algoCid = 'tpxbot123s1' // must start with clOrdPrefix('bot-123') === 'tpxbot123'
+    const { adapter, fills } = mkAdapter(captured, [
+      { instId: 'BTC-USDT-SWAP', algoId: 'a9', algoClOrdId: algoCid, ordType: 'trigger', side: 'sell', sz: '5', triggerPx: '48000', state: 'live' },
+    ])
+    const notes = await adapter.reconcile([])
+    expect(notes.some((n) => n.includes(algoCid))).toBe(true)
+    expect(adapter.openOrders().some((o) => o.clientId === algoCid && o.status === 'TRIGGER_PENDING')).toBe(true)
+    // The stop fires: OKX pushes a fill on the orders channel keyed by the algo clOrdId.
+    adapter.handleOrderEvent({
+      instId: 'BTC-USDT-SWAP', clOrdId: algoCid, ordId: 'o9', state: 'filled', side: 'sell',
+      fillSz: '5', fillPx: '48000', fillFee: '-0.024', fillFeeCcy: 'USDT', fillPnl: '0', fillTime: '1782637737000', accFillSz: '5',
+    })
+    expect(fills.length).toBe(1)
+    expect(adapter.position().qty).toBeCloseTo(-0.05, 6)
   })
 })
