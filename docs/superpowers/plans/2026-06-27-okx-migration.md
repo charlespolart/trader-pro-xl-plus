@@ -213,7 +213,7 @@ describe('okx signing', () => {
 
   it('builds a WS login frame with epoch-SECONDS timestamp', () => {
     const f = okxWsLogin('k', 'secret', 'pass', Date.parse('2026-06-27T09:08:57.715Z'))
-    expect(f.timestamp).toBe('1782637737') // floor(ms/1000)
+    expect(f.timestamp).toBe('1782551337') // floor(ms/1000)
     expect(f.apiKey).toBe('k')
     expect(f.passphrase).toBe('pass')
     expect(f.sign).toMatch(/^[A-Za-z0-9+/]+=*$/)
@@ -1282,7 +1282,7 @@ describe('okx private ws frames', () => {
   it('builds a login frame', () => {
     const f = loginFrame({ apiKey: 'k', secret: 's', passphrase: 'p' }, Date.parse('2026-06-27T09:08:57.715Z'))
     expect(f.op).toBe('login')
-    expect(f.args[0]).toMatchObject({ apiKey: 'k', passphrase: 'p', timestamp: '1782637737' })
+    expect(f.args[0]).toMatchObject({ apiKey: 'k', passphrase: 'p', timestamp: '1782551337' })
   })
 
   it('subscribes to orders, orders-algo and positions', () => {
