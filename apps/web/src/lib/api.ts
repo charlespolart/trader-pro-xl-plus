@@ -257,8 +257,12 @@ export const api = {
 
   // settings
   settings: () => get<SettingsData>('/settings'),
-  setCredentials: (name: 'live' | 'testnet', apiKey: string, secret: string) =>
-    put<{ ok: boolean }>('/settings/credentials', { name, apiKey, secret }),
+  setCredentials: (name: 'live' | 'testnet', apiKey: string, secret: string, passphrase: string) =>
+    put<{ ok: boolean }>('/settings/credentials', { name, apiKey, secret, passphrase }),
   deleteCredentials: (name: 'live' | 'testnet') => del<{ ok: boolean }>(`/settings/credentials/${name}`),
   setPaperFees: (market: MarketType, fees: unknown) => put<{ ok: boolean }>('/settings/paper-fees', { market, fees }),
+
+  // live OKX maker/taker/level for a symbol (null when no creds / unknown symbol)
+  getFees: (name: 'live' | 'testnet', market: MarketType, symbol: string) =>
+    get<{ maker: number; taker: number; level: string } | null>(`/fees/${name}/${market}/${symbol}`),
 }

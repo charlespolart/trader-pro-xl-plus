@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { MarketType } from '@tpx/shared'
+import { DEFAULT_FEES, FEE_TIER_PRESETS } from '@tpx/shared'
 import { OctagonAlert, Power } from 'lucide-react'
 import { api } from '../lib/api'
-import { fmtNum } from '../lib/format'
 import { Badge, Card, Field, PageHeader } from '../components/ui'
 import { alertDialog, confirmDialog } from '../components/dialog'
 
@@ -24,8 +24,8 @@ export function Settings() {
       <PageHeader title="Réglages" subtitle="Clés API, risque global, frais de paper trading et état du système" />
 
       <div className="grid grid-cols-2 gap-4">
-        <CredentialsCard name="live" title="Clés API Binance — LIVE" configured={settings?.credentials.live ?? false} onDone={invalidate} />
-        <CredentialsCard name="testnet" title="Clés API Binance — Testnet" configured={settings?.credentials.testnet ?? false} onDone={invalidate} />
+        <CredentialsCard name="live" title="Clés API OKX — LIVE" configured={settings?.credentials.live ?? false} onDone={invalidate} />
+        <CredentialsCard name="testnet" title="Clés API OKX — Démo" configured={settings?.credentials.testnet ?? false} onDone={invalidate} />
       </div>
 
       <RiskCard
@@ -61,12 +61,6 @@ export function Settings() {
             <span className="text-zinc-400">Dossier données</span>
             <span className="font-mono text-xs">{settings?.dataDir}</span>
           </div>
-          {account?.configured && (
-            <div className="flex justify-between">
-              <span className="text-zinc-400">Solde BNB (réduction de frais)</span>
-              <span>{fmtNum(account.bnbBalance ?? 0, 4)} BNB</span>
-            </div>
-          )}
         </div>
       </Card>
     </div>
@@ -76,11 +70,13 @@ export function Settings() {
 function CredentialsCard({ name, title, configured, onDone }: { name: 'live' | 'testnet'; title: string; configured: boolean; onDone: () => void }) {
   const [apiKey, setApiKey] = useState('')
   const [secret, setSecret] = useState('')
+  const [passphrase, setPassphrase] = useState('')
   const save = useMutation({
-    mutationFn: () => api.setCredentials(name, apiKey, secret),
+    mutationFn: () => api.setCredentials(name, apiKey, secret, passphrase),
     onSuccess: () => {
       setApiKey('')
       setSecret('')
+      setPassphrase('')
       onDone()
     },
     onError: (e) => void alertDialog({ title: 'Erreur', message: e instanceof Error ? e.message : String(e), tone: 'danger' }),
@@ -100,6 +96,9 @@ function CredentialsCard({ name, title, configured, onDone }: { name: 'live' | '
       <Field label="Secret">
         <input className="input" type="password" value={secret} onChange={(e) => setSecret(e.target.value)} placeholder={configured ? '••••••••' : ''} />
       </Field>
+      <Field label="Passphrase">
+        <input className="input" type="password" value={passphrase} onChange={(e) => setPassphrase(e.target.value)} placeholder={configured ? '••••••••' : ''} />
+      </Field>
       {name === 'live' && (
         <div className="text-[11px] text-zinc-500">
           Conseil : créez une clé restreinte (trading uniquement, pas de retrait) avec whitelist IP de votre VPS.
@@ -116,7 +115,7 @@ function CredentialsCard({ name, title, configured, onDone }: { name: 'live' | '
             Supprimer
           </button>
         )}
-        <button className="btn-primary" onClick={() => save.mutate()} disabled={apiKey === '' || secret === '' || save.isPending}>
+        <button className="btn-primary" onClick={() => save.mutate()} disabled={apiKey === '' || secret === '' || passphrase === '' || save.isPending}>
           Enregistrer (chiffré)
         </button>
       </div>
@@ -201,26 +200,77 @@ function RiskCard({
 }
 
 function PaperFeesCard({ market, fees, onDone }: { market: MarketType; fees?: { makerRate: number; takerRate: number }; onDone: () => void }) {
-  const [maker, setMaker] = useState(fees ? String(fees.makerRate) : '0.001')
-  const [taker, setTaker] = useState(fees ? String(fees.takerRate) : '0.001')
+  const [maker, setMaker] = useState(fees ? String(fees.makerRate) : String(DEFAULT_FEES[market].makerRate))
+  const [taker, setTaker] = useState(fees ? String(fees.takerRate) : String(DEFAULT_FEES[market].takerRate))
+  const [tier, setTier] = useState('')
+  // OKX level imported from the live trade-fee endpoint; null until imported.
+  const [level, setLevel] = useState<string | null>(null)
+  const [noCreds, setNoCreds] = useState(false)
 
   const save = useMutation({
     mutationFn: () => api.setPaperFees(market, { makerRate: Number(maker), takerRate: Number(taker) }),
     onSuccess: onDone,
   })
 
+  // Applying a tier preset or a manual edit clears the imported-level badge.
+  const applyTier = (id: string): void => {
+    setTier(id)
+    setLevel(null)
+    setNoCreds(false)
+    const preset = FEE_TIER_PRESETS[market].find((p) => p.id === id)
+    if (preset) {
+      setMaker(String(preset.makerRate))
+      setTaker(String(preset.takerRate))
+    }
+  }
+
+  const importFees = useMutation({
+    mutationFn: () => api.getFees('live', market, 'BTCUSDT'),
+    onSuccess: (data) => {
+      if (data) {
+        setMaker(String(data.maker))
+        setTaker(String(data.taker))
+        setLevel(data.level)
+        setNoCreds(false)
+        setTier('')
+      } else {
+        setLevel(null)
+        setNoCreds(true)
+      }
+    },
+  })
+
   return (
     <Card title={`Frais paper trading — ${market}`}>
-      <div className="flex items-end gap-3">
-        <Field label="Maker">
-          <input className="input w-28" type="number" step="0.0001" value={maker} onChange={(e) => setMaker(e.target.value)} />
-        </Field>
-        <Field label="Taker">
-          <input className="input w-28" type="number" step="0.0001" value={taker} onChange={(e) => setTaker(e.target.value)} />
-        </Field>
-        <button className="btn-primary" onClick={() => save.mutate()} disabled={save.isPending}>
-          OK
-        </button>
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-end gap-3">
+          <Field label="Palier OKX">
+            <select className="input w-32" value={tier} onChange={(e) => applyTier(e.target.value)}>
+              <option value="">Personnalisé</option>
+              {FEE_TIER_PRESETS[market].map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Maker">
+            <input className="input w-28" type="number" step="0.0001" value={maker} onChange={(e) => setMaker(e.target.value)} />
+          </Field>
+          <Field label="Taker">
+            <input className="input w-28" type="number" step="0.0001" value={taker} onChange={(e) => setTaker(e.target.value)} />
+          </Field>
+          <button className="btn-primary" onClick={() => save.mutate()} disabled={save.isPending}>
+            OK
+          </button>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button className="btn-ghost" onClick={() => importFees.mutate()} disabled={importFees.isPending}>
+            Importer mes vrais taux
+          </button>
+          {level !== null && <Badge value="running" label={`Palier OKX : ${level}`} />}
+          {noCreds && <span className="text-[11px] text-zinc-500">Clés API non configurées</span>}
+        </div>
       </div>
     </Card>
   )
