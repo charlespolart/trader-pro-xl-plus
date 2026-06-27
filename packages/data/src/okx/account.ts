@@ -3,7 +3,7 @@ import type { ExchangeInstrument, ExchangePosition } from '../exchange/types'
 import { OkxInstruments } from './instruments'
 import type { OkxRest } from './rest'
 import { contractsToBase, instType } from './symbols'
-import type { OkxInstType } from './types'
+import type { OkxInstType, OkxOrderAck, OkxOrderEvent } from './types'
 
 interface RawBalanceDetail {
   ccy: string
@@ -91,6 +91,43 @@ export class OkxAccount {
         mgnMode,
       },
     )
+  }
+
+  async placeOrder(body: Record<string, unknown>): Promise<OkxOrderAck> {
+    const rows = await this.rest.signed<OkxOrderAck>('POST', '/api/v5/trade/order', {}, body)
+    return this.checkAck(rows[0])
+  }
+
+  async placeAlgoOrder(body: Record<string, unknown>): Promise<OkxOrderAck> {
+    const rows = await this.rest.signed<OkxOrderAck>('POST', '/api/v5/trade/order-algo', {}, body)
+    return this.checkAck(rows[0])
+  }
+
+  async cancelOrder(instId: string, ids: { clOrdId?: string; ordId?: string }): Promise<void> {
+    await this.rest.signed('POST', '/api/v5/trade/cancel-order', {}, { instId, ...ids }).catch((e) => {
+      // 51400/51401: order does not exist / already canceled — ignore
+      if (!String(e).match(/5140[01]/)) throw e
+    })
+  }
+
+  async cancelAlgoOrder(instId: string, ids: { algoClOrdId?: string; algoId?: string }): Promise<void> {
+    await this.rest.signed('POST', '/api/v5/trade/cancel-algos', {}, [{ instId, ...ids }]).catch((e) => {
+      if (!String(e).match(/5140[01]/)) throw e
+    })
+  }
+
+  async openOrders(instId: string): Promise<OkxOrderEvent[]> {
+    return this.rest.signed<OkxOrderEvent>('GET', '/api/v5/trade/orders-pending', { instId })
+  }
+
+  async openAlgoOrders(instId: string): Promise<OkxOrderEvent[]> {
+    return this.rest.signed<OkxOrderEvent>('GET', '/api/v5/trade/orders-algo-pending', { instId, ordType: 'trigger' })
+  }
+
+  private checkAck(ack: OkxOrderAck | undefined): OkxOrderAck {
+    if (!ack) throw new Error('OKX: empty order response')
+    if (ack.sCode !== '0') throw new Error(`OKX order rejected (sCode ${ack.sCode}): ${ack.sMsg}`)
+    return ack
   }
 
   // raw helper for the symbol type
