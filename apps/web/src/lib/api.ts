@@ -103,7 +103,6 @@ export interface AccountData {
   spot?: { asset: string; free: number; locked: number }[]
   futures?: { asset: string; free: number; locked: number }[]
   positions?: { symbol: string; positionAmt: number; entryPrice: number; leverage: number; liquidationPrice: number; unRealizedProfit: number }[]
-  bnbBalance?: number
   totalExposureQuote?: number
   killSwitchActive: boolean
   globalRisk?: GlobalRiskConfig

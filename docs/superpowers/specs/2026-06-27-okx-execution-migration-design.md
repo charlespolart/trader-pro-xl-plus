@@ -1,7 +1,7 @@
 # Migration de l'exécution Binance → OKX
 
 **Date :** 2026-06-27
-**Statut :** design validé, prêt pour le plan d'implémentation
+**Statut :** implémenté (migration réalisée — Task 15)
 
 ## 1. Contexte & objectif
 

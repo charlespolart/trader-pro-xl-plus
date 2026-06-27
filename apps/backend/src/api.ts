@@ -16,7 +16,7 @@ import {
   type SymbolInfo,
 } from '@tpx/shared'
 import { ALL_PATTERNS, candlePatterns, type PatternName } from '@tpx/core'
-import { BinanceAccount, BinanceMarketData, BinanceRest, CandleStore, OkxAccount, OkxRest, instType, toInstId } from '@tpx/data'
+import { BinanceMarketData, BinanceRest, CandleStore, OkxAccount, OkxRest, instType, toInstId } from '@tpx/data'
 import { authEnabled, env } from './env'
 import { issueToken } from './crypto'
 import { registry } from './strategies'
@@ -425,21 +425,26 @@ export function buildApi(s: Services): Hono {
       return c.json({ configured: false, mode, killSwitchActive: s.bots.killSwitchActive })
     }
     const testnet = mode === 'testnet'
-    const spotAcc = new BinanceAccount(new BinanceRest({ market: 'spot', testnet, credentials: creds }))
-    const futAcc = new BinanceAccount(new BinanceRest({ market: 'futures', testnet, credentials: creds }))
-    const [spot, futures, positions] = await Promise.all([
-      spotAcc.spotBalances().catch(() => []),
-      futAcc.futuresBalances().catch(() => []),
-      futAcc.futuresPositions().catch(() => []),
+    const account = new OkxAccount(new OkxRest({ demo: testnet, credentials: creds }))
+    const [balances, positions] = await Promise.all([
+      account.balances('spot').catch(() => []),
+      account.allPositions().catch(() => []),
     ])
-    const bnb = spot.find((b) => b.asset === 'BNB')
     const data = {
       configured: true,
       mode,
-      spot,
-      futures,
-      positions: positions.filter((p) => p.positionAmt !== 0),
-      bnbBalance: bnb ? bnb.free + bnb.locked : 0,
+      spot: balances,
+      futures: [],
+      positions: positions
+        .filter((p) => p.qty !== 0)
+        .map((p) => ({
+          symbol: p.instId,
+          positionAmt: p.qty,
+          entryPrice: p.entryPrice,
+          leverage: p.leverage,
+          liquidationPrice: p.liquidationPrice ?? 0,
+          unRealizedProfit: p.unrealizedPnl,
+        })),
       totalExposureQuote: s.bots.totalExposureQuote([mode]),
       killSwitchActive: s.bots.killSwitchActive,
       globalRisk: s.bots.globalRisk,

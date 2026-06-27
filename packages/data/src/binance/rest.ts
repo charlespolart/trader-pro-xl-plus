@@ -1,11 +1,5 @@
-import { createHmac } from 'node:crypto'
 import { sleep, type MarketType } from '@tpx/shared'
 import { apiPrefix, endpointsFor } from './endpoints'
-
-export interface BinanceCredentials {
-  apiKey: string
-  secret: string
-}
 
 export class BinanceApiError extends Error {
   constructor(
@@ -20,7 +14,6 @@ export class BinanceApiError extends Error {
 export interface BinanceRestOptions {
   market: MarketType
   testnet?: boolean
-  credentials?: BinanceCredentials
   /** weight threshold (per minute) above which we proactively pause */
   weightSoftLimit?: number
 }
@@ -28,10 +21,12 @@ export interface BinanceRestOptions {
 type Params = Record<string, string | number | boolean | undefined>
 
 /**
- * Minimal, robust Binance REST client (spot + USDT-M futures + testnets).
- * - HMAC-signed requests with server-time offset auto-sync
+ * Minimal, robust Binance REST client for PUBLIC market data (spot + USDT-M
+ * futures + testnets). Trading/account endpoints moved to OKX — this client is
+ * market-data only and never signs requests.
  * - proactive rate limiting from X-MBX-USED-WEIGHT headers
  * - 429 Retry-After honored, 418 (IP ban) surfaces immediately
+ * - 451 geo-failover to the official data mirror for spot public endpoints
  */
 /** official market-data-only mirror of the spot /api/v3 — not geo-blocked */
 const SPOT_DATA_MIRROR = 'https://data-api.binance.vision'
@@ -39,8 +34,6 @@ const SPOT_DATA_MIRROR = 'https://data-api.binance.vision'
 export class BinanceRest {
   private base: string
   private readonly prefix: string
-  private timeOffset = 0
-  private timeSynced = false
   private usedWeight = 0
   private weightResetAt = 0
 
@@ -57,16 +50,7 @@ export class BinanceRest {
   // ------------------------------------------------------------ public api
 
   async public<T>(path: string, params: Params = {}): Promise<T> {
-    return this.request<T>('GET', path, params, false)
-  }
-
-  async signed<T>(method: 'GET' | 'POST' | 'PUT' | 'DELETE', path: string, params: Params = {}): Promise<T> {
-    return this.request<T>(method, path, params, true)
-  }
-
-  /** API-key header without signature (listenKey endpoints) */
-  async keyed<T>(method: 'GET' | 'POST' | 'PUT' | 'DELETE', path: string, params: Params = {}): Promise<T> {
-    return this.request<T>(method, path, params, false, false, 0, true)
+    return this.request<T>('GET', path, params)
   }
 
   /** path relative to the market prefix, e.g. p('/klines') => /api/v3/klines */
@@ -74,52 +58,19 @@ export class BinanceRest {
     return `${this.prefix}${sub}`
   }
 
-  async syncTime(): Promise<void> {
-    const before = Date.now()
-    const { serverTime } = await this.request<{ serverTime: number }>('GET', this.p('/time'), {}, false, true)
-    const rtt = Date.now() - before
-    this.timeOffset = serverTime + rtt / 2 - Date.now()
-    this.timeSynced = true
-  }
-
   // -------------------------------------------------------------- internals
 
-  private async request<T>(
-    method: string,
-    path: string,
-    params: Params,
-    sign: boolean,
-    skipRateLimit = false,
-    attempt = 0,
-    keyOnly = false,
-  ): Promise<T> {
-    if (!skipRateLimit) await this.rateLimitGate()
+  private async request<T>(method: string, path: string, params: Params, attempt = 0): Promise<T> {
+    await this.rateLimitGate()
 
     const search = new URLSearchParams()
     for (const [k, v] of Object.entries(params)) {
       if (v !== undefined) search.set(k, String(v))
     }
 
-    const headers: Record<string, string> = {}
-    if (keyOnly) {
-      const creds = this.o.credentials
-      if (!creds) throw new Error('This endpoint requires an API key')
-      headers['X-MBX-APIKEY'] = creds.apiKey
-    }
-    if (sign) {
-      const creds = this.o.credentials
-      if (!creds) throw new Error('This endpoint requires API credentials')
-      if (!this.timeSynced) await this.syncTime()
-      search.set('timestamp', String(Math.round(Date.now() + this.timeOffset)))
-      search.set('recvWindow', '10000')
-      const sig = createHmac('sha256', creds.secret).update(search.toString()).digest('hex')
-      search.set('signature', sig)
-      headers['X-MBX-APIKEY'] = creds.apiKey
-    }
-
     const qs = search.toString()
     const url = `${this.base}${path}${qs ? `?${qs}` : ''}`
-    const res = await fetch(url, { method, headers })
+    const res = await fetch(url, { method })
 
     const weightHeader =
       res.headers.get('x-mbx-used-weight-1m') ?? res.headers.get('x-mbx-used-weight')
@@ -135,21 +86,19 @@ export class BinanceRest {
       }
       if (attempt >= 5) throw new BinanceApiError(429, -1003, 'rate limited, retries exhausted')
       await sleep((retryAfter + 1) * 1000)
-      return this.request<T>(method, path, params, sign, skipRateLimit, attempt + 1, keyOnly)
+      return this.request<T>(method, path, params, attempt + 1)
     }
 
     // 451: geo-restricted IP. Spot public endpoints transparently fail over
-    // to the official data mirror; signed/futures endpoints cannot.
+    // to the official data mirror.
     if (
       res.status === 451 &&
       this.o.market === 'spot' &&
-      !sign &&
-      !keyOnly &&
       !(this.o.testnet ?? false) &&
       this.base !== SPOT_DATA_MIRROR
     ) {
       this.base = SPOT_DATA_MIRROR
-      return this.request<T>(method, path, params, sign, skipRateLimit, attempt, keyOnly)
+      return this.request<T>(method, path, params, attempt)
     }
 
     if (!res.ok) {
@@ -164,11 +113,6 @@ export class BinanceRest {
       }
       if (res.status === 451) {
         msg += ' [geo-restricted IP — Vision archives still work; run live trading from the VPS]'
-      }
-      // -1021: timestamp outside recvWindow — resync once and retry
-      if (code === -1021 && attempt < 2) {
-        await this.syncTime()
-        return this.request<T>(method, path, params, sign, skipRateLimit, attempt + 1, keyOnly)
       }
       throw new BinanceApiError(res.status, code, msg)
     }

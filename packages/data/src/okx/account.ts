@@ -47,6 +47,24 @@ export class OkxAccount {
     }))
   }
 
+  /** All open SWAP positions (no instId filter) — used by the /account endpoint. */
+  async allPositions(): Promise<ExchangePosition[]> {
+    const rows = await this.rest.signed<RawPosition>('GET', '/api/v5/account/positions', { instType: 'SWAP' })
+    const out: ExchangePosition[] = []
+    for (const p of rows) {
+      const inst = await this.instruments.get(p.instId, 'SWAP')
+      out.push({
+        instId: p.instId,
+        qty: contractsToBase(Number(p.pos), inst.contractSize),
+        entryPrice: Number(p.avgPx) || 0,
+        leverage: Number(p.lever) || 1,
+        liquidationPrice: Number(p.liqPx) || null,
+        unrealizedPnl: Number(p.upl) || 0,
+      })
+    }
+    return out
+  }
+
   /** ctVal: the instrument's contractSize (caller passes its cached value). */
   async positions(instId: string, ctVal: number): Promise<ExchangePosition[]> {
     const rows = await this.rest.signed<RawPosition>('GET', '/api/v5/account/positions', {

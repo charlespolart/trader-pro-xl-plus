@@ -1,7 +1,6 @@
 export * from './binance/endpoints'
 export * from './binance/rest'
 export * from './binance/market'
-export * from './binance/account'
 export * from './binance/ws'
 export * from './store/vision'
 export * from './store/binaryCodec'
