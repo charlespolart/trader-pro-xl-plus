@@ -236,12 +236,13 @@ export const settings = pgTable('settings', {
   updatedAt: ts('updated_at').notNull(),
 })
 
-/** AES-256-GCM encrypted Binance credentials (never stored in clear) */
+/** AES-256-GCM encrypted OKX credentials (never stored in clear) */
 export const apiCredentials = pgTable('api_credentials', {
   /** 'live' | 'testnet' */
   name: text('name').primaryKey(),
   apiKeyEnc: text('api_key_enc').notNull(),
   secretEnc: text('secret_enc').notNull(),
+  passphraseEnc: text('passphrase_enc'),
   updatedAt: ts('updated_at').notNull(),
 })
 

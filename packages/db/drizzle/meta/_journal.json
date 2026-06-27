@@ -8,6 +8,13 @@
       "when": 1781238506578,
       "tag": "0000_kind_the_phantom",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1782580081804,
+      "tag": "0001_big_kitty_pryde",
+      "breakpoints": true
     }
   ]
 }

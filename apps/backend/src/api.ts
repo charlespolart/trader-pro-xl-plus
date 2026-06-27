@@ -509,9 +509,14 @@ export function buildApi(s: Services): Hono {
   })
 
   api.put('/settings/credentials', async (c) => {
-    const body = (await c.req.json()) as { name?: 'live' | 'testnet'; apiKey?: string; secret?: string }
+    const body = (await c.req.json()) as {
+      name?: 'live' | 'testnet'
+      apiKey?: string
+      secret?: string
+      passphrase?: string
+    }
     if (!body.name || !body.apiKey || !body.secret) return c.json({ error: 'name, apiKey, secret requis' }, 400)
-    await s.credentials.set(body.name, body.apiKey, body.secret)
+    await s.credentials.set(body.name, body.apiKey, body.secret, body.passphrase ?? '')
     return c.json({ ok: true })
   })
 

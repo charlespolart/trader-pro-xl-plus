@@ -1,0 +1,1 @@
+ALTER TABLE "api_credentials" ADD COLUMN "passphrase_enc" text;

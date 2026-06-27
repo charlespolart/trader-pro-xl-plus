@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm'
 import { apiCredentials, type Db } from '@tpx/db'
-import type { BinanceCredentials } from '@tpx/data'
+import type { OkxCredentials } from '@tpx/data'
 import { decryptSecret, encryptSecret } from '../crypto'
 
 export type CredentialsName = 'live' | 'testnet'
@@ -8,25 +8,29 @@ export type CredentialsName = 'live' | 'testnet'
 export class CredentialsService {
   constructor(private readonly db: Db) {}
 
-  async set(name: CredentialsName, apiKey: string, secret: string): Promise<void> {
+  async set(name: CredentialsName, apiKey: string, secret: string, passphrase: string): Promise<void> {
+    const row = {
+      name,
+      apiKeyEnc: encryptSecret(apiKey),
+      secretEnc: encryptSecret(secret),
+      passphraseEnc: encryptSecret(passphrase),
+      updatedAt: Date.now(),
+    }
     await this.db
       .insert(apiCredentials)
-      .values({
-        name,
-        apiKeyEnc: encryptSecret(apiKey),
-        secretEnc: encryptSecret(secret),
-        updatedAt: Date.now(),
-      })
-      .onConflictDoUpdate({
-        target: apiCredentials.name,
-        set: { apiKeyEnc: encryptSecret(apiKey), secretEnc: encryptSecret(secret), updatedAt: Date.now() },
-      })
+      .values(row)
+      .onConflictDoUpdate({ target: apiCredentials.name, set: row })
   }
 
-  async get(name: CredentialsName): Promise<BinanceCredentials | null> {
+  async get(name: CredentialsName): Promise<OkxCredentials | null> {
     const rows = await this.db.select().from(apiCredentials).where(eq(apiCredentials.name, name))
-    if (rows.length === 0) return null
-    return { apiKey: decryptSecret(rows[0]!.apiKeyEnc), secret: decryptSecret(rows[0]!.secretEnc) }
+    const r = rows[0]
+    if (!r) return null
+    return {
+      apiKey: decryptSecret(r.apiKeyEnc),
+      secret: decryptSecret(r.secretEnc),
+      passphrase: r.passphraseEnc ? decryptSecret(r.passphraseEnc) : '',
+    }
   }
 
   async delete(name: CredentialsName): Promise<void> {
