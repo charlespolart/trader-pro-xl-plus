@@ -213,7 +213,13 @@ class BotRunner {
         maxLeverage: instrument.maxLeverage,
       }
       if (config.market === 'futures') {
-        await account.setLeverage(instId, config.leverage, 'isolated').catch(() => {})
+        await account.setLeverage(instId, config.leverage, 'isolated').catch((e) =>
+          this.pushLog({
+            time: Date.now(),
+            level: 'warn',
+            message: `setLeverage failed for ${instId}: ${e instanceof Error ? e.message : e}`,
+          }),
+        )
       }
       manager.ensureBalancePolling(config.mode, config.market, account)
       const adapter = new OKXLiveAdapter({

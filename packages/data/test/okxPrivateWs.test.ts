@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { loginFrame, subscribeFrames } from '../src/okx/privateWs'
+import { loginFrame, loginResult, subscribeFrames } from '../src/okx/privateWs'
 
 describe('okx private ws frames', () => {
   it('builds a login frame', () => {
@@ -12,5 +12,21 @@ describe('okx private ws frames', () => {
     const subs = subscribeFrames()
     const channels = subs.flatMap((s) => (s.args as { channel: string }[]).map((a) => a.channel))
     expect(channels).toEqual(expect.arrayContaining(['orders', 'orders-algo', 'positions']))
+  })
+
+  it('accepts a successful login frame', () => {
+    expect(loginResult({ code: '0' })).toEqual({ ok: true })
+  })
+
+  it('rejects a failed login frame with a descriptive error', () => {
+    const res = loginResult({ code: '60009', msg: 'Login failed' })
+    expect(res.ok).toBe(false)
+    expect(res.error).toBe('OKX WS login failed: 60009 Login failed')
+  })
+
+  it('rejects a failed login frame even without a msg', () => {
+    const res = loginResult({ code: '60012' })
+    expect(res.ok).toBe(false)
+    expect(res.error).toBe('OKX WS login failed: 60012')
   })
 })

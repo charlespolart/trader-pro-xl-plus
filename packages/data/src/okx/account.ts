@@ -2,7 +2,7 @@ import type { Balance, MarketType } from '@tpx/shared'
 import type { ExchangeInstrument, ExchangePosition } from '../exchange/types'
 import { OkxInstruments } from './instruments'
 import type { OkxRest } from './rest'
-import { contractsToBase, instType } from './symbols'
+import { contractsToBase } from './symbols'
 import type { OkxInstType, OkxOrderAck, OkxRestOrder } from './types'
 
 interface RawBalanceDetail {
@@ -147,7 +147,4 @@ export class OkxAccount {
     if (ack.sCode !== '0') throw new Error(`OKX order rejected (sCode ${ack.sCode}): ${ack.sMsg}`)
     return ack
   }
-
-  // raw helper for the symbol type
-  static instTypeFor = instType
 }

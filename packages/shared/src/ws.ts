@@ -32,4 +32,3 @@ export type ServerEvent =
   | { t: 'backtest:progress'; id: string; status: BacktestStatus; progress: number; error?: string }
   | { t: 'optimization:progress'; id: string; done: number; total: number; status: string }
   | { t: 'download:progress'; jobId: string; label: string; done: number; total: number; status: 'running' | 'done' | 'error'; error?: string }
-  | { t: 'account:update'; balances: { asset: string; free: number; locked: number }[]; bnbBalance: number; totalExposureQuote: number; killSwitchActive: boolean }

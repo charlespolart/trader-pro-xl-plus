@@ -7,6 +7,12 @@ export function loginFrame(creds: OkxCredentials, now: number): { op: 'login'; a
   return { op: 'login', args: [okxWsLogin(creds.apiKey, creds.secret, creds.passphrase, now)] }
 }
 
+/** Pure decision for a `{event:'login'}` frame so it can be unit-tested in isolation. */
+export function loginResult(msg: { code?: string; msg?: string }): { ok: boolean; error?: string } {
+  if (msg.code === '0') return { ok: true }
+  return { ok: false, error: `OKX WS login failed: ${msg.code} ${msg.msg ?? ''}`.trim() }
+}
+
 export function subscribeFrames(): { op: 'subscribe'; args: { channel: string; instType: string }[] }[] {
   return [
     { op: 'subscribe', args: [{ channel: 'orders', instType: 'ANY' }] },
@@ -43,7 +49,10 @@ export class OkxPrivateStream implements ExchangePrivateStream {
 
   stop(): void {
     this.stopped = true
-    if (this.ping) clearInterval(this.ping)
+    if (this.ping) {
+      clearInterval(this.ping)
+      this.ping = null
+    }
     this.ws?.close()
     this.ws = null
   }
@@ -58,24 +67,42 @@ export class OkxPrivateStream implements ExchangePrivateStream {
     ws.addEventListener('message', (e) => this.onMessage(String(e.data)))
     ws.addEventListener('error', () => this.onError(new Error('OKX private ws error')))
     ws.addEventListener('close', () => {
-      if (this.ping) clearInterval(this.ping)
-      if (!this.stopped) setTimeout(() => this.connect(), this.backoff)
-      this.backoff = Math.min(this.backoff * 2, 30_000)
+      if (this.ping) {
+        clearInterval(this.ping)
+        this.ping = null
+      }
+      if (!this.stopped) {
+        setTimeout(() => this.connect(), this.backoff)
+        this.backoff = Math.min(this.backoff * 2, 30_000)
+      }
     })
   }
 
   private onMessage(raw: string): void {
     if (raw === 'pong') return
-    let msg: { event?: string; channel?: string; arg?: { channel: string }; data?: OkxOrderEvent[]; code?: string }
+    let msg: { event?: string; channel?: string; arg?: { channel: string }; data?: OkxOrderEvent[]; code?: string; msg?: string }
     try {
       msg = JSON.parse(raw)
     } catch {
       return
     }
-    if (msg.event === 'login' && msg.code === '0') {
+    if (msg.event === 'login') {
+      const res = loginResult(msg)
+      if (!res.ok) {
+        // Rejected login (bad creds / unauthorized IP): surface it and stop so the
+        // close handler does NOT reconnect forever with onError never firing.
+        this.onError(new Error(res.error))
+        this.stop()
+        return
+      }
       this.backoff = 1000
       for (const f of subscribeFrames()) this.ws?.send(JSON.stringify(f))
       this.ping = setInterval(() => this.ws?.send('ping'), 25_000)
+      return
+    }
+    if (msg.event === 'error') {
+      // Channel-level error frame: report it but keep the socket (do not stop).
+      this.onError(new Error(`OKX WS error: ${msg.code} ${msg.msg ?? ''}`.trim()))
       return
     }
     if (msg.arg?.channel && msg.data) {
