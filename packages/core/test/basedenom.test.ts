@@ -40,7 +40,7 @@ function mkSim(feeRate = 0.001) {
     symbolInfo: SI,
     initialBalance: 1, // 1 BTC
     leverage: 1,
-    fees: { makerRate: feeRate, takerRate: feeRate, bnbDiscount: false },
+    fees: { makerRate: feeRate, takerRate: feeRate },
     slippagePct: 0,
     intrabarPath: 'heuristic',
     limitFillRatio: 1,
@@ -112,7 +112,7 @@ describe('SimExchange — dénomination BASE (accumulation BTC)', () => {
           symbolInfo: SI,
           initialBalance: 1,
           leverage: 1,
-          fees: { makerRate: 0, takerRate: 0, bnbDiscount: false },
+          fees: { makerRate: 0, takerRate: 0 },
           slippagePct: 0,
           intrabarPath: 'heuristic',
           limitFillRatio: 1,

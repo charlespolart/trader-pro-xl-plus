@@ -200,13 +200,12 @@ function RiskCard({
   )
 }
 
-function PaperFeesCard({ market, fees, onDone }: { market: MarketType; fees?: { makerRate: number; takerRate: number; bnbDiscount: boolean }; onDone: () => void }) {
+function PaperFeesCard({ market, fees, onDone }: { market: MarketType; fees?: { makerRate: number; takerRate: number }; onDone: () => void }) {
   const [maker, setMaker] = useState(fees ? String(fees.makerRate) : '0.001')
   const [taker, setTaker] = useState(fees ? String(fees.takerRate) : '0.001')
-  const [bnb, setBnb] = useState(fees?.bnbDiscount ?? true)
 
   const save = useMutation({
-    mutationFn: () => api.setPaperFees(market, { makerRate: Number(maker), takerRate: Number(taker), bnbDiscount: bnb }),
+    mutationFn: () => api.setPaperFees(market, { makerRate: Number(maker), takerRate: Number(taker) }),
     onSuccess: onDone,
   })
 
@@ -219,10 +218,6 @@ function PaperFeesCard({ market, fees, onDone }: { market: MarketType; fees?: { 
         <Field label="Taker">
           <input className="input w-28" type="number" step="0.0001" value={taker} onChange={(e) => setTaker(e.target.value)} />
         </Field>
-        <label className="flex cursor-pointer items-center gap-2 py-2 text-sm">
-          <input type="checkbox" checked={bnb} onChange={(e) => setBnb(e.target.checked)} className="accent-blue-500" />
-          BNB
-        </label>
         <button className="btn-primary" onClick={() => save.mutate()} disabled={save.isPending}>
           OK
         </button>

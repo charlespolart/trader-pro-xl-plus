@@ -82,7 +82,7 @@ function maxDrop(entryT: number, exitT: number, sellPrice: number): number {
 const res = await runBacktest({
   config: {
     strategyId: 'btc-accumulator', params: {}, market: 'spot', symbol: 'BTCUSDT', start: START, end: END,
-    initialBalance: 1, denomination: 'base', leverage: 1, fees: { makerRate: 0.001, takerRate: 0.001, bnbDiscount: true },
+    initialBalance: 1, denomination: 'base', leverage: 1, fees: { makerRate: 0.001, takerRate: 0.001 },
     slippagePct: 0.0005, fillMode: 'candle', intrabarPath: 'heuristic', limitFillRatio: 0.25,
     fundingEnabled: false, maintenanceMarginRate: 0.005, warmupBars: 1000,
   },

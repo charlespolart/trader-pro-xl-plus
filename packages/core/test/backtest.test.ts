@@ -81,7 +81,7 @@ function mkConfig(over: Partial<BacktestConfig> = {}): BacktestConfig {
     initialBalance: 1000,
     slippagePct: 0,
     warmupBars: 0,
-    fees: { makerRate: 0.001, takerRate: 0.001, bnbDiscount: true },
+    fees: { makerRate: 0.001, takerRate: 0.001 },
     ...over,
   }
 }
@@ -105,13 +105,20 @@ describe('runBacktest', () => {
     expect(t.entryReason).toBe('test entry')
     expect(t.exitReason).toBe('test exit')
 
-    const qty = t.qty
-    const expectedFees = 106 * qty * 0.00075 + 111 * qty * 0.00075
-    expect(t.realizedPnl).toBeCloseTo((111 - 106) * qty - expectedFees, 6)
+    // OKX: taker fee (0.10%) on each leg's notional, no token discount. On the
+    // buy the fee shaves the received base, so the exit sells slightly less than
+    // was bought — compute against the actual fills rather than a single qty.
+    const entryFill = t.fills[0]!
+    const exitFill = t.fills.at(-1)!
+    const expectedFees = (entryFill.quoteQty + exitFill.quoteQty) * 0.001
+    const grossPnl = (exitFill.price - entryFill.price) * exitFill.qty
+    expect(t.realizedPnl).toBeCloseTo(grossPnl - expectedFees, 6)
 
     expect(result.metrics.totalTrades).toBe(1)
     expect(result.metrics.winningTrades).toBe(1)
-    expect(result.metrics.finalEquity).toBeCloseTo(1000 + t.realizedPnl, 6)
+    // reconciles to the cent: OKX spot fees shave the received base, and lot-size
+    // rounding on the exit leaves a sub-cent base remainder marked into equity.
+    expect(result.metrics.finalEquity).toBeCloseTo(1000 + t.realizedPnl, 2)
     expect(result.metrics.buyHoldReturnPct).toBeGreaterThan(0)
     expect(result.metrics.exposurePct).toBeGreaterThan(0)
   })

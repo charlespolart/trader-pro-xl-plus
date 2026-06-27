@@ -22,7 +22,7 @@ function cfg(strategyId: string, params: ParamValues, start: number, end: number
   return {
     strategyId, params, market: 'spot', symbol: 'BTCUSDT', start, end,
     initialBalance: 1, denomination: 'base', leverage: 1,
-    fees: { ...DEFAULT_FEES.spot, bnbDiscount: false }, slippagePct: 0.0005,
+    fees: { ...DEFAULT_FEES.spot }, slippagePct: 0.0005,
     fillMode: 'candle', intrabarPath: 'heuristic', limitFillRatio: 0.25,
     fundingEnabled: false, maintenanceMarginRate: 0.005, warmupBars: 300,
   }

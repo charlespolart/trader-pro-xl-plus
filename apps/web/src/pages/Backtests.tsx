@@ -27,7 +27,6 @@ interface BtDraft {
   leverage: number
   makerRate: number
   takerRate: number
-  bnbDiscount: boolean
   slippagePct: number
   fillMode: 'candle' | 'aggtrades'
   intrabarPath: 'heuristic' | 'pessimistic'
@@ -55,7 +54,7 @@ export function Backtests() {
         initialBalance: d.initialBalance,
         denomination: d.denomination,
         leverage: d.leverage,
-        fees: { makerRate: d.makerRate, takerRate: d.takerRate, bnbDiscount: d.bnbDiscount },
+        fees: { makerRate: d.makerRate, takerRate: d.takerRate },
         slippagePct: d.slippagePct,
         fillMode: d.fillMode,
         intrabarPath: d.intrabarPath,
@@ -98,7 +97,6 @@ export function Backtests() {
       leverage: 1,
       makerRate: DEFAULT_FEES.spot.makerRate,
       takerRate: DEFAULT_FEES.spot.takerRate,
-      bnbDiscount: true,
       slippagePct: 0.0005,
       fillMode: 'candle',
       intrabarPath: 'heuristic',
@@ -251,7 +249,6 @@ function BacktestForm({
       market,
       makerRate: DEFAULT_FEES[market].makerRate,
       takerRate: DEFAULT_FEES[market].takerRate,
-      bnbDiscount: DEFAULT_FEES[market].bnbDiscount,
     })
   }
 
@@ -333,10 +330,6 @@ function BacktestForm({
         <Field label="Frais taker">
           <input className="input" type="number" step="0.0001" value={draft.takerRate} onChange={(e) => onChange({ ...draft, takerRate: Number(e.target.value) })} />
         </Field>
-        <label className="flex cursor-pointer items-center gap-2 self-end py-2 text-sm">
-          <input type="checkbox" checked={draft.bnbDiscount} onChange={(e) => onChange({ ...draft, bnbDiscount: e.target.checked })} className="accent-blue-500" />
-          Réduction BNB ({draft.market === 'spot' ? '-25 %' : '-10 %'})
-        </label>
         <Field label="Slippage" hint="0.0005 = 5 bps sur les fills taker">
           <input className="input" type="number" step="0.0001" value={draft.slippagePct} onChange={(e) => onChange({ ...draft, slippagePct: Number(e.target.value) })} />
         </Field>

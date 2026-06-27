@@ -29,7 +29,7 @@ function cfg(strategyId: string, params: ParamValues, start: number, end: number
     initialBalance: 1, // 1 BTC
     denomination: 'base',
     leverage: 1,
-    fees: { ...DEFAULT_FEES.spot, bnbDiscount: false },
+    fees: { ...DEFAULT_FEES.spot },
     slippagePct: 0.0005,
     fillMode: 'candle',
     intrabarPath: 'heuristic',

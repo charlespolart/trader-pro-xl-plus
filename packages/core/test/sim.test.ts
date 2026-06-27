@@ -41,7 +41,7 @@ function mkSim(over: Partial<SimExchangeOptions> = {}): { sim: SimExchange; fill
     symbolInfo: { ...SPOT_SI, market: over.market ?? 'spot' },
     initialBalance: 1000,
     leverage: 1,
-    fees: { makerRate: 0.001, takerRate: 0.001, bnbDiscount: false },
+    fees: { makerRate: 0.001, takerRate: 0.001 },
     slippagePct: 0,
     intrabarPath: 'heuristic',
     limitFillRatio: 1,
@@ -75,18 +75,6 @@ describe('SimExchange spot', () => {
     const quote = sim.balances().find((b) => b.asset === 'USDT')!
     expect(quote.free).toBeCloseTo(900, 9)
     expect(sim.equity()).toBeCloseTo(900 + 99.9, 6)
-  })
-
-  it('fees with BNB keep the base intact and tally the BNB cost', async () => {
-    const { sim } = mkSim({ fees: { makerRate: 0.001, takerRate: 0.001, bnbDiscount: true } })
-    sim.processCandle(mkCandle(0, 100, 100, 100, 100))
-    await sim.submit({ side: 'BUY', type: 'MARKET', qty: 1 })
-    sim.processCandle(mkCandle(1, 100, 100, 100, 100))
-    expect(sim.position().qty).toBeCloseTo(1, 12)
-    // taker 0.1% × (1 − 25%) = 0.075 USDT on a 100 USDT notional
-    expect(sim.bnbFeesQuote).toBeCloseTo(0.075, 9)
-    const quote = sim.balances().find((b) => b.asset === 'USDT')!
-    expect(quote.free).toBeCloseTo(900 - 0.075, 9)
   })
 
   it('resting limit buys fill as maker when the path touches them, with fund locking', async () => {
@@ -131,7 +119,7 @@ describe('SimExchange futures', () => {
   const futOpts: Partial<SimExchangeOptions> = {
     market: 'futures',
     leverage: 10,
-    fees: { makerRate: 0.0002, takerRate: 0.0005, bnbDiscount: false },
+    fees: { makerRate: 0.0002, takerRate: 0.0005 },
   }
 
   it('shorts, funding transfers and reduceOnly caps', async () => {

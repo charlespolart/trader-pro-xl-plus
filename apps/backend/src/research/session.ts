@@ -62,7 +62,7 @@ function cfg(params: ParamValues): BacktestConfig {
   return {
     strategyId: 'btc-accumulator-v2', params, market: 'spot', symbol: 'BTCUSDT', start: START, end: END,
     initialBalance: 1, denomination: 'base', leverage: 1,
-    fees: { ...DEFAULT_FEES.spot, bnbDiscount: true }, slippagePct: 0.0005,
+    fees: { ...DEFAULT_FEES.spot }, slippagePct: 0.0005,
     fillMode: 'candle', intrabarPath: 'heuristic', limitFillRatio: 0.25,
     fundingEnabled: false, maintenanceMarginRate: 0.005, warmupBars: 300,
   }

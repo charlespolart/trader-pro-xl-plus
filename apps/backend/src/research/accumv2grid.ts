@@ -28,7 +28,7 @@ function cfg(params: ParamValues, start: number, end: number): BacktestConfig {
     initialBalance: 1,
     denomination: 'base',
     leverage: 1,
-    fees: { ...DEFAULT_FEES.spot, bnbDiscount: false },
+    fees: { ...DEFAULT_FEES.spot },
     slippagePct: 0.0005,
     fillMode: 'candle',
     intrabarPath: 'heuristic',

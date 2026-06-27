@@ -184,7 +184,7 @@ export function BacktestDetail() {
             <Badge value={run.status} />
           </span>
         }
-        subtitle={`${run.config.symbol} · ${fmtDate(run.config.start).split(' ')[0]} → ${fmtDate(run.config.end).split(' ')[0]} · ${run.config.fillMode === 'aggtrades' ? 'fills aggTrades' : 'fills bougies'} · ${run.config.fees.bnbDiscount ? 'frais BNB' : 'frais standard'}`}
+        subtitle={`${run.config.symbol} · ${fmtDate(run.config.start).split(' ')[0]} → ${fmtDate(run.config.end).split(' ')[0]} · ${run.config.fillMode === 'aggtrades' ? 'fills aggTrades' : 'fills bougies'}`}
         actions={
           <Link to="/backtests" className="btn-ghost">
             <ChevronLeft size={15} /> Backtests

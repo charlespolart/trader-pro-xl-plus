@@ -62,9 +62,8 @@ interface SimOrder extends Order {
  *
  * Accounting:
  * - spot: quote + base balances, exchange-style fund locking on resting
- *   orders. Without BNB discount, fees shave the received asset (Binance
- *   behavior); with it, fees are deducted from the quote balance as a BNB
- *   proxy and tallied in bnbFeesQuote.
+ *   orders. Fees shave the received asset (OKX has no pay-with-token
+ *   discount).
  * - futures: isolated margin, signed position, avg-entry tracking, funding
  *   transfers, liquidation when the intrabar path crosses the approximate
  *   liquidation price (margin is lost, position closed at that price).
@@ -99,7 +98,6 @@ export class SimExchange implements ExecutionAdapter {
 
   // accumulators
   totalFees = 0
-  bnbFeesQuote = 0
   totalFunding = 0
   liquidated = false
 
@@ -143,7 +141,6 @@ export class SimExchange implements ExecutionAdapter {
       posQty: this.posQty,
       posEntry: this.posEntry,
       totalFees: this.totalFees,
-      bnbFeesQuote: this.bnbFeesQuote,
       totalFunding: this.totalFunding,
     }
   }
@@ -158,7 +155,6 @@ export class SimExchange implements ExecutionAdapter {
     this.posQty = s['posQty'] ?? 0
     this.posEntry = s['posEntry'] ?? 0
     this.totalFees = s['totalFees'] ?? 0
-    this.bnbFeesQuote = s['bnbFeesQuote'] ?? 0
     this.totalFunding = s['totalFunding'] ?? 0
   }
 
@@ -657,7 +653,7 @@ export class SimExchange implements ExecutionAdapter {
     reason?: string,
   ): boolean {
     const notional = qty * price
-    const rate = effectiveFeeRate(this.o.fees, this.market, maker)
+    const rate = effectiveFeeRate(this.o.fees, maker)
     const feeQuote = notional * rate
     let feeAsset = 'QUOTE'
 
@@ -679,17 +675,10 @@ export class SimExchange implements ExecutionAdapter {
           return false
         }
         this.quoteFree -= fromFree
-        // without BNB the fee shaves the received base asset (Binance behavior)
-        const received = this.o.fees.bnbDiscount ? qty : qty * (1 - rate)
-        if (this.o.fees.bnbDiscount) {
-          this.baseFree += received
-          this.quoteFree -= feeQuote
-          this.bnbFeesQuote += feeQuote
-          feeAsset = 'BNB'
-        } else {
-          this.baseFree += received
-          feeAsset = si?.baseAsset ?? 'BASE'
-        }
+        // the fee shaves the received base asset (OKX has no pay-with-token discount)
+        const received = qty * (1 - rate)
+        this.baseFree += received
+        feeAsset = si?.baseAsset ?? 'BASE'
         // cost basis tracks what we actually hold
         const newQty = this.posQty + received
         this.posEntry = newQty > 0 ? (this.posEntry * this.posQty + price * qty) / newQty : 0
@@ -710,15 +699,8 @@ export class SimExchange implements ExecutionAdapter {
           return false
         }
         this.baseFree -= fromFree
-        if (this.o.fees.bnbDiscount) {
-          this.quoteFree += notional
-          this.quoteFree -= feeQuote
-          this.bnbFeesQuote += feeQuote
-          feeAsset = 'BNB'
-        } else {
-          this.quoteFree += notional * (1 - rate)
-          feeAsset = this.o.symbolInfo?.quoteAsset ?? 'QUOTE'
-        }
+        this.quoteFree += notional * (1 - rate)
+        feeAsset = this.o.symbolInfo?.quoteAsset ?? 'QUOTE'
         this.posQty = Math.max(0, this.posQty - qty)
         if (this.posQty === 0) this.posEntry = 0
       }
@@ -759,8 +741,7 @@ export class SimExchange implements ExecutionAdapter {
         }
       }
       this.wallet -= feeQuote
-      feeAsset = this.o.fees.bnbDiscount ? 'BNB' : 'USDT'
-      if (this.o.fees.bnbDiscount) this.bnbFeesQuote += feeQuote
+      feeAsset = 'USDT'
     }
 
     this.totalFees += feeQuote

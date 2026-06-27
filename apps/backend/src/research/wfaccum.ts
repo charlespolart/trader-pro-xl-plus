@@ -28,7 +28,7 @@ function cfg(params: ParamValues, start: number, end: number): BacktestConfig {
     initialBalance: 1,
     denomination: 'base',
     leverage: 1,
-    fees: { makerRate: 0.001, takerRate: 0.001, bnbDiscount: false },
+    fees: { makerRate: 0.001, takerRate: 0.001 },
     slippagePct: 0.0005,
     fillMode: 'candle',
     intrabarPath: 'heuristic',

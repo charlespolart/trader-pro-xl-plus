@@ -113,7 +113,7 @@ export interface SettingsData {
   authEnabled: boolean
   telegramConfigured: boolean
   credentials: { live: boolean; testnet: boolean }
-  paperFees: Record<MarketType, { makerRate: number; takerRate: number; bnbDiscount: boolean }>
+  paperFees: Record<MarketType, { makerRate: number; takerRate: number }>
   backtestWorkers: number
   dataDir: string
 }
