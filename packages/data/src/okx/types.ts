@@ -53,3 +53,9 @@ export interface OkxOrderEvent {
   accFillSz?: string
   avgPx?: string
 }
+
+/** A normalized push from a private channel (orders / orders-algo / positions). */
+export interface OkxPrivateEvent {
+  channel: string
+  data: OkxOrderEvent[]
+}

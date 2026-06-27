@@ -1,5 +1,5 @@
 import type { Balance, MarketType } from '@tpx/shared'
-import type { OkxInstType } from '../okx/types'
+import type { OkxInstType, OkxPrivateEvent } from '../okx/types'
 
 export interface ExchangeInstrument {
   instId: string
@@ -32,4 +32,10 @@ export interface ExchangeAccountClient {
   tradeFee(instType: OkxInstType, instId: string): Promise<{ maker: number; taker: number; level: string } | null>
   setLeverage(instId: string, leverage: number, mgnMode: 'isolated' | 'cross'): Promise<void>
   instrument(instId: string): Promise<ExchangeInstrument>
+}
+
+export interface ExchangePrivateStream {
+  start(): Promise<void>
+  stop(): void
+  onEvent(cb: (ev: OkxPrivateEvent) => void): void
 }
