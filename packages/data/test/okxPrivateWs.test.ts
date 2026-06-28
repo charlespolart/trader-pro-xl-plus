@@ -8,10 +8,11 @@ describe('okx private ws frames', () => {
     expect(f.args[0]).toMatchObject({ apiKey: 'k', passphrase: 'p', timestamp: '1782551337' })
   })
 
-  it('subscribes to orders, orders-algo and positions', () => {
+  it('subscribes to orders and positions (orders-algo is on the /business endpoint, not /private)', () => {
     const subs = subscribeFrames()
     const channels = subs.flatMap((s) => (s.args as { channel: string }[]).map((a) => a.channel))
-    expect(channels).toEqual(expect.arrayContaining(['orders', 'orders-algo', 'positions']))
+    expect(channels).toEqual(expect.arrayContaining(['orders', 'positions']))
+    expect(channels).not.toContain('orders-algo')
   })
 
   it('accepts a successful login frame', () => {

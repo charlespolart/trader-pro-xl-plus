@@ -14,9 +14,12 @@ export function loginResult(msg: { code?: string; msg?: string }): { ok: boolean
 }
 
 export function subscribeFrames(): { op: 'subscribe'; args: { channel: string; instType: string }[] }[] {
+  // NOTE: `orders-algo` lives on the /ws/v5/business endpoint, NOT /private — subscribing
+  // it here returns 60018 "channel doesn't exist". Stop/TP fills still arrive via the
+  // `orders` channel (a triggered algo becomes a regular order). Real-time algo-order
+  // state would need a second socket to /business (follow-up).
   return [
     { op: 'subscribe', args: [{ channel: 'orders', instType: 'ANY' }] },
-    { op: 'subscribe', args: [{ channel: 'orders-algo', instType: 'ANY' }] },
     { op: 'subscribe', args: [{ channel: 'positions', instType: 'ANY' }] },
   ]
 }
