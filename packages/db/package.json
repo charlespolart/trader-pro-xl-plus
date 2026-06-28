@@ -9,7 +9,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "generate": "bun --env-file=../../apps/backend/.env run drizzle-kit generate",
-    "migrate": "bun --env-file=../../apps/backend/.env run drizzle-kit migrate"
+    "migrate": "bun --env-file=../../apps/backend/.env run drizzle-kit migrate",
+    "migrate:ci": "drizzle-kit migrate"
   },
   "dependencies": {
     "@tpx/shared": "workspace:*",

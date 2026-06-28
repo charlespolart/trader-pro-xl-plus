@@ -1,0 +1,31 @@
+# DEV overlay — loopback-only ports + named pg volume + (optional) backend
+# container with hot reload. You can also keep running the backend natively
+# (`make back`) against the dockerized Postgres (`make db`); the backend
+# service here is only used if you `docker compose ... up backend`.
+services:
+  postgres:
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5436}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ..
+      dockerfile: apps/backend/Dockerfile
+      target: development
+    environment:
+      NODE_ENV: development
+    env_file:
+      - ../apps/backend/.env
+    ports:
+      - "127.0.0.1:3001:3001"
+    volumes:
+      - ../packages:/app/packages:delegated
+      - ../apps/backend/src:/app/apps/backend/src:delegated
+      - ../strategies:/app/strategies:delegated
+
+volumes:
+  pgdata:
+    # reuse the pre-existing local volume so the candle cache survives
+    name: trader-pro-xl-plus_pgdata

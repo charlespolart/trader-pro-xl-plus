@@ -1,0 +1,42 @@
+name: Deploy Web
+
+# Front-only deploy: builds the Vite app and rsyncs dist/ to the VPS web root
+# that Caddy serves. The backend is NEVER touched — zero downtime for the bot.
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-web
+  cancel-in-progress: true
+
+jobs:
+  build-and-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.20
+
+      - run: bun install --frozen-lockfile
+      - run: bun run --cwd apps/web build
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Rsync dist → VPS web root (front only)
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          ssh -i ~/.ssh/id_deploy "$VPS_USER@$VPS_HOST" 'mkdir -p /srv/tpx/web'
+          # --delete is safe here: target is the web subdir only (not /srv/tpx).
+          rsync -az --delete -e 'ssh -i ~/.ssh/id_deploy' \
+            apps/web/dist/ \
+            "$VPS_USER@$VPS_HOST:/srv/tpx/web/"

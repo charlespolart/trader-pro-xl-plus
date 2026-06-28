@@ -1,0 +1,39 @@
+# PROD overlay — GHCR image, host bind mounts under /srv/tpx, Caddy front door.
+# Run from /srv/tpx on the VPS:
+#   docker compose --env-file /srv/tpx/.env \
+#     -f ops/docker-compose.yml -f ops/docker-compose.prod.yml up -d --wait
+services:
+  postgres:
+    restart: always
+    volumes:
+      - /srv/tpx/postgres:/var/lib/postgresql/data
+
+  backend:
+    image: ghcr.io/${GHCR_OWNER:?set GHCR_OWNER in /srv/tpx/.env}/trader-pro-xl-plus-backend:${IMAGE_TAG:-latest}
+    restart: always
+    env_file:
+      - /srv/tpx/.env
+    environment:
+      NODE_ENV: production
+      DATA_DIR: /data
+      ARTIFACTS_DIR: /data/artifacts
+    volumes:
+      - /srv/tpx/data:/data
+
+  caddy:
+    image: caddy:2-alpine
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - /srv/tpx/web:/srv/www:ro
+      - /srv/tpx/caddy/data:/data
+      - /srv/tpx/caddy/config:/config
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in /srv/tpx/.env}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL in /srv/tpx/.env}

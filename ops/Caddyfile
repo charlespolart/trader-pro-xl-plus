@@ -1,0 +1,17 @@
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	# API + WebSocket → backend (same compose network). reverse_proxy upgrades WS automatically.
+	@backend path /api/* /ws /ws/*
+	reverse_proxy @backend backend:3001
+
+	# Static SPA — deployed separately via `make deploy-web` (rsync to /srv/tpx/web).
+	# Updating these files never touches the backend.
+	root * /srv/www
+	try_files {path} /index.html
+	file_server
+}

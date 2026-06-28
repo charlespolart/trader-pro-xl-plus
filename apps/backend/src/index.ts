@@ -119,6 +119,9 @@ async function main(): Promise<void> {
     }),
   )
 
+  // ---- health probe (container healthcheck / load balancer)
+  app.get('/healthz', (c) => c.text('ok'))
+
   // ---- static web UI (production build)
   app.get('*', async (c) => {
     const path = new URL(c.req.url).pathname

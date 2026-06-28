@@ -1,0 +1,18 @@
+# Keep the build context small. node_modules is reinstalled in the image;
+# data/artifacts/dist/secrets must never enter it.
+**/node_modules
+.git
+.github
+.superpowers
+.vscode
+.idea
+/data
+/artifacts
+**/dist
+**/.env
+.env
+.env.*
+!**/.env.example
+*.log
+.DS_Store
+docs
