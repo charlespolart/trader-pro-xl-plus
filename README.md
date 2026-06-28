@@ -5,16 +5,18 @@ Plateforme de trading algorithmique crypto **Spot + Futures USDT-M** : **exécut
 ## Démarrage rapide
 
 ```bash
-cp .env.example .env
-# Renseignez MASTER_KEY :  bun -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+cp apps/backend/.env.example apps/backend/.env
+# Renseignez MASTER_KEY :  bun -e "console.log(crypto.randomBytes(32).toString('hex'))"
 bun install
-bun run db:up           # Postgres (Docker) — port configurable via POSTGRES_PORT
+make db                 # Postgres (Docker), port 5436
 bun run db:migrate
-bun run dev:server      # API + WS sur :3001
-bun run dev:web         # UI dev sur :5173 (proxy vers :3001)
+make back               # API + WS sur :3001  (backend natif)
+make web                # UI dev sur :5173 (proxy vers :3001)
 ```
 
-Production sur VPS : `bun run build` puis `bun run start` — le serveur sert l'UI compilée sur le port 3001. Mettez un `ADMIN_PASSWORD` dans `.env`.
+`make help` liste toutes les commandes.
+
+**Production (VPS)** : déploiement conteneurisé — backend (image GHCR) derrière **Caddy** (TLS auto), front servi à part. Le backend et le front se déploient **indépendamment** (`make deploy` / `make deploy-web`), donc une modif front ne redémarre jamais le bot. → **[Guide de déploiement](docs/deploy.md)**
 
 ## Fonctionnalités
 

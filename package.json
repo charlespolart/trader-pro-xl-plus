@@ -9,8 +9,8 @@
     "strategies"
   ],
   "scripts": {
-    "db:up": "docker compose -f ops/docker-compose.yml up -d postgres",
-    "db:down": "docker compose -f ops/docker-compose.yml down",
+    "db:up": "docker compose -f ops/docker-compose.yml -f ops/docker-compose.dev.yml up -d postgres",
+    "db:down": "docker compose -f ops/docker-compose.yml -f ops/docker-compose.dev.yml down",
     "db:generate": "bun run --cwd packages/db generate",
     "db:migrate": "bun run --cwd packages/db migrate",
     "dev:backend": "bun run --cwd apps/backend dev",
