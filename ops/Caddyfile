@@ -27,13 +27,18 @@
 		-X-Powered-By
 	}
 
-	# API + WebSocket → backend (same compose network). reverse_proxy upgrades WS automatically.
+	# API + WebSocket → backend. Handled FIRST so the SPA try_files below never
+	# rewrites these paths. reverse_proxy upgrades WebSockets automatically.
 	@backend path /api/* /ws /ws/*
-	reverse_proxy @backend backend:3001
+	handle @backend {
+		reverse_proxy backend:3001
+	}
 
-	# Static SPA — deployed separately via `make deploy-web` (rsync to /srv/tpx/web).
-	# Updating these files never touches the backend.
-	root * /srv/www
-	try_files {path} /index.html
-	file_server
+	# Everything else → static SPA (deployed via `make deploy-web`), with
+	# client-side routing fallback to index.html.
+	handle {
+		root * /srv/www
+		try_files {path} /index.html
+		file_server
+	}
 }
