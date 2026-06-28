@@ -268,7 +268,7 @@ function BotForm({
         <Field label="Mode">
           <select className="input" value={draft.mode} onChange={(e) => onChange({ ...draft, mode: e.target.value as BotDraft['mode'] })}>
             <option value="paper">Paper (simulation live)</option>
-            <option value="testnet">Testnet Binance</option>
+            <option value="testnet">Testnet OKX (démo)</option>
             <option value="live">LIVE (argent réel)</option>
           </select>
         </Field>
