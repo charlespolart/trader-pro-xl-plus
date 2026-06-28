@@ -112,8 +112,8 @@ jobs:
 
           $COMPOSE up -d --wait
 
-          $COMPOSE exec -T caddy caddy validate --config /etc/caddy/Caddyfile
-          $COMPOSE exec -T caddy caddy reload --config /etc/caddy/Caddyfile
+          $COMPOSE exec -T caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+          $COMPOSE exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile --force
 
           docker image prune -f
           REMOTE
