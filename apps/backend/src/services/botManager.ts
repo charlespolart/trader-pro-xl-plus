@@ -942,12 +942,20 @@ export class BotManager {
     }
   }
 
-  async stop(id: string, opts: { closePosition?: boolean; reason?: string; killed?: boolean } = {}): Promise<void> {
+  async stop(
+    id: string,
+    opts: { closePosition?: boolean; reason?: string; killed?: boolean; keepDesired?: boolean } = {},
+  ): Promise<void> {
     const runner = this.runners.get(id)
     if (!runner) return
     await runner.stop(opts)
     this.runners.delete(id)
-    await this.db.update(botsTable).set({ desiredRunning: false }).where(eq(botsTable.id, id))
+    // keepDesired = server shutdown: don't clear the persisted intent, so the bot
+    // auto-resumes (and reconciles) when the server restarts. A user-initiated stop
+    // clears it (the bot stays down until explicitly restarted).
+    if (!opts.keepDesired) {
+      await this.db.update(botsTable).set({ desiredRunning: false }).where(eq(botsTable.id, id))
+    }
     runner.publishInfo()
   }
 
@@ -1054,7 +1062,7 @@ export class BotManager {
 
   async stopAll(): Promise<void> {
     for (const id of [...this.runners.keys()]) {
-      await this.stop(id, { reason: 'arrêt du serveur' }).catch(() => {})
+      await this.stop(id, { reason: 'arrêt du serveur', keepDesired: true }).catch(() => {})
     }
     for (const t of this.balancePollers.values()) clearInterval(t)
   }
