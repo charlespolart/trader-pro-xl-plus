@@ -5,6 +5,28 @@
 {$DOMAIN} {
 	encode zstd gzip
 
+	# mTLS — only devices holding the client certificate can reach the app.
+	# Anyone else (with the domain/IP) is rejected at the TLS handshake and
+	# never sees the app. The client cert IS the credential (no password).
+	tls {
+		client_auth {
+			mode require_and_verify
+			trust_pool file {
+				pem_file /etc/caddy/ca.crt
+			}
+		}
+	}
+
+	# Security headers (defense-in-depth)
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+		-X-Powered-By
+	}
+
 	# API + WebSocket → backend (same compose network). reverse_proxy upgrades WS automatically.
 	@backend path /api/* /ws /ws/*
 	reverse_proxy @backend backend:3001
