@@ -9,6 +9,17 @@ export function toInstId(base: string, quote: string, market: MarketType): strin
   return market === 'spot' ? `${base}-${quote}` : `${base}-${quote}-SWAP`
 }
 
+/**
+ * Execution quote currency for the configured OKX region. EU (EEA) accounts can't
+ * trade USDT (MiCA delisted Tether in the EEA) — they execute on the USDC pair
+ * instead, while market DATA stays on the original USDT Binance symbol (price
+ * tracks 1:1). Other regions / other quotes pass through unchanged.
+ */
+export function execQuoteAsset(quoteAsset: string): string {
+  if ((process.env.OKX_REGION ?? 'global').toLowerCase() === 'eea' && quoteAsset === 'USDT') return 'USDC'
+  return quoteAsset
+}
+
 /** base coin quantity -> whole number of OKX contracts, floored to lotSz */
 export function baseToContracts(baseQty: number, ctVal: number, lotSz: number): number {
   if (ctVal <= 0) return 0

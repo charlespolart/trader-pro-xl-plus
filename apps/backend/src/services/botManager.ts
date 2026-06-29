@@ -36,6 +36,7 @@ import {
   OkxAccount,
   OkxPrivateStream,
   OkxRest,
+  execQuoteAsset,
   toInstId,
   type OkxCredentials,
 } from '@tpx/data'
@@ -191,7 +192,10 @@ class BotRunner {
     } else {
       const creds = await manager.credentials.get(config.mode === 'live' ? 'live' : 'testnet')
       if (!creds) throw new Error(`Aucune clé API configurée pour le mode ${config.mode}`)
-      const instId = toInstId(symbolInfo.baseAsset, symbolInfo.quoteAsset, config.market)
+      // EU (EEA) accounts can't trade USDT — execute on the USDC pair instead while
+      // the DATA symbol (config.symbol / candles) stays on Binance USDT. No-op elsewhere.
+      const execQuote = execQuoteAsset(symbolInfo.quoteAsset)
+      const instId = toInstId(symbolInfo.baseAsset, execQuote, config.market)
       const rest = new OkxRest({ demo: testnet, credentials: creds })
       const account = new OkxAccount(rest)
       let instrument
@@ -206,6 +210,7 @@ class BotRunner {
       // rounding go through this value).
       this.symbolInfoV = {
         ...symbolInfo,
+        quoteAsset: execQuote,
         tickSize: instrument.tickSize,
         stepSize: instrument.stepSize,
         minQty: instrument.minQty,

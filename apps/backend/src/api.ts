@@ -16,7 +16,7 @@ import {
   type SymbolInfo,
 } from '@tpx/shared'
 import { ALL_PATTERNS, candlePatterns, type PatternName } from '@tpx/core'
-import { BinanceMarketData, BinanceRest, CandleStore, OkxAccount, OkxRest, instType, toInstId } from '@tpx/data'
+import { BinanceMarketData, BinanceRest, CandleStore, OkxAccount, OkxRest, execQuoteAsset, instType, toInstId } from '@tpx/data'
 import { authEnabled, env } from './env'
 import { issueToken } from './crypto'
 import { registry } from './strategies'
@@ -462,7 +462,7 @@ export function buildApi(s: Services): Hono {
     const symbol = c.req.param('symbol').toUpperCase()
     const si = await new BinanceMarketData(new BinanceRest({ market })).symbolInfo(symbol)
     if (!si) return c.json(null)
-    const instId = toInstId(si.baseAsset, si.quoteAsset, market)
+    const instId = toInstId(si.baseAsset, execQuoteAsset(si.quoteAsset), market)
     const account = new OkxAccount(new OkxRest({ demo: name === 'testnet', credentials: creds }))
     return c.json(await account.tradeFee(instType(market), instId))
   })
