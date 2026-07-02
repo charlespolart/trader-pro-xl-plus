@@ -124,6 +124,11 @@ futures queues mensuelles → fix candleStore à faire (tâche dédiée).
 | P1 | plateau tendance (données réparées) 3d×1d×1w | plateau.ts | défauts 3d/60/8 = intérieur d'un plateau sain ; « slow macro » (70-80/8-12, confirm250, 1d/250) +10pts IS |
 | P2 | candidats « slow macro » en glissant | wfnudge.ts | ✗ identiques aux défauts 4/6 fenêtres, l'écart IS = 1-2 trades sur 2021 — pas de nudge, défauts confirmés |
 | T1 | grain de timing 1h/2h/8h/12h (natif + rescalé) | gridtiming.ts | ✗ 4h domine partout (1h natif : frais 16,7% BTC, PF 1,00 ; 1h rescalé +74 vs +116 ; 8h/12h pires) |
+| N1 | NOUVEAU : fade de rebond en bear (MR short 1d, ~1tr/j-sem) | newedges.py | ✗✗ forward POSITIF après bounce (+0,3..+1,1% à 3j — les rips continuent) ; MR mort sur BTC dans les DEUX sens |
+| N2 | NOUVEAU : momentum SMA 1d ± hystérésis (~hebdo) | newedges.py | ✗ net comparable (+136% au pic SMA150/2%) mais DD 45-77%, ~9 excursions, falaise à SMA200 — pas de plateau |
+| N3 | NOUVEAU : donchian breakdown/breakout 1d | newedges.py | ✗ mêmes symptômes (+140% meilleure case, voisines +19..65, DD 46-66%) |
+| N4 | NOUVEAU : capitulation flow/volume (bougie 1d) | newedges.py | ✗ prédit le REBOND (+2,2% à 1j, n=13) — mauvais sens pour vendre, n trop petit pour le rachat |
+| N5 | NOUVEAU : hybride momentum 1d + cap de perte 5% v2 | newedges.py | ✗ le cap churne à grain 1d (28-51 stops en cascade dans les V-recoveries), DD reste 43-65% |
 
 **Synthèse mécanique : les issues des trades sont ~i.i.d. (69% petites pertes ~-2.6%, 31% gains ~+9%),
 rien d'observable à l'entrée ou dans l'historique ne prédit le tirage. L'edge EST l'asymétrie
@@ -149,6 +154,28 @@ produite par l'exit v2 (recross rapide + stop cappé + ré-entrée). Le cœur v2
    soutenu) ; la tranche 2025-07→2026-07 tourne à +23,7% (14 tr). Bootstrap P(≤0)≈10% sur 65
    trades : la part de variance est réelle, dimensionner les attentes en conséquence.
 
+## ADDENDUM — chasse from-scratch à d'autres fréquences (même session, N1-N5)
+
+Question de l'utilisateur : « as-tu cherché des edges complètement NOUVEAUX (pas des variantes
+de la v2), à des fréquences journalière/hebdo, toujours dans le sens vendre→racheter plus bas ? »
+Réponse construite : familles A/B/C/F/H (newedges.py), IS 2018-04→2024-01 seulement, coûts
+0,15%/côté, stabilité par moitiés. RÉSULTAT : **aucun nouvel edge robuste** — mais la carte
+des fréquences est désormais complète et EXPLIQUE pourquoi la v2 est bien construite :
+
+| Fréquence | Expression | Verdict |
+|---|---|---|
+| 1h | v2 rescalée | frais 16,7% de BTC, PF 1,00 — morte |
+| **4h** | **v2 (mécanique d'excursion)** | **+115,7% / DD 33% — le sweet spot** |
+| ~1/jour | fade des rips en bear (MR short) | forward POSITIF (les rips continuent) — perdant |
+| ~1/sem | momentum SMA / donchian (± cap 5%) | net comparable MAIS DD ×2 (45-77%), pics fragiles sans plateau |
+
+La structure du marché BTC en bear = continuation momentum + rallyes violents : il FAUT un grain
+assez fin pour couper/ré-entrer (4h), assez grossier pour ne pas payer les frais (pas 1h), et la
+mécanique asymétrique (cap -5% + recross + ré-entrée). Les expressions lentes mangent les rallyes,
+les rapides mangent les frais. AggTrades : à ces fréquences l'info est déjà dans takerBuyBase des
+bougies (exploitée par v2) ; le seul signal trouvé (capitulation volume+flow → rebond +2,2%/1j,
+n=13) est dans le mauvais sens et sous-échantillonné — n'achète pas 40 Go de ticks pour ça.
+
 ## Journal
 
 - 2026-07-02 : campagne lancée. Moteur audité (pas de lookahead). Données spot étendues à 2017-08.
@@ -159,3 +186,6 @@ produite par l'exit v2 (recross rapide + stop cappé + ré-entrée). Le cœur v2
   réfutés ; cooldown réfuté (le trade après perte rapporte PLUS) ; plateau re-cartographié (défauts
   confirmés) ; grain 4h validé vs 1h/2h/8h/12h. Fix produit candleStore+alignOpenTime (tests 112/112).
   Doc HTML + docstrings + mémoire mis à jour. CAMPAGNE CLOSE.
+- 2026-07-02 (suite) : chasse from-scratch à d'autres fréquences (demande utilisateur) — fade de
+  rip en bear, momentum SMA, donchian, capitulation flow, hybride momentum+cap : TOUS réfutés
+  (N1-N5). La carte des fréquences est complète : 4h + mécanique v2 = seul sweet spot trouvé.
