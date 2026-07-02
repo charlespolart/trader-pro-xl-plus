@@ -3,6 +3,13 @@ import { defineStrategy, ind, p } from '@tpx/core'
 /**
  * BTC Accumulator v3 — comme la v2 + VENTE FRACTIONNÉE (levier de risque).
  *
+ * ⚠ RÉVISION 2026-07 : les chiffres absolus ci-dessous datent de juin et
+ * étaient calculés sur des données 3d trouées (voir l'en-tête de la v2 et
+ * apps/backend/src/research/accum2/LOG.md). Les CONCLUSIONS structurelles
+ * restent valides (parité f=1 == v2, échelle ~proportionnelle, ratio
+ * rendement/DD décroissant quand f baisse = dial de risque sub-linéaire),
+ * mais les niveaux absolus sont à relire ~-20% (v2 2019→2026 = +62%, pas +90%).
+ *
  * Tout le cœur de la v2 (tendance 3d + double confirmation journalière), à UNE
  * différence : en bear on ne vend qu'une FRACTION du BTC (`sellFraction`) au
  * lieu de 100%. But : baisser le drawdown (mesuré -29% sur la v2 à 2019→2026).

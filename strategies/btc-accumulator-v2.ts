@@ -22,29 +22,42 @@ import { defineStrategy, ind, p } from '@tpx/core'
  *
  * À lancer en backtest avec denomination='base' (capital en BTC). Spot.
  *
- * Recherche 2026-06 (BTCUSDT spot, base, 2020-2026) — comparaison du TF de
- * tendance, le reste du cœur identique à la v1 :
- *   - parité : 3d/.. mis à part, v2 réglée 1d/200/30 == v1 au centième (full
- *     +103%, OOS +10,6%) → la v2 est une vraie généralisation, pas une réécriture.
- *   - la tendance sur 3 JOURS bat le journalier sur TOUT le plateau balayé
- *     (trendMaLen 50-100 × déclin 6-12) : les 20 réglages 3d sont POSITIFS en
- *     OOS (v1 +10,6% → médiane 3d ~+16%, meilleur +29,9%), full +82..+160%.
- *     Crête lisse sur EMA60-70 / déclin 6-8 (pas une aiguille = effet robuste
- *     du timeframe, pas un sur-ajustement). Défaut retenu : 3d / EMA60 / 8.
- *   - le 1w marche aussi (OOS +14..+21%) mais en deçà du 3d en full.
- *   - walk-forward 6 fenêtres (OOS 2021→2026) : 3d FIGÉ compose +122% (4/6
- *     fenêtres+) > v1 figé +89% (3/6) > ré-optim du TF +79% (2/6, NUIT →
- *     verrouiller le TF, ne PAS le mettre en refit).
+ * ⚠ RÉVISION 2026-07 : les chiffres de juin étaient calculés sur des données
+ * 3d TROUÉES (les ZIPs mensuels Vision omettent la bougie qui chevauche la fin
+ * de mois — 21 bougies manquantes dont tout janvier 2025 ; réparé + candleStore
+ * corrigé pour agréger 3d/1w depuis le 1d). Chiffres ci-dessous = données
+ * complètes, frais OKX (taker 0,10% + slippage 0,05%), journal complet dans
+ * apps/backend/src/research/accum2/LOG.md.
+ *
+ * Baselines (défauts, BTCUSDT spot, base) :
+ *   - 2019-01→2026-06 : +61,9% BTC, DD -29,6%, 57 trades (WR 32%, payoff 3,5:1)
+ *   - 2020-08→2026-06 : +112,5%, DD -28,0%, 49 trades
+ *   - full 2018-04→2026-07 : +126,2%, DD -32,5%, 65 trades
+ *   - WF configs figées, 8 tranches OOS 2018→2026 : +77,6% composé (4/8) vs
+ *     v1 +74,0% (3/8) — l'avantage du TF 3d sur le 1d est réel mais MINCE.
+ *     Ne PAS ré-optimiser trendInterval en refit (nuit, vérifié 2×).
+ *
+ * VALIDATION (2026-07, la plus forte à ce jour) :
+ *   - bear 2018 en pseudo-OOS (données jamais utilisées à la conception) :
+ *     +46,5% pendant que le prix fait -59% (PF 12, pire trade -3%) — zéro réglage ;
+ *   - robuste au déphasage des bougies 3d (les 3 phases du calendrier positives) ;
+ *   - coûts ×2 → +36%/+83% ; 26/26 dates de départ mensuelles positives ;
+ *   - null « timing aveugle » : excursions aléatoires de mêmes durées dans le
+ *     même régime bear → médiane -22% ; capture parfaite du régime → +11,6% ;
+ *     la v2 → +120% = percentile 97. ⇒ L'EDGE EST LA MÉCANIQUE D'EXCURSION
+ *     (stop cappé 5% / rachat recross rapide / ré-entrée sur faiblesse), le
+ *     régime n'est que le contexte. Toutes les variantes d'exit testées
+ *     (trailing, ladder, min-hold), tous les filtres d'entrée (funding, vol,
+ *     distance ATH, âge du bear, sessions) et le sizing pondéré sont PIRES ou
+ *     nuls — le cœur v2 défauts est un optimum local (grain 4h validé aussi).
  *
  * DOUBLE CONFIRMATION (useConfirm, défaut ON) — anti-drawdown : le 3d seul
- * whipsaw dans les corrections de bull (vendre puis V-recovery) → -44% DD /
- * +55% sur 2019→2026. Exiger qu'un 2ᵉ TF plus lent (journalier, EMA200 déclin
- * 30j = le filtre v1) soit AUSSI baissier coupe ces faux signaux : 2019→2026
- * passe à -30% DD / +85% (DD ramené au niveau v1 ET rendement en hausse ; pertes
- * 2019/2020 ~divisées par 2 ; le bear 2022 +88,8% intact). En walk-forward
- * (OOS 2021→2026, sans ces whipsaws) c'est NEUTRE (+117% vs +122%, même DD) →
- * filtre de sécurité non sur-ajusté : protège quand le danger est là, ne dégrade
- * pas sinon. Coût : -17 pts sur la fenêtre douce 2020-08→2026 (+160→+143).
+ * whipsaw dans les corrections de bull (vendre puis V-recovery) → 2019→2026
+ * +31,1% / -44,8% DD. Exiger qu'un 2ᵉ TF plus lent (journalier, EMA200 déclin
+ * 30j = le filtre v1) soit AUSSI baissier coupe ces faux signaux : +61,9% /
+ * -29,6% (rendement ×2 ET -15 pts de DD ; le bear 2022 intact). En walk-forward
+ * récent c'est ~neutre → filtre de sécurité non sur-ajusté : protège quand le
+ * danger est là (2019-20), ne dégrade pas sinon.
  *
  * Réglages selon l'unité de temps de tendance (l'EMA a besoin de ~trendMaLen
  * bougies pour être prête) :

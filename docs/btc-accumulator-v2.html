@@ -100,7 +100,7 @@
   <header>
     <span class="kicker">Stratégie · version 2</span>
     <h1><span class="btc">BTC</span> Accumulator <span class="v">v2</span></h1>
-    <p class="lead">La même idée que la v1 — accumuler du Bitcoin — mais avec <strong>deux réglages</strong> qui font la différence. Cette page les explique simplement, sans supposer que vous connaissez la finance.</p>
+    <p class="lead">La même idée que la v1 — accumuler du Bitcoin — mais avec <strong>deux réglages</strong> qui font la différence. Cette page les explique simplement, sans supposer que vous connaissez la finance. <em>Mise à jour juillet 2026 : chiffres re-validés sur données réparées + une campagne complète de validation (voir la section dédiée).</em></p>
   </header>
 
   <!-- RAPPEL -->
@@ -144,20 +144,20 @@
     </div>
 
     <h4 style="margin-top:26px">Est-ce que ça marche vraiment ?</h4>
-    <p class="muted">Oui. En rejouant l'histoire de 2021 à 2026 (un test « à l'aveugle », sur des données que la stratégie n'a pas servi à régler), lire la tendance sur 3 jours rapporte plus que sur le journalier :</p>
+    <p class="muted">Oui, mais moins que ce qu'on croyait en juin. En rejouant l'histoire 2018 → 2026 par tranches « à l'aveugle » (données <strong>réparées</strong>, voir la section validation), la tendance sur 3 jours fait un peu mieux que le journalier :</p>
     <div class="ba">
       <div class="col">
         <div class="h">Tendance sur le journalier (v1)</div>
-        <div class="big">+89 %</div>
-        <div class="sub">de Bitcoin accumulé</div>
+        <div class="big">+74 %</div>
+        <div class="sub">composé sur 8 tranches hors-échantillon</div>
       </div>
       <div class="col after">
         <div class="h">Tendance sur 3 jours (v2)</div>
-        <div class="big pos">+122 %</div>
-        <div class="sub">de Bitcoin accumulé — mieux</div>
+        <div class="big pos">+78 %</div>
+        <div class="sub">composé — un peu mieux (4/8 tranches positives vs 3/8)</div>
       </div>
     </div>
-    <p class="muted" style="font-size:13.5px; margin-top:10px">Et ce n'était pas un coup de chance : tous les réglages voisins du « 3 jours » testés sont meilleurs que le journalier, pas seulement un. Quand <em>tout un voisinage</em> fonctionne, c'est le signe d'un vrai effet, pas d'un réglage chanceux.</p>
+    <p class="muted" style="font-size:13.5px; margin-top:10px">Honnêteté oblige : en juin, cet écart semblait énorme (+122 % contre +89 %). C'était en partie un <strong>artefact de données incomplètes</strong> (voir plus bas). Sur données complètes, l'avantage du 3 jours est réel mais <strong>modeste</strong> — un confort, pas un moteur. Le vrai moteur de la stratégie est ailleurs (section « ce qu'on a appris »).</p>
   </section>
 
   <!-- EDGE 2 -->
@@ -181,31 +181,67 @@
       <span class="t">L'analogie</span>
       <p style="margin:6px 0 0">C'est comme exiger <strong>deux témoins indépendants</strong> avant de prendre une décision grave. Si un seul crie « au feu ! », c'est peut-être une fausse alerte. Si <strong>les deux</strong> le disent en même temps, le danger est bien réel. Une seule voix ne suffit plus à déclencher une vente.</p>
     </div>
-    <p>Concrètement, en 2019-2020 (la remontée après le krach de 2018, puis le crash du Covid), la boussole 3-jours donnait beaucoup de fausses alertes. Exiger que le journalier soit <em>aussi</em> au rouge les a presque toutes filtrées — sans rien changer aux vrais marchés baissiers, où les deux échelles sont naturellement d'accord (le grand marché baissier de 2022 reste capté à <strong>+89 %</strong>).</p>
+    <p>Concrètement, en 2019-2020 (la remontée après le krach de 2018, puis le crash du Covid), la boussole 3-jours donnait beaucoup de fausses alertes. Exiger que le journalier soit <em>aussi</em> au rouge les a presque toutes filtrées — sans rien changer aux vrais marchés baissiers, où les deux échelles sont naturellement d'accord (le grand marché baissier de 2022 est capté à <strong>+102 %</strong>, à l'identique avec ou sans le filtre).</p>
 
-    <h4 style="margin-top:26px">Le résultat — sur la période complète 2019 → 2026</h4>
+    <h4 style="margin-top:26px">Le résultat — sur la période complète 2019 → 2026 (données réparées)</h4>
     <p class="muted">Le gain le plus visible est sur le <strong>drawdown</strong>. (Drawdown = la pire chute de votre tas de Bitcoin depuis un sommet : « combien j'aurais perdu, au pire moment ?». Plus c'est petit, mieux on dort.)</p>
     <div class="ba">
       <div class="col">
         <div class="h">Avant (3 jours seul)</div>
-        <div class="big">+55 %</div>
+        <div class="big">+31 %</div>
         <div class="sub">Bitcoin accumulé</div>
-        <div class="big neg" style="margin-top:10px">−44 %</div>
+        <div class="big neg" style="margin-top:10px">−45 %</div>
         <div class="sub">pire chute (drawdown) 😬</div>
       </div>
       <div class="col after">
         <div class="h">Après (double confirmation)</div>
-        <div class="big pos">+85 %</div>
-        <div class="sub">Bitcoin accumulé — plus</div>
+        <div class="big pos">+62 %</div>
+        <div class="sub">Bitcoin accumulé — deux fois plus</div>
         <div class="big pos" style="margin-top:10px">−30 %</div>
         <div class="sub">pire chute — bien moins profonde</div>
       </div>
     </div>
-    <p style="margin-top:14px">Donc on gagne sur les deux tableaux : <strong>plus de Bitcoin ET un risque plus faible</strong>. C'est rare — d'habitude, réduire le risque coûte du rendement. Ici, ça marche parce qu'on n'a pas « pris moins de risque » bêtement : on a <strong>supprimé les mauvais trades</strong> (les faux signaux de 2019-2020) sans toucher aux bons.</p>
+    <p style="margin-top:14px">Donc on gagne sur les deux tableaux : <strong>deux fois plus de Bitcoin ET un risque plus faible</strong>. C'est rare — d'habitude, réduire le risque coûte du rendement. Ici, ça marche parce qu'on n'a pas « pris moins de risque » bêtement : on a <strong>supprimé les mauvais trades</strong> (les faux signaux de 2019-2020) sans toucher aux bons. C'est <strong>l'edge le plus solide de la v2</strong> — encore renforcé par la re-validation de juillet.</p>
 
     <div class="warn">
       <h3>⚠ Pour rester honnête</h3>
-      <p style="margin-bottom:0">La double confirmation est un <strong>filtre de sécurité</strong>, pas une machine à gagner plus tout le temps. Quand le marché est « propre » (sans faux signaux), elle <strong>ne change presque rien</strong> — et coûte même un peu (sur une période facile, le rendement passe de +160 % à +143 %). Sa valeur, c'est de <strong>protéger</strong> quand le danger est là (2019-2020). Gros bénéfice dans la tempête, neutre par beau temps. On peut la désactiver d'un clic (<code class="mono">useConfirm</code>) pour retrouver le 3-jours pur.</p>
+      <p style="margin-bottom:0">La double confirmation est un <strong>filtre de sécurité</strong>, pas une machine à gagner plus tout le temps. Quand le marché est « propre » (sans faux signaux), elle <strong>ne change presque rien</strong> — et coûte même un peu (sur la fenêtre facile 2020-2026, le rendement passe de +119 % à +112 %). Sa valeur, c'est de <strong>protéger</strong> quand le danger est là (2019-2020). Gros bénéfice dans la tempête, quasi neutre par beau temps. On peut la désactiver d'un clic (<code class="mono">useConfirm</code>) pour retrouver le 3-jours pur.</p>
+    </div>
+  </section>
+
+  <!-- VALIDATION 2026-07 -->
+  <section>
+    <h2>Ce qu'on a appris en juillet 2026 — la re-validation complète</h2>
+
+    <h4>D'abord, une correction : les anciens chiffres étaient trop beaux</h4>
+    <p>En re-vérifiant tout de zéro, on a découvert que les archives publiques de Binance (fichiers mensuels) <strong>oublient la bougie de 3 jours qui chevauche une fin de mois</strong> — 21 bougies manquaient, dont tout janvier 2025. Le robot en conditions réelles, lui, voit la série complète : les backtests étaient donc <strong>plus flatteurs que la réalité</strong>. Les données ont été réparées (reconstruites depuis le journalier, qui est complet) et le téléchargeur corrigé pour que ça ne se reproduise plus. Tous les chiffres de cette page sont les chiffres <strong>réparés</strong>.</p>
+
+    <h4>Le test le plus fort : le marché baissier de 2018, jamais vu par la stratégie</h4>
+    <p>La stratégie a été conçue et réglée sur les années 2019-2026. Les données de <strong>2018 n'avaient jamais servi</strong> — on les a téléchargées exprès pour lui faire passer un examen surprise. Résultat, sans toucher un seul réglage :</p>
+    <div class="ba">
+      <div class="col">
+        <div class="h">Le Bitcoin en 2018 (mai → janvier 2019)</div>
+        <div class="big neg">−59 %</div>
+        <div class="sub">le prix s'effondre</div>
+      </div>
+      <div class="col after">
+        <div class="h">La stratégie sur la même période</div>
+        <div class="big pos">+46,5 %</div>
+        <div class="sub">de Bitcoin accumulé — pire trade : −3 %</div>
+      </div>
+    </div>
+    <p class="muted" style="font-size:13.5px; margin-top:10px">Réussir un examen dont on n'a jamais vu les questions, c'est la meilleure preuve qu'une stratégie n'est pas « apprise par cœur » sur son historique. Elle a aussi passé : le décalage du calendrier des bougies 3 jours (3 découpages possibles → tous positifs), des frais doublés puis triplés (toujours positif), et 26 dates de départ différentes (26 fois positif).</p>
+
+    <h4>La découverte importante : où est VRAIMENT l'edge</h4>
+    <div class="aside">
+      <span class="t">Le test qui change la compréhension</span>
+      <p style="margin:6px 0 0">On a fait vendre un robot « aveugle » aux mêmes moments de marché baissier, pour les mêmes durées, mais à des instants <strong>tirés au hasard</strong> : il <strong>perd</strong> en médiane −22 %. Même en capturant chaque période baissière <em>parfaitement</em> du début à la fin, on ne gagne que +11,6 %. La vraie stratégie, elle, fait <strong>+120 %</strong> — mieux que 97 % des tirages aléatoires.</p>
+    </div>
+    <p>Conclusion : savoir « qu'on est en marché baissier » ne vaut presque rien en soi (un bear est plein de rebonds violents qui punissent le vendeur passif). Ce qui rapporte, c'est la <strong>mécanique de chaque aller-retour</strong> : couper immédiatement toute perte (plafond −5 %, en pratique −2,6 % en moyenne), laisser courir les baisses qui s'installent (+9 % en moyenne, jusqu'à +38 %), et <strong>re-vendre aussitôt</strong> si la faiblesse reprend. Beaucoup de petits essais bon marché, quelques gros gains — c'est cette asymétrie, le moteur.</p>
+
+    <div class="warn">
+      <h3>⚠ Tout ce qu'on a essayé d'améliorer… et qui a échoué</h3>
+      <p style="margin-bottom:0">Pour améliorer cette mécanique, on a testé méthodiquement : stops « trailing », rachats échelonnés, délais minimums, filtres par funding, par volatilité, par distance au sommet, par âge du bear, par heure et jour, taille de position adaptative, pauses après pertes, et le grain de décision en 1 h / 2 h / 8 h / 12 h. <strong>Tout est ressorti pire ou égal</strong> au réglage actuel (le 4 h est confirmé). Ce n'est pas une déception : ça veut dire que la v2 est un <strong>optimum local solide</strong> — et on sait maintenant pourquoi elle marche.</p>
     </div>
   </section>
 
@@ -215,11 +251,19 @@
     <div class="grid cols-2">
       <div class="card">
         <h3><span class="num">1</span>Tendance sur 3 jours</h3>
-        <p class="muted" style="margin-bottom:0">On lit la direction du marché sur de <strong>grandes bougies</strong> (3 jours) plutôt que journalières → moins de bruit, on suit la vraie tendance. <strong>+122 %</strong> contre +89 % pour le journalier.</p>
+        <p class="muted" style="margin-bottom:0">On lit la direction du marché sur de <strong>grandes bougies</strong> (3 jours) plutôt que journalières → moins de bruit. Avantage réel mais <strong>modeste</strong> : +78 % contre +74 % pour le journalier (hors-échantillon, données réparées).</p>
       </div>
       <div class="card">
         <h3><span class="num">2</span>Double confirmation</h3>
-        <p class="muted" style="margin-bottom:0">On ne vend que si <strong>le 3 jours ET le journalier</strong> sont baissiers → on évite les faux signaux. Le drawdown passe de <strong>−44 % à −30 %</strong>, et le rendement monte.</p>
+        <p class="muted" style="margin-bottom:0">On ne vend que si <strong>le 3 jours ET le journalier</strong> sont baissiers → on évite les faux signaux. Sur 2019-2026 : rendement <strong>doublé</strong> (+31 % → +62 %) et drawdown <strong>−45 % → −30 %</strong>. L'edge le plus solide.</p>
+      </div>
+      <div class="card">
+        <h3><span class="num">3</span>La mécanique d'aller-retour (le vrai moteur)</h3>
+        <p class="muted" style="margin-bottom:0">Pertes coupées à −5 % max, gains laissés courir, ré-entrée immédiate sur faiblesse. Mieux que 97 % des timings aléatoires dans le même régime — c'est <strong>elle</strong> qui fabrique le rendement.</p>
+      </div>
+      <div class="card">
+        <h3><span class="num">4</span>Validé hors-échantillon</h3>
+        <p class="muted" style="margin-bottom:0">Bear 2018 jamais vu : <strong>+46,5 %</strong> pendant que le prix fait −59 %. Frais ×2 : toujours positif. 26/26 dates de départ positives. Repose sur ~65 trades — la part de chance n'est pas nulle, mais l'edge est réel.</p>
       </div>
     </div>
   </section>
@@ -243,7 +287,7 @@
   </section>
 
   <footer>
-    BTC Accumulator v2 · les chiffres viennent de backtests sur BTCUSDT (spot, mesuré en Bitcoin, 2019-2026) · la v1 reste la version de référence ; la v2 est sa version améliorée sur la lecture de tendance.
+    BTC Accumulator v2 · chiffres re-validés en juillet 2026 sur données réparées (BTCUSDT spot, mesuré en Bitcoin, 2018-2026, frais OKX 0,10 % + slippage 0,05 %) · baselines : 2019→2026 +62 % / DD −30 % · 2020-08→2026 +112 % / DD −28 % · 2018→2026 +126 % / DD −33 % · journal de recherche : apps/backend/src/research/accum2/LOG.md
   </footer>
 
 </div>
