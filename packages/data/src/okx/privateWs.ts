@@ -1,5 +1,5 @@
 import type { ExchangePrivateStream } from '../exchange/types'
-import { OKX_WS_PRIVATE, OKX_WS_PRIVATE_DEMO } from './endpoints'
+import { okxWsPrivateUrl } from './endpoints'
 import { okxWsLogin } from './sign'
 import type { OkxCredentials, OkxOrderEvent, OkxPrivateEvent } from './types'
 
@@ -34,6 +34,7 @@ export class OkxPrivateStream implements ExchangePrivateStream {
   private ping: ReturnType<typeof setInterval> | null = null
   private stopped = false
   private backoff = 1000
+  private lastMsgAt = 0
 
   constructor(
     private readonly creds: OkxCredentials,
@@ -61,9 +62,9 @@ export class OkxPrivateStream implements ExchangePrivateStream {
   }
 
   private connect(): void {
-    const url = this.demo ? OKX_WS_PRIVATE_DEMO : OKX_WS_PRIVATE
-    const ws = new WebSocket(url)
+    const ws = new WebSocket(okxWsPrivateUrl(this.demo))
     this.ws = ws
+    this.lastMsgAt = Date.now()
     ws.addEventListener('open', () => {
       ws.send(JSON.stringify(loginFrame(this.creds, Date.now())))
     })
@@ -82,6 +83,7 @@ export class OkxPrivateStream implements ExchangePrivateStream {
   }
 
   private onMessage(raw: string): void {
+    this.lastMsgAt = Date.now()
     if (raw === 'pong') return
     let msg: { event?: string; channel?: string; arg?: { channel: string }; data?: OkxOrderEvent[]; code?: string; msg?: string }
     try {
@@ -100,7 +102,25 @@ export class OkxPrivateStream implements ExchangePrivateStream {
       }
       this.backoff = 1000
       for (const f of subscribeFrames()) this.ws?.send(JSON.stringify(f))
-      this.ping = setInterval(() => this.ws?.send('ping'), 25_000)
+      // Ping + garde-fou de mort silencieuse : chaque ping reçoit un 'pong',
+      // donc > 90 s sans AUCUN message = connexion morte sans event 'close'
+      // (coupure NAT/réseau) → on force la fermeture, le handler close reconnecte.
+      this.ping = setInterval(() => {
+        if (Date.now() - this.lastMsgAt > 90_000) {
+          this.onError(new Error('OKX private ws silencieux depuis 90s — reconnexion forcée'))
+          try {
+            this.ws?.close()
+          } catch {
+            /* déjà fermé */
+          }
+          return
+        }
+        try {
+          this.ws?.send('ping')
+        } catch {
+          /* socket en cours de fermeture — le close handler s'en charge */
+        }
+      }, 25_000)
       return
     }
     if (msg.event === 'error') {

@@ -26,6 +26,15 @@ interface RawTradeFee {
   level: string
 }
 
+/**
+ * Annulation d'un ordre déjà exécuté/annulé/expiré : non-fatal (le strategy
+ * runtime fait des cancelAll de routine). Codes 51400/51401/51402 + les
+ * libellés « does not exist / already canceled » (couvre aussi les algos).
+ */
+function isAlreadyGone(e: unknown): boolean {
+  return /5140[012]|does not exist|already (?:canceled|cancelled|completed)/i.test(String(e))
+}
+
 export class OkxAccount {
   private readonly instruments: OkxInstruments
   constructor(private readonly rest: OkxRest) {
@@ -123,14 +132,13 @@ export class OkxAccount {
 
   async cancelOrder(instId: string, ids: { clOrdId?: string; ordId?: string }): Promise<void> {
     await this.rest.signed('POST', '/api/v5/trade/cancel-order', {}, { instId, ...ids }).catch((e) => {
-      // 51400/51401: order does not exist / already canceled — ignore
-      if (!String(e).match(/5140[01]/)) throw e
+      if (!isAlreadyGone(e)) throw e
     })
   }
 
   async cancelAlgoOrder(instId: string, ids: { algoClOrdId?: string; algoId?: string }): Promise<void> {
     await this.rest.signed('POST', '/api/v5/trade/cancel-algos', {}, [{ instId, ...ids }]).catch((e) => {
-      if (!String(e).match(/5140[01]/)) throw e
+      if (!isAlreadyGone(e)) throw e
     })
   }
 

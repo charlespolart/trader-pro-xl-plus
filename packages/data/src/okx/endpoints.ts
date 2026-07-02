@@ -31,13 +31,17 @@ function hosts(): OkxHosts {
   return (process.env.OKX_REGION ?? 'global').toLowerCase() === 'eea' ? HOSTS.eea : HOSTS.global
 }
 
-export const OKX_REST_BASE = hosts().rest
-export const OKX_WS_PUBLIC = hosts().wsPublic
-export const OKX_WS_PRIVATE = hosts().wsPrivate
-export const OKX_WS_PRIVATE_DEMO = hosts().wsPrivateDemo
-
 export function okxBaseUrl(): string {
   return hosts().rest
+}
+
+/** Resolved at call time (NOT import time) so OKX_REGION set late is honored. */
+export function okxWsPrivateUrl(demo: boolean): string {
+  return demo ? hosts().wsPrivateDemo : hosts().wsPrivate
+}
+
+export function okxWsPublicUrl(demo: boolean): string {
+  return demo ? hosts().wsPublicDemo : hosts().wsPublic
 }
 
 /** Demo trading is the same base URL plus this header (with demo API keys). */

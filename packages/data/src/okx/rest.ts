@@ -86,7 +86,17 @@ export class OkxRest {
     } catch {
       throw new OkxApiError('-1', res.status, res.statusText)
     }
-    if (env.code !== '0') throw new OkxApiError(env.code, res.status, env.msg || res.statusText)
+    if (env.code !== '0') {
+      // Sur les endpoints trade, l'enveloppe porte souvent code '1' + msg vide et
+      // le VRAI code est par-item (data[0].sCode, ex. 51400 « déjà annulé ») —
+      // le remonter, sinon les appelants ne peuvent pas tolérer ces cas.
+      const item = Array.isArray(env.data)
+        ? (env.data[0] as { sCode?: string; sMsg?: string } | undefined)
+        : undefined
+      const code = item?.sCode && item.sCode !== '0' ? item.sCode : env.code
+      const msg = env.msg || item?.sMsg || res.statusText
+      throw new OkxApiError(code, res.status, msg)
+    }
     return env.data
   }
 }

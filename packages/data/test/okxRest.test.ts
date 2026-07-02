@@ -22,4 +22,25 @@ describe('OkxRest', () => {
     const rest = new OkxRest({ fetchImpl: mockFetch({ code: '0', msg: '', data: [] }) as unknown as typeof fetch })
     await expect(rest.signed('GET', '/api/v5/account/balance')).rejects.toThrow(/credentials/i)
   })
+
+  it('surfaces the per-item sCode when the envelope is code 1 with an empty msg (trade endpoints)', async () => {
+    // cancel-order d'un ordre déjà parti : enveloppe { code:'1', msg:'' } et le
+    // vrai code est dans data[0].sCode — il doit remonter dans l'erreur, sinon
+    // la tolérance « déjà annulé » des appelants ne peut pas fonctionner.
+    const rest = new OkxRest({
+      fetchImpl: mockFetch({
+        code: '1',
+        msg: '',
+        data: [{ sCode: '51400', sMsg: 'Cancellation failed as the order does not exist.' }],
+      }) as unknown as typeof fetch,
+    })
+    try {
+      await rest.public('/api/v5/trade/cancel-order')
+      throw new Error('aurait dû rejeter')
+    } catch (e) {
+      expect(e).toBeInstanceOf(OkxApiError)
+      expect((e as OkxApiError).code).toBe('51400')
+      expect(String(e)).toMatch(/does not exist/)
+    }
+  })
 })
