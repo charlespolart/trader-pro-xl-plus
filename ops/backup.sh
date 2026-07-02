@@ -13,7 +13,15 @@ COMPOSE="docker compose --env-file /srv/tpx/.env -f ops/docker-compose.yml -f op
 STAMP="$(date -u +%Y%m%d-%H%M%S)"
 OUT="backups/tpx-$STAMP.dump"
 
-$COMPOSE exec -T postgres sh -c 'pg_dump -U "${POSTGRES_USER:-tpx}" -d "${POSTGRES_DB:-tpx}" --format=custom' > "$OUT"
+# Les données de MARCHÉ (bougies, funding, manifeste aggtrades) sont exclues :
+# re-téléchargeables à volonté depuis Binance Vision (ensureRange les refait à
+# la demande après un restore). Ne reste que l'irremplaçable — bots, trades,
+# ordres, fills, clés API chiffrées, réglages — soit ~quelques dizaines de Ko
+# par dump (mesuré : 40 Mo avec le marché → 0,02 Mo sans). Avec la rotation
+# 8 dumps, l'espace disque total est borné à quelques Mo pour toujours.
+$COMPOSE exec -T postgres sh -c 'pg_dump -U "${POSTGRES_USER:-tpx}" -d "${POSTGRES_DB:-tpx}" --format=custom \
+  --exclude-table-data=candles --exclude-table-data=candle_coverage \
+  --exclude-table-data=funding_rates --exclude-table-data=aggtrade_files' > "$OUT"
 
 # un dump vide/tronqué ne doit pas écraser silencieusement la rotation
 [ -s "$OUT" ] || { echo "dump vide: $OUT" >&2; rm -f "$OUT"; exit 1; }
