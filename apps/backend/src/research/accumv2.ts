@@ -11,8 +11,8 @@ import { runBacktest, type StrategyDefinition } from '@tpx/core'
 import { PgDataProvider } from '@tpx/data'
 import { createDb } from '@tpx/db'
 import { DEFAULT_FEES, type BacktestConfig, type ParamValues } from '@tpx/shared'
-import accumulatorV1 from '../../../../strategies/btc-accumulator'
-import accumulatorV2 from '../../../../strategies/btc-accumulator-v2'
+import accumulatorV1 from './accum2/legacy/btc-accumulator-v1'
+import accumulatorV2 from '../../../../strategies/btc-accumulator'
 import { PERIODS } from './run'
 
 const db = createDb(process.env.DATABASE_URL ?? 'postgres://tpx:tpx@localhost:5436/tpx')

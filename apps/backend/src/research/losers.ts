@@ -11,7 +11,7 @@ import { ind, runBacktest } from '@tpx/core'
 import { PgDataProvider } from '@tpx/data'
 import { createDb } from '@tpx/db'
 import type { Candle } from '@tpx/shared'
-import accumulator from '../../../../strategies/btc-accumulator'
+import accumulator from './accum2/legacy/btc-accumulator-v1'
 
 const db = createDb(process.env.DATABASE_URL ?? 'postgres://tpx:tpx@localhost:5436/tpx')
 const provider = new PgDataProvider(db, { dataDir: resolve(import.meta.dir, '../../../../data') })

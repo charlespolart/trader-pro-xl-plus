@@ -3,7 +3,7 @@ import { resolve } from 'node:path'
 import { runBacktest } from '@tpx/core'
 import { PgDataProvider } from '@tpx/data'
 import { createDb } from '@tpx/db'
-import erFlow from '../../../../strategies/er-flow-trend'
+import erFlow from './accum2/legacy/er-flow-trend'
 import { FAMILIES } from './families'
 import { mkConfig } from './run'
 

@@ -8,7 +8,7 @@ import { runBacktest } from '@tpx/core'
 import { PgDataProvider } from '@tpx/data'
 import { createDb } from '@tpx/db'
 import { DEFAULT_FEES, type BacktestConfig, type ParamValues } from '@tpx/shared'
-import accumV2 from '../../../../../strategies/btc-accumulator-v2'
+import accumV2 from '../../../../../strategies/btc-accumulator'
 import { phaseStrategy } from './phasestrat'
 
 const db = createDb(process.env.DATABASE_URL ?? 'postgres://tpx:tpx@localhost:5436/tpx')

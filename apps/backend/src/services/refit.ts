@@ -53,26 +53,30 @@ export const DEFAULT_REFIT_CONFIG: RefitConfig = {
 
 /** grilles par défaut par stratégie (plateaux validés en recherche) */
 export const DEFAULT_SPACES: Record<string, OptimizeSpace> = {
-  'er-flow-trend': {
-    erMin: [0.25, 0.35, 0.45],
-    emaLen: [50, 100],
-    atrMult: [2, 3],
-  },
-  // bornée au plateau validé : htfSlopeDays >= 14 (jamais 0, qui désactive le
-  // filtre déterminant et saigne). rebuyEmaLen est la valeur la plus sensible
-  // (la sortie est la cause n°1 des trades perdants) → on la fait refitter.
-  // 3×3×2 = 18 combinaisons.
+  // BTC Accumulator (ex-v2) : plateau re-cartographié sur données réparées
+  // (accum2/plateau.ts, 2026-07). trendInterval VERROUILLÉ à 3d (le
+  // ré-optimiser en walk-forward NUIT, vérifié 2×) ; on ne refitte que
+  // l'intérieur du plateau tendance + erMin. 4×3×2 = 24 combinaisons.
   'btc-accumulator': {
-    htfSlopeDays: [14, 30, 45],
-    rebuyEmaLen: [50, 75, 100], // 50 inclus : le refit peut rester conservateur
-    emaLen: [50, 100],
+    trendMaLen: [50, 60, 70, 80],
+    trendSlopeBars: [6, 8, 10],
+    erMin: [0.35, 0.4],
+  },
+  // ETH Accumulator : plateau IS 2026-07 (accum2/ethplateau.ts) — erMin est
+  // le levier dominant sur ETH (0,40→+359 %, 0,45→+489 %, 0,50→+359 %).
+  // ⚠ calibration sans OOS réussi à ce jour (holdout 2024-26 sans bear ETH).
+  'eth-accumulator': {
+    erMin: [0.4, 0.45, 0.5],
+    trendMaLen: [50, 60, 80],
+    trendSlopeBars: [6, 8, 10],
   },
 }
 
 /** objectif de score par stratégie (défaut : profitFactor). */
 export const DEFAULT_OBJECTIVE: Record<string, Objective> = {
-  // BTC Accumulator : maximiser le BTC accumulé (net % en dénomination base)
+  // accumulateurs : maximiser l'actif accumulé (net % en dénomination base)
   'btc-accumulator': 'netProfit',
+  'eth-accumulator': 'netProfit',
 }
 
 const key = (botId: string): string => `refit:${botId}`

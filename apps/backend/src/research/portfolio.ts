@@ -9,7 +9,7 @@ import { runBacktest } from '@tpx/core'
 import { PgDataProvider } from '@tpx/data'
 import { createDb } from '@tpx/db'
 import type { EquityPoint } from '@tpx/shared'
-import erFlow from '../../../../strategies/er-flow-trend'
+import erFlow from './accum2/legacy/er-flow-trend'
 import { mkConfig } from './run'
 
 const db = createDb(process.env.DATABASE_URL ?? 'postgres://tpx:tpx@localhost:5436/tpx')

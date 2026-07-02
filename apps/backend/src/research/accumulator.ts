@@ -9,7 +9,7 @@ import { runBacktest } from '@tpx/core'
 import { PgDataProvider } from '@tpx/data'
 import { createDb } from '@tpx/db'
 import { DEFAULT_FEES, type BacktestConfig, type ParamValues } from '@tpx/shared'
-import accumulator from '../../../../strategies/btc-accumulator'
+import accumulator from './accum2/legacy/btc-accumulator-v1'
 import { PERIODS } from './run'
 
 const db = createDb(process.env.DATABASE_URL ?? 'postgres://tpx:tpx@localhost:5436/tpx')

@@ -10,7 +10,7 @@ import { runBacktest } from '@tpx/core'
 import { PgDataProvider } from '@tpx/data'
 import { createDb } from '@tpx/db'
 import type { BacktestConfig, ParamValues } from '@tpx/shared'
-import accumV2 from '../../../../../strategies/btc-accumulator-v2'
+import accumV2 from '../../../../../strategies/btc-accumulator'
 
 const db = createDb(process.env.DATABASE_URL ?? 'postgres://tpx:tpx@localhost:5436/tpx')
 const provider = new PgDataProvider(db, { dataDir: resolve(import.meta.dir, '../../../../../data') })

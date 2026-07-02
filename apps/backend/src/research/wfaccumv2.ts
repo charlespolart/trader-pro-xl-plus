@@ -17,8 +17,8 @@ import { runBacktest, walkForwardWindows } from '@tpx/core'
 import { PgDataProvider } from '@tpx/data'
 import { createDb } from '@tpx/db'
 import { defaultParams, type BacktestConfig, type ParamValues } from '@tpx/shared'
-import accumV1 from '../../../../strategies/btc-accumulator'
-import accumV2 from '../../../../strategies/btc-accumulator-v2'
+import accumV1 from './accum2/legacy/btc-accumulator-v1'
+import accumV2 from '../../../../strategies/btc-accumulator'
 
 const db = createDb(process.env.DATABASE_URL ?? 'postgres://tpx:tpx@localhost:5436/tpx')
 const provider = new PgDataProvider(db, { dataDir: resolve(import.meta.dir, '../../../../data') })

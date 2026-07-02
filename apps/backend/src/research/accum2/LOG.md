@@ -210,6 +210,20 @@ n=13) est dans le mauvais sens et sous-échantillonné — n'achète pas 40 Go d
   au cœur régime+mécanique. Méthodo clé : la passe de sensibilité (résolution de pivots L,
   miroir, transfert ETH, contrôle négatif) a démasqué le wedge — TOUJOURS la faire avant
   d'aller au backtest moteur.
+- 2026-07-02 (suite 4) : CONSOLIDATION PRODUIT (demande utilisateur). strategies/ réduit à DEUX
+  stratégies : btc-accumulator (ex-v2 renommée, défauts inchangés) + eth-accumulator (nouvelle).
+  v1/v3/er-flow-trend archivées dans accum2/legacy/ (les scripts de recherche les importent) ;
+  donchian-breakout, ema-cross-*, er-flow-trend-short, pattern-*, rsi-mean-reversion supprimées.
+  MÉCANISME du « flow off » ETH vérifié en distribution : takerFlow(10) colle à 0,5 (P25-P75 ±1%),
+  médiane ETH 0,5003 vs BTC 0,4972 → le seuil absolu <0,5 était un fil de rasoir calibré BTC qui
+  bloquait ~arbitrairement les entrées ETH = correction de calibration, PAS un knob chanceux.
+  er0,45 = vrai tuning par actif (plateau 0,40-0,50 tous > +359%). ETH Accumulator : confirmMode
+  'both' par défaut (ETH ET BTC 1d en bear — hypothèse structurelle pré-enregistrée : les vrais
+  bears ETH co-occurrent avec BTC ; IS +436%/38tr/PF 2,65 vs eth-seul +489%/46tr/PF 2,37 — moins
+  de net, meilleure qualité). Feed multi-symbole (confirmBtc sur bot ETH) supporté en live
+  (botManager souscrit par feed.symbol). Refit DEFAULT_SPACES réécrits (l'ancien espace
+  btc-accumulator ciblait les params v1 → mismatch après renommage). ⚠ déploiement : le bot
+  er-flow-trend (local dormant + smoke test VPS) doit être supprimé avant le prochain deploy.
 - 2026-07-02 (suite 3) : EXPLORATION MAXIMALE (X1-X4) — volume profile réfuté (le POC se fait
   traverser, dernier S/R fermé) ; DEUX moteurs à IS fort mais holdout négatif, PARQUÉS avec
   conditions de réveil : ETHBTC fast-trend (donchian 15/5, revisiter si le ratio repasse en
