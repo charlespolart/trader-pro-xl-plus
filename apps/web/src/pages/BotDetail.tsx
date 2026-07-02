@@ -159,7 +159,9 @@ export function BotDetail() {
         <TradesTable trades={tradeRecords} />
       </Card>
 
-      <RefitCard botId={id} />
+      {/* key : réinitialise le draft local quand on navigue vers un autre bot
+          (sinon la config de refit du bot A serait affichée/enregistrée sur B) */}
+      <RefitCard key={id} botId={id} />
 
       <Card title="Journal">
         {allLogs.length === 0 ? (

@@ -47,8 +47,11 @@ export function OptimizationDetail() {
     const results = artifact?.results ?? []
     return [...results].sort((a, b) => {
       if (sortKey === 'score') return b.score - a.score
-      const av = a.metrics?.[sortKey] ?? -Infinity
-      const bv = b.metrics?.[sortKey] ?? -Infinity
+      // sentinelle : les combos en erreur (metrics null) vont TOUJOURS en fin de
+      // liste — sur le tri drawdown (ascendant), -Infinity les mettait en tête
+      const miss = sortKey === 'maxDrawdownPct' ? Infinity : -Infinity
+      const av = a.metrics?.[sortKey] ?? miss
+      const bv = b.metrics?.[sortKey] ?? miss
       return sortKey === 'maxDrawdownPct' ? Number(av) - Number(bv) : Number(bv) - Number(av)
     })
   }, [artifact, sortKey])

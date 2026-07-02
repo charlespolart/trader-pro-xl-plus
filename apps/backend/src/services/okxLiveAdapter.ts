@@ -90,7 +90,9 @@ export class OKXLiveAdapter implements ExecutionAdapter {
     this.prefix = clOrdPrefix(opts.botId)
     this.instId = toInstId(opts.symbolInfo.baseAsset, opts.symbolInfo.quoteAsset, opts.market)
     this.ctVal = opts.symbolInfo.contractSize ?? 1
-    this.lotSz = opts.symbolInfo.stepSize
+    // symbolInfo.stepSize est en unités BASE (le botManager convertit lotSz×ctVal
+    // pour les SWAP) ; les builders d'ordres OKX veulent le pas en CONTRATS.
+    this.lotSz = opts.symbolInfo.stepSize / this.ctVal
   }
 
   // ----------------------------------------------------------- lifecycle
@@ -246,6 +248,17 @@ export class OKXLiveAdapter implements ExecutionAdapter {
     } else {
       await this.o.account.cancelOrder(this.instId, { clOrdId: order.clientId })
     }
+    // Le canal WS `orders-algo` n'est PAS souscrit (il vit sur /business) : un
+    // algo annulé n'émettra AUCUN événement. Sans marquage local il resterait
+    // TRIGGER_PENDING pour toujours → openOrders() le renvoie → le cancelAll du
+    // cycle suivant retente d'annuler un ordre inexistant. On confirme donc
+    // localement après un cancel REST réussi (les ordres normaux, eux, seront
+    // aussi confirmés par leur push WS `canceled` — idempotent).
+    if (order.status === 'NEW' || order.status === 'TRIGGER_PENDING' || order.status === 'PARTIALLY_FILLED') {
+      order.status = 'CANCELED'
+      order.updatedAt = Date.now()
+      this.o.events.onOrderUpdate(order)
+    }
     return order
   }
 
@@ -375,11 +388,14 @@ export class OKXLiveAdapter implements ExecutionAdapter {
   ): void {
     const feeQuote = this.feeToQuote(feeAmt, feeCcy, price)
     if (order.side === 'BUY') {
-      const received = feeCcy === this.o.symbolInfo.baseAsset ? qty - feeAmt : qty
+      const feeInBase = feeCcy === this.o.symbolInfo.baseAsset
+      const received = feeInBase ? qty - feeAmt : qty
       const newQty = this.posQty + received
       this.posEntry = newQty > 0 ? (this.posEntry * this.posQty + price * qty) / newQty : 0
       this.posQty = newQty
-      this.realizedNet -= feeQuote
+      // ne PAS re-soustraire le fee si déjà rogné sur la base reçue (sinon
+      // double comptage dans equity() : une fois via received, une fois ici)
+      if (!feeInBase) this.realizedNet -= feeQuote
     } else {
       const gross = (price - this.posEntry) * qty
       this.realizedNet += gross - feeQuote

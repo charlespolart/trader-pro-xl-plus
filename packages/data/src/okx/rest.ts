@@ -69,10 +69,13 @@ export class OkxRest {
       headers['OK-ACCESS-SIGN'] = okxSign(c.secret, ts, method, requestPath, bodyStr)
     }
 
+    // sans timeout, un TCP pendu fige submit()/cancel() pour toujours — et la
+    // chaîne d'événements sérialisée du bot avec (plus de candles, plus de stop)
     const res = await this.fetchImpl(`${this.base}${requestPath}`, {
       method,
       headers,
       body: bodyStr || undefined,
+      signal: AbortSignal.timeout(15_000),
     })
 
     if (res.status === 429 && attempt < 5) {

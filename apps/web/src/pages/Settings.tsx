@@ -28,17 +28,25 @@ export function Settings() {
         <CredentialsCard name="testnet" title="Clés API OKX — Démo" configured={settings?.credentials.testnet ?? false} onDone={invalidate} />
       </div>
 
-      <RiskCard
-        maxTotalExposureQuote={risk?.maxTotalExposureQuote}
-        maxDailyLossQuote={risk?.maxDailyLossQuote}
-        killSwitchActive={account?.killSwitchActive ?? false}
-        onDone={invalidate}
-      />
+      {/* ne monter ces cartes qu'une fois les données chargées : leur état local
+          est initialisé depuis les props (useState) — monté trop tôt, le
+          formulaire reste sur les valeurs vides/défauts et « Enregistrer »
+          ÉCRASE silencieusement la config serveur (limites de risque, frais). */}
+      {risk !== undefined && (
+        <RiskCard
+          maxTotalExposureQuote={risk.maxTotalExposureQuote}
+          maxDailyLossQuote={risk.maxDailyLossQuote}
+          killSwitchActive={account?.killSwitchActive ?? false}
+          onDone={invalidate}
+        />
+      )}
 
-      <div className="grid grid-cols-2 gap-4">
-        <PaperFeesCard market="spot" fees={settings?.paperFees.spot} onDone={invalidate} />
-        <PaperFeesCard market="futures" fees={settings?.paperFees.futures} onDone={invalidate} />
-      </div>
+      {settings !== undefined && (
+        <div className="grid grid-cols-2 gap-4">
+          <PaperFeesCard market="spot" fees={settings.paperFees.spot} onDone={invalidate} />
+          <PaperFeesCard market="futures" fees={settings.paperFees.futures} onDone={invalidate} />
+        </div>
+      )}
 
       <Card title="Système">
         <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">

@@ -208,12 +208,16 @@ class BotRunner {
       // base/quote/precision come from the DATA side, but tick/step/min/contract/
       // leverage must match the venue we actually trade on (execution + strategy
       // rounding go through this value).
+      // SWAP : lotSz/minSz OKX sont exprimés en CONTRATS — tous les consommateurs
+      // de SymbolInfo (roundQty du runtime, seuils dust, reconcile) attendent des
+      // unités BASE → convertir via contractSize. Spot : contractSize = 1.
+      const unit = config.market === 'futures' ? (instrument.contractSize ?? 1) : 1
       this.symbolInfoV = {
         ...symbolInfo,
         quoteAsset: execQuote,
         tickSize: instrument.tickSize,
-        stepSize: instrument.stepSize,
-        minQty: instrument.minQty,
+        stepSize: instrument.stepSize * unit,
+        minQty: instrument.minQty * unit,
         contractSize: instrument.contractSize,
         maxLeverage: instrument.maxLeverage,
       }
@@ -250,7 +254,13 @@ class BotRunner {
 
     const guarded = new RiskGuardedAdapter(this.rawExec, (req) => this.riskCheck(req))
 
-    this.tradeBuilder = new TradeBuilder(config.market, config.symbol, config.leverage, { botId: config.id })
+    this.tradeBuilder = new TradeBuilder(
+      config.market,
+      config.symbol,
+      config.leverage,
+      { botId: config.id },
+      def.backtest?.denomination === 'base',
+    )
 
     this.runtime = new StrategyRuntime({
       def,
@@ -425,6 +435,12 @@ class BotRunner {
     this.lastSeenOpen.set(feedId, candle.openTime)
     this.enqueue(async () => {
       this.lastEventAt = Date.now()
+      // les bots live sans feed de trades n'ont AUCUNE autre source de prix :
+      // sans ceci, equity()/unrealizedPnl/riskCheck/minNotional travaillent sur
+      // le prix du démarrage (toute la couche risque devient morte).
+      if (feedId === 'main' && this.rawExec instanceof OKXLiveAdapter) {
+        this.rawExec.setLastPrice(candle.close)
+      }
       try {
         await this.runtime.handleCandle(feedId, candle, false)
       } catch (err) {
