@@ -137,6 +137,10 @@ futures queues mensuelles → fix candleStore à faire (tâche dédiée).
 | G6 | order blocks comme zones de VENTE d'accumulation | geom_study.py | ✗ SIM -34% (1d) / -42% (4h) — cohérent avec l'effondrement OOS de juin en standalone |
 | G7 | double bottom (rachat) | geom_study.py | seule lueur : +6,0%/5j après cassure (moitiés +6,4/+5,7) mais n=17/6 ans — trop rare pour timer le rachat, recross déjà rapide |
 | G8 | Elliott Wave, rounding top, cup&handle | — | exclus avec justification : pas de formalisation objective (Elliott : deux analystes ≠ mêmes vagues) ; rounding = courbure lente ≈ déjà capturée par les MA ; C&H = continuation haussière, hors sujet vente |
+| X1 | volume profile / POC / HVN / LVN (profil glissant 60-240j, no-lookahead) | volprofile.py | ✗ le POC se fait TRAVERSER comme tous les niveaux (rip→POC en bear : +3,1%/3j, t=+2,7 dans le MAUVAIS sens) ; HVN-support t≈1 ; LVN n<14. Dernière famille S/R fermée |
+| X2 | ETHBTC fast-trend long (accumuler BTC via le ratio) | ethbtc.py + ratiotrend.ts | IS RÉEL et LARGE (donchian 15/5 : +391%/DD29, tout le plateau N10-40×M5-20 positif, tient coûts ×3, moteur == mini-sim) MAIS **HOLDOUT -7,9%** (2024-26 = glissade sans tendance, le carburant = phases de surperf ETH absent depuis 2022). PARQUÉ : à revisiter si ETHBTC re-rentre en régime haussier durable |
+| X3 | accumulateur ETH avec SES params (er0.45, flow OFF, 3d/60/8) | ethplateau.ts | IS SPECTACULAIRE (+488%, plateau large, 2 récoltes indépendantes 2018 +202% / 2022 +76%, dort en bull) MAIS **HOLDOUT -2%/DD-41%** (pas de bear ETH propre en 2024-26, whipsaws V-shaped). PARQUÉ jusqu'au prochain vrai bear (nouvelles données OOS). Leçon : flow filter inutile sur ETH, er0.45 > 0.35 |
+| X4 | basis perp-spot (z-score) comme filtre d'entrée | études basis | ✗✗ t=-2,70 sur BTC (1er |t|>2 de la session !) mais TUÉ par la validation croisée : ETH t=+0,01 (zéro réplication) + contradiction funding (t=+1,45 sens inverse) + conditionnel marché inversé. Canal sentiment (funding/basis) fermé — 3 strikes |
 
 **Synthèse mécanique : les issues des trades sont ~i.i.d. (69% petites pertes ~-2.6%, 31% gains ~+9%),
 rien d'observable à l'entrée ou dans l'historique ne prédit le tirage. L'edge EST l'asymétrie
@@ -206,3 +210,12 @@ n=13) est dans le mauvais sens et sous-échantillonné — n'achète pas 40 Go d
   au cœur régime+mécanique. Méthodo clé : la passe de sensibilité (résolution de pivots L,
   miroir, transfert ETH, contrôle négatif) a démasqué le wedge — TOUJOURS la faire avant
   d'aller au backtest moteur.
+- 2026-07-02 (suite 3) : EXPLORATION MAXIMALE (X1-X4) — volume profile réfuté (le POC se fait
+  traverser, dernier S/R fermé) ; DEUX moteurs à IS fort mais holdout négatif, PARQUÉS avec
+  conditions de réveil : ETHBTC fast-trend (donchian 15/5, revisiter si le ratio repasse en
+  régime haussier durable) et accumulateur ETH (er0.45/flowOff, revisiter au prochain vrai bear
+  ETH) ; basis perp-spot tué par validation croisée ETH (t=+0,01) malgré t=-2,7 sur BTC — le
+  réflexe cross-val a évité un déploiement de bruit. MÉTA-LEÇON de 2024-26 : période SANS bear
+  soutenu → tous les moteurs d'accumulation sont ~flat ; seule la v2-BTC est restée saine
+  (+4,9%/DD-25) grâce à sa double confirmation. 26 familles testées dans la session, 0 déployable,
+  v2 défauts = seul survivant OOS. Bilan complet des scripts : accum2/*.py + *.ts.
