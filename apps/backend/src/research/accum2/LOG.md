@@ -129,6 +129,14 @@ futures queues mensuelles → fix candleStore à faire (tâche dédiée).
 | N3 | NOUVEAU : donchian breakdown/breakout 1d | newedges.py | ✗ mêmes symptômes (+140% meilleure case, voisines +19..65, DD 46-66%) |
 | N4 | NOUVEAU : capitulation flow/volume (bougie 1d) | newedges.py | ✗ prédit le REBOND (+2,2% à 1j, n=13) — mauvais sens pour vendre, n trop petit pour le rachat |
 | N5 | NOUVEAU : hybride momentum 1d + cap de perte 5% v2 | newedges.py | ✗ le cap churne à grain 1d (28-51 stops en cascade dans les V-recoveries), DD reste 43-65% |
+| G1 | patterns de chandeliers (34 détecteurs prod, 1d+4h, tous/bear) | candlestats.ts | ✗✗ les patterns BAISSIERS précèdent des HAUSSES (dark cloud bear +2,3%/3j, hanging man 1d +8%/10j = marqueurs d'épuisement) ; les 2-3 cellules du bon sens (threeOutsideDown 1d -2,3pts, n=25) ont t≈1,4 — bruit après ~360 cellules testées |
+| G2 | head & shoulders top (pivots, neckline, no-lookahead) | geom_study.py | ✗ trop rare (n=7 en 1d/6 ans, conforme littérature) ; 4h n=15 instable |
+| G3 | double top (cassure du creux) | geom_study.py | ✗ bon sens mais économiquement mort : 4h n=95, -0,95pt vs base, SIM -17,6% après coûts/stop |
+| G4 | wedges montant/descendant (3HH+3HL convergents) | geom_study.py + wedgetest.py | ✗✗ ARTEFACT DE RÉSOLUTION : effet -2%/t2,6 à L=8/12 seulement, INVERSÉ à L=5 (n max) ; miroir falling contradictoire à L=5 (-1,4%, mauvais sens) ; ETH +2,9% (inverse) ; contrôle négatif (canaux parallèles) = même bruit |
+| G5 | Fibonacci structuré (rip dans bande 38-79% d'une jambe ≥12-20%) | geom_study.py + wedgetest.py | ✗ non-monotone entre bandes, moitiés instables, SIM 1d +84% = coups de cible chanceux (4h : -58%) |
+| G6 | order blocks comme zones de VENTE d'accumulation | geom_study.py | ✗ SIM -34% (1d) / -42% (4h) — cohérent avec l'effondrement OOS de juin en standalone |
+| G7 | double bottom (rachat) | geom_study.py | seule lueur : +6,0%/5j après cassure (moitiés +6,4/+5,7) mais n=17/6 ans — trop rare pour timer le rachat, recross déjà rapide |
+| G8 | Elliott Wave, rounding top, cup&handle | — | exclus avec justification : pas de formalisation objective (Elliott : deux analystes ≠ mêmes vagues) ; rounding = courbure lente ≈ déjà capturée par les MA ; C&H = continuation haussière, hors sujet vente |
 
 **Synthèse mécanique : les issues des trades sont ~i.i.d. (69% petites pertes ~-2.6%, 31% gains ~+9%),
 rien d'observable à l'entrée ou dans l'historique ne prédit le tirage. L'edge EST l'asymétrie
@@ -189,3 +197,12 @@ n=13) est dans le mauvais sens et sous-échantillonné — n'achète pas 40 Go d
 - 2026-07-02 (suite) : chasse from-scratch à d'autres fréquences (demande utilisateur) — fade de
   rip en bear, momentum SMA, donchian, capitulation flow, hybride momentum+cap : TOUS réfutés
   (N1-N5). La carte des fréquences est complète : 4h + mécanique v2 = seul sweet spot trouvé.
+- 2026-07-02 (suite 2) : campagne CHARTISME (demande utilisateur) — 34 patterns de chandeliers
+  (détecteurs de production jamais backtestés), H&S, double top/bottom, wedges, fib structuré,
+  OB-zones de vente : TOUS réfutés (G1-G8), en accord avec la littérature (Marshall : chandeliers
+  ≈ 0 après coûts ; Osler : H&S dominé par des règles simples ; Lo et al. : info marginale).
+  Raison structurelle : BTC est un actif momentum — les niveaux cassent (73% en bear, cf. juin)
+  et les figures baissières « d'épuisement » précèdent des rebonds. Le chartisme n'ajoute RIEN
+  au cœur régime+mécanique. Méthodo clé : la passe de sensibilité (résolution de pivots L,
+  miroir, transfert ETH, contrôle négatif) a démasqué le wedge — TOUJOURS la faire avant
+  d'aller au backtest moteur.
