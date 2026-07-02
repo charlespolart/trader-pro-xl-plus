@@ -40,11 +40,21 @@ export function isInterval(s: string): s is Interval {
 /** Epoch (1970-01-01) was a Thursday; Binance weekly candles open on Monday 00:00 UTC. */
 const WEEK_OFFSET_MS = 4 * 86_400_000
 
+/**
+ * Binance 3d candles are NOT epoch-aligned: their global grid anchors at
+ * 1970-01-02 (open-day index ≡ 1 mod 3 — verified on spot archives across
+ * symbols with different listing dates).
+ */
+const THREE_DAY_OFFSET_MS = 86_400_000
+
 /** Open time of the candle containing `time` for the given interval (Binance-aligned, UTC). */
 export function alignOpenTime(time: number, interval: Interval): number {
   const ms = INTERVAL_MS[interval]
   if (interval === '1w') {
     return Math.floor((time - WEEK_OFFSET_MS) / ms) * ms + WEEK_OFFSET_MS
+  }
+  if (interval === '3d') {
+    return Math.floor((time - THREE_DAY_OFFSET_MS) / ms) * ms + THREE_DAY_OFFSET_MS
   }
   return Math.floor(time / ms) * ms
 }

@@ -77,12 +77,48 @@ export class CandleStore {
     const totalMs = gaps.reduce((s, g) => s + (g.end - g.start), 0)
     let doneMs = 0
     for (const gap of gaps) {
-      await this.downloadGap(market, symbol, interval, gap.start, gap.end, (ms) => {
-        opts.onProgress?.(doneMs + ms, totalMs)
-      }, opts.signal)
+      if (interval === '3d' || interval === '1w') {
+        // Vision monthly files OMIT the multi-day bar that straddles a month
+        // boundary (and sometimes whole months) → never download these
+        // intervals; build them from 1d, which is complete.
+        await this.buildGapFromDaily(market, symbol, interval, gap.start, gap.end, (ms) => {
+          opts.onProgress?.(doneMs + ms, totalMs)
+        }, opts.signal)
+      } else {
+        await this.downloadGap(market, symbol, interval, gap.start, gap.end, (ms) => {
+          opts.onProgress?.(doneMs + ms, totalMs)
+        }, opts.signal)
+      }
       doneMs += gap.end - gap.start
       opts.onProgress?.(doneMs, totalMs)
     }
+  }
+
+  /**
+   * Fill a coverage gap of a multi-day interval (3d/1w) by aggregating 1d
+   * candles. The 1d range is widened by one bucket on each side so that a
+   * bucket cut by a mis-aligned legacy coverage edge still completes
+   * (re-inserting an existing bar is a no-op thanks to onConflictDoNothing).
+   */
+  private async buildGapFromDaily(
+    market: MarketType,
+    symbol: string,
+    interval: '3d' | '1w',
+    gapStart: number,
+    gapEnd: number,
+    progress: (msIntoGap: number) => void,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    const itv = INTERVAL_MS[interval]
+    const fetchStart = alignOpenTime(gapStart, interval)
+    const fetchEnd = alignOpenTime(gapEnd - 1, interval) + itv
+    await this.ensureRange(market, symbol, '1d', fetchStart, fetchEnd, {
+      onProgress: (d) => progress(Math.min(d, gapEnd - gapStart)),
+      signal,
+    })
+    const days = await this.getCandles(market, symbol, '1d', fetchStart, fetchEnd)
+    const rows = aggregateDailyCandles(days, interval)
+    await this.commitChunk(market, symbol, interval, rows, gapStart, gapEnd)
   }
 
   async getCandles(
@@ -260,6 +296,46 @@ export class CandleStore {
       await tx.insert(candleCoverage).values({ id: randomUUID(), market, symbol, interval, start: s, end: e })
     })
   }
+}
+
+/**
+ * Aggregate 1d candles into Binance-aligned 3d/1w bars (3d: global grid
+ * anchored at 1970-01-02; 1w: Mondays — both via alignOpenTime). Only buckets
+ * with a full complement of days are emitted (a partial bucket would have a
+ * wrong OHLC); the in-progress tail bucket is therefore naturally excluded.
+ */
+export function aggregateDailyCandles(days: Candle[], interval: '3d' | '1w'): Candle[] {
+  const itv = INTERVAL_MS[interval]
+  const perBucket = itv / INTERVAL_MS['1d']
+  const buckets = new Map<number, Candle[]>()
+  for (const c of days) {
+    const open = alignOpenTime(c.openTime, interval)
+    let list = buckets.get(open)
+    if (!list) {
+      list = []
+      buckets.set(open, list)
+    }
+    list.push(c)
+  }
+  const rows: Candle[] = []
+  for (const [open, list] of [...buckets.entries()].sort((a, b) => a[0] - b[0])) {
+    if (list.length !== perBucket) continue
+    list.sort((a, b) => a.openTime - b.openTime)
+    rows.push({
+      openTime: open,
+      open: list[0]!.open,
+      high: Math.max(...list.map((c) => c.high)),
+      low: Math.min(...list.map((c) => c.low)),
+      close: list[list.length - 1]!.close,
+      volume: list.reduce((s, c) => s + c.volume, 0),
+      quoteVolume: list.reduce((s, c) => s + c.quoteVolume, 0),
+      trades: list.reduce((s, c) => s + c.trades, 0),
+      takerBuyBase: list.reduce((s, c) => s + c.takerBuyBase, 0),
+      takerBuyQuote: list.reduce((s, c) => s + c.takerBuyQuote, 0),
+      closeTime: open + itv - 1,
+    })
+  }
+  return rows
 }
 
 /** [start, end) minus the union of covered ranges. */
