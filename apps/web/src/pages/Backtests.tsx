@@ -35,6 +35,12 @@ interface BtDraft {
   params: ParamValues
 }
 
+/** actif de base pour les libellés (ETHUSDT → ETH) ; approximation UI, le moteur utilise symbolInfo */
+function baseAssetOf(symbol: string): string {
+  const m = symbol.toUpperCase().match(/^(.+?)(USDT|USDC|FDUSD|BUSD|BTC|ETH|EUR|USD)$/)
+  return m ? m[1]! : symbol
+}
+
 export function Backtests() {
   const qc = useQueryClient()
   const { data: runs } = useQuery({ queryKey: ['backtests'], queryFn: api.backtests, refetchInterval: 5_000 })
@@ -286,7 +292,14 @@ function BacktestForm({
           <input className="input" type="date" value={draft.to} onChange={(e) => onChange({ ...draft, to: e.target.value })} />
         </Field>
         {draft.market === 'spot' && (
-          <Field label="Dénomination" hint={draft.denomination === 'base' ? 'performance mesurée en BTC (accumulation)' : 'performance mesurée en USDT'}>
+          <Field
+            label="Dénomination"
+            hint={
+              draft.denomination === 'base'
+                ? `performance mesurée en ${baseAssetOf(draft.symbol)} (accumulation)`
+                : 'performance mesurée en USDT'
+            }
+          >
             <select
               className="input"
               value={draft.denomination}
@@ -303,11 +316,11 @@ function BacktestForm({
               }}
             >
               <option value="quote">USDT (standard)</option>
-              <option value="base">Actif de base (BTC) — accumulation</option>
+              <option value="base">{`Actif de base (${baseAssetOf(draft.symbol)}) — accumulation`}</option>
             </select>
           </Field>
         )}
-        <Field label={draft.denomination === 'base' ? 'Capital initial (en BTC)' : 'Capital initial (USDT)'}>
+        <Field label={draft.denomination === 'base' ? `Capital initial (en ${baseAssetOf(draft.symbol)})` : 'Capital initial (USDT)'}>
           <input
             className="input"
             type="number"
