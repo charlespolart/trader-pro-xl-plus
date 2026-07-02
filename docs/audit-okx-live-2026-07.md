@@ -70,3 +70,82 @@ REST de rattrapage.
 - deploy-web : rsync --delete → dossier temporaire + bascule atomique.
 - Session : HKDF pour la clé (≠ MASTER_KEY brut), timingSafeEqual, rate-limit.
 - env_file : ne passer au conteneur que les variables nécessaires.
+
+---
+
+# Spec d'implémentation (préparée à chaud en fin de session d'audit)
+
+Décisions de design prises avec le contexte complet — la session d'exécution
+peut les suivre directement. Ordre = ordre d'implémentation recommandé.
+
+## 1. P0-1 — balances bot-locales dans l'adapter (le fix du stop jamais armé)
+
+**Design : l'adapter dérive les balances de SON état, comme SimExchange** (c'est
+la parité backtest/live, pas un cache de compte).
+- Ajouter `quoteLedger` à OKXLiveAdapter : initialisé à `allocation` au premier
+  start (persisté dans snapshot()/restore() comme posQty), débité à chaque fill
+  BUY (coût + fee en quote), crédité à chaque fill SELL (produit − fee).
+- `balances()` retourne exactement 2 lignes bot-scopées :
+  `[{asset: baseAsset, free: posQty}, {asset: quoteAsset, free: quoteLedger}]`
+  → synchrone avec les fills (le onFill de la stratégie voit l'USDC de la vente
+  immédiatement), borné par l'allocation (plus de dépense du compte entier),
+  plus de dépendance au poller 20 s (le garder pour la page Account seulement).
+- Dérive long-terme : au reconcile, clamp `quoteLedger = min(ledger, free réel
+  du compte)` avec note de log si écart > 1 %.
+- Durcissement stratégies (btc-accumulator + eth-accumulator) : remplacer les
+  3 `find(b => b.asset !== baseAsset)` par `find(b => b.asset === symbolInfo.quoteAsset)`.
+- Tests : séquence sell→fill→onFill-voit-le-quote ; buy partiel ; restore.
+
+## 2. P0-2 — fills fiables (4 sous-chantiers, dans cet ordre)
+
+a. **Map avant REST** (okxLiveAdapter.submit) : insérer l'Order (status NEW)
+   AVANT `placeOrder` ; sur rejet REST → status REJECTED + retirer ; un push WS
+   arrivé entre les deux trouve l'ordre (les fills sont idempotents par tradeId
+   — voir P2 tradeId, à faire en même temps).
+b. **Issue REST inconnue** : implémenter `OkxAccount.getOrder(instId, {clOrdId})`
+   (GET /api/v5/trade/order) ; sur timeout du place → getOrder avant de déclarer
+   l'échec (adopter si trouvé).
+c. **Backfill au redémarrage** (le stub spec §14) : dans reconcile(), pour chaque
+   RestingOrderRef absent des pending → getOrder par clOrdId → si executedQty
+   final > executedQty connu, émettre la différence en fill synthétique (prix =
+   avgPx). Couvre le « stop déclenché pendant le down → double rachat ».
+d. **Mort du login WS = incident** : le onError de OkxPrivateStream porte déjà
+   le cas login-failed → botManager doit alors (1) suspendre les bots live du
+   compte (stop keepDesired SANS annuler les ordres), (2) alerte Telegram,
+   (3) retry du stream avec backoff long (5 min). Ne PAS trader en aveugle.
+
+## 3. P1 dans l'ordre
+
+- **Shutdown (P1-4)** : `stopAll(keepDesired)` → `stop({cancelOrders: false,
+  runOnStopHook: false})`. Le stop résident survit au redeploy (reconcile le
+  ré-adopte déjà). Pour un stop UTILISATEUR : bypasser riskCheck pour les ordres
+  émis pendant status='stopping' (flag runner), sinon le « retour en BTC » de
+  onStop reste mort. Logger au lieu d'avaler dans runtime.stop().catch.
+- **clOrdId (P1-8)** : dans restore(), `seq = max(seq restauré, floor(Date.now()/1000) % 36^4)`
+  n'est PAS monotone — préférer : composant temporel dans l'id →
+  `makeClOrdId(prefix, seq, bootMs)` = prefix + base36(bootMs) + base36(seq),
+  vérifier ≤ 32 alnum (11 + 9 + ~3 = OK). Adapter le test okxOrders.
+- **reconcile non protégé (P1-10)** : try/catch par appel REST dans reconcile
+  (notes d'erreur, jamais throw) ; auto-start de init() avec 3 retries backoff
+  30 s ; dans le catch de manager.start() → router.releaseAdapter (zombie fix).
+- **sz non arrondi (P1-12)** : dans orders.sizeFor : qty → floorToStep(qty, lotSz
+  base pour spot / contrats pour swap déjà géré) + formatage décimal fixe
+  (jamais d'exponentielle : helper fmtSz(x, decimals du lotSz)) ; quoteQty →
+  floorToStep(x, 0.01). closePosition (botManager) → passer par roundQty avant.
+
+## 4. P2 à faire en même temps si peu coûteux
+
+- tradeId OKX dans OkxOrderEvent + id de fill = tradeId (dédup sûre) — requis
+  par 2a de toute façon.
+- feeAsset = quoteAsset après conversion dans emitFill.
+- Supprimer la souscription WS `positions` (ou la router vers un check de désync).
+- Arrêter les pollers de balance quand plus aucun bot ne les utilise.
+
+## 5. Validation de la session d'exécution
+
+1. `bun run typecheck` + `bun test` (113 verts aujourd'hui) + nouveaux tests
+   (ledger, getOrder-adoption, clOrdId, fmtSz).
+2. Smoke paper local : bot eth-accumulator paper (spot marche en local via
+   mirror), vérifier logs de fills + stop posé après une vente simulée.
+3. Smoke démo OKX sur le VPS (le bot 21d1732f du handoff précédent) : vérifier
+   que le stop est ARMÉ après la première vente (c'était le symptôme P0-1).
