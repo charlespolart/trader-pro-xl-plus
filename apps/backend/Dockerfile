@@ -36,4 +36,7 @@ COPY packages ./packages
 COPY strategies ./strategies
 COPY apps/backend ./apps/backend
 EXPOSE 3001
+# non-root (uid 1000 dans l'image oven/bun) — le déploiement chown /srv/tpx/data
+# sur l'hôte en conséquence (seul point d'écriture du conteneur).
+USER bun
 CMD ["bun", "apps/backend/src/index.ts"]

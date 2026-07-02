@@ -11,6 +11,9 @@ services:
   backend:
     image: ghcr.io/${GHCR_OWNER:?set GHCR_OWNER in /srv/tpx/.env}/trader-pro-xl-plus-backend:${IMAGE_TAG:-latest}
     restart: always
+    # stopAll() annule les ordres OKX bot par bot (appels réseau) : laisser
+    # le temps de finir proprement avant le SIGKILL (défaut docker = 10s).
+    stop_grace_period: 60s
     env_file:
       - /srv/tpx/.env
     environment:

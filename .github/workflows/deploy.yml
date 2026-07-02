@@ -27,23 +27,32 @@ jobs:
       - id: meta
         env:
           OWNER: ${{ github.repository_owner }}
+          INPUT_TAG: ${{ github.event.inputs.tag }}
         run: |
-          if [ "${{ github.event.inputs.tag }}" = "latest" ]; then
+          # 'latest' = build HEAD ; un sha7 = ROLLBACK vers une image EXISTANTE
+          # (aucun rebuild : rebuilder écraserait le tag sain avec le code HEAD).
+          if ! [[ "$INPUT_TAG" =~ ^([0-9a-f]{7}|latest)$ ]]; then
+            echo "tag invalide: '$INPUT_TAG' (attendu: 'latest' ou un SHA court de 7 hex)"; exit 1
+          fi
+          if [ "$INPUT_TAG" = "latest" ]; then
             echo "tag=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
           else
-            echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+            echo "tag=$INPUT_TAG" >> "$GITHUB_OUTPUT"
           fi
           owner_lc="${OWNER,,}"   # GHCR requires lowercase
           echo "image_name=ghcr.io/${owner_lc}/trader-pro-xl-plus-backend" >> "$GITHUB_OUTPUT"
 
       - uses: docker/setup-buildx-action@v3
+        if: github.event.inputs.tag == 'latest'
       - uses: docker/login-action@v3
+        if: github.event.inputs.tag == 'latest'
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: docker/build-push-action@v6
+        if: github.event.inputs.tag == 'latest'
         with:
           context: .
           file: apps/backend/Dockerfile
@@ -77,11 +86,28 @@ jobs:
           rsync -az -e 'ssh -i ~/.ssh/id_deploy' \
             ops/docker-compose.yml \
             ops/docker-compose.prod.yml \
+            ops/backup.sh \
             "$VPS_USER@$VPS_HOST:/srv/tpx/ops/"
           # Caddy bind-mount captures the inode → overwrite in place.
           scp -i ~/.ssh/id_deploy ops/Caddyfile "$VPS_USER@$VPS_HOST:/tmp/tpx-Caddyfile"
           ssh -i ~/.ssh/id_deploy "$VPS_USER@$VPS_HOST" \
             'cat /tmp/tpx-Caddyfile > /srv/tpx/ops/Caddyfile && rm /tmp/tpx-Caddyfile'
+
+      - name: Install weekly DB backup cron + data dir ownership
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          ssh -i ~/.ssh/id_deploy "$VPS_USER@$VPS_HOST" 'bash -s' << 'REMOTE'
+          set -euo pipefail
+          chmod +x /srv/tpx/ops/backup.sh
+          mkdir -p /srv/tpx/backups
+          # cron hebdo idempotent (marqueur tpx-backup)
+          ( crontab -l 2>/dev/null | grep -v 'tpx-backup' ; \
+            echo '10 4 * * 1 /srv/tpx/ops/backup.sh >> /srv/tpx/backups/backup.log 2>&1 # tpx-backup' ) | crontab -
+          # le conteneur backend tourne non-root (uid 1000) : /data doit lui appartenir
+          [ "$(stat -c %u /srv/tpx/data 2>/dev/null || echo 0)" = "1000" ] || chown -R 1000:1000 /srv/tpx/data
+          REMOTE
 
       - name: Pull image, migrate, restart backend
         env:
@@ -93,14 +119,23 @@ jobs:
             "IMAGE_TAG='$IMAGE_TAG' bash -s" << 'REMOTE'
           set -euo pipefail
           cd /srv/tpx
-          echo "$IMAGE_TAG" > .deployed-tag
+          # dernier tag connu-bon (persisté dans .env APRÈS un déploiement réussi
+          # seulement) — sert de cible de retour si la nouvelle image est mauvaise,
+          # et fige les `docker compose up -d` manuels sur ce tag (pas :latest).
+          PREV="$(grep -E '^IMAGE_TAG=' .env | head -1 | cut -d= -f2- || true)"
 
           COMPOSE="docker compose --env-file /srv/tpx/.env \
             -f ops/docker-compose.yml \
             -f ops/docker-compose.prod.yml"
 
+          # échoue ici si le tag n'existe pas sur GHCR (rollback vers un tag inconnu)
           $COMPOSE pull backend
           $COMPOSE up -d --wait postgres
+
+          # valider le nouveau Caddyfile AVANT de recréer quoi que ce soit
+          if [ -n "$($COMPOSE ps -q caddy 2>/dev/null)" ]; then
+            $COMPOSE exec -T caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+          fi
 
           for attempt in 1 2 3; do
             if $COMPOSE run --rm --no-deps -T backend bun run --cwd packages/db migrate:ci </dev/null; then
@@ -110,9 +145,23 @@ jobs:
             sleep 5
           done
 
-          $COMPOSE up -d --wait
+          if ! $COMPOSE up -d --wait; then
+            echo "nouvelle image unhealthy"
+            if [ -n "$PREV" ] && [ "$PREV" != "$IMAGE_TAG" ]; then
+              echo "retour automatique au tag connu-bon $PREV"
+              IMAGE_TAG="$PREV" $COMPOSE up -d --wait || echo "retour à $PREV échoué — intervention manuelle requise"
+            fi
+            exit 1
+          fi
 
-          $COMPOSE exec -T caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+          # succès → persister le tag connu-bon dans .env (idempotent)
+          if grep -qE '^IMAGE_TAG=' .env; then
+            sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=$IMAGE_TAG|" .env
+          else
+            printf '\nIMAGE_TAG=%s\n' "$IMAGE_TAG" >> .env
+          fi
+          rm -f .deployed-tag
+
           $COMPOSE exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile --force
 
           docker image prune -f

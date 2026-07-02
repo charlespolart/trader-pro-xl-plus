@@ -20,3 +20,12 @@ export const env = {
 }
 
 export const authEnabled = env.adminPassword.length > 0
+
+// Défense en profondeur : en prod l'auth ne doit jamais tomber en silence
+// (une faute de frappe sur ADMIN_PASSWORD dans .env laisserait le contrôle
+// total du trading à tout porteur du cert mTLS). On refuse de démarrer.
+if (process.env.NODE_ENV === 'production' && !authEnabled) {
+  throw new Error(
+    'ADMIN_PASSWORD manquant ou vide : démarrage refusé en production (NODE_ENV=production exige l’authentification).',
+  )
+}

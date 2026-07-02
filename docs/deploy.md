@@ -101,7 +101,7 @@ make deploy-web
 |---|---|
 | Déployer une modif **backend** | `make deploy` |
 | Déployer une modif **front** | `make deploy-web` |
-| **Rollback** backend | `make deploy TAG=<sha7>` (l'image doit exister sur GHCR) |
+| **Rollback** backend | `make deploy TAG=<sha7>` — redéploie l'image EXISTANTE telle quelle (aucun rebuild, `:latest` non touché) ; échoue si le tag n'existe pas sur GHCR |
 | Logs backend | `ssh root@vps 'cd /srv/tpx && docker compose -f ops/docker-compose.yml -f ops/docker-compose.prod.yml logs -f backend'` |
 | État | `… docker compose … ps` |
 
