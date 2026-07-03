@@ -134,9 +134,12 @@ jobs:
           $COMPOSE pull backend
           $COMPOSE up -d --wait postgres
 
-          # valider le nouveau Caddyfile AVANT de recréer quoi que ce soit
+          # valider le nouveau Caddyfile AVANT de recréer quoi que ce soit.
+          # </dev/null OBLIGATOIRE : ce script arrive par stdin (bash -s <<
+          # heredoc) et `docker exec -T` attache stdin → il AVALERAIT tout le
+          # reste du script, qui « réussirait » sans jamais redémarrer le backend.
           if [ -n "$($COMPOSE ps -q caddy 2>/dev/null)" ]; then
-            $COMPOSE exec -T caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+            $COMPOSE exec -T caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile </dev/null
           fi
 
           for attempt in 1 2 3; do
@@ -164,7 +167,8 @@ jobs:
           fi
           rm -f .deployed-tag
 
-          $COMPOSE exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile --force
+          $COMPOSE exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile --force </dev/null
 
           docker image prune -f
+          echo "REMOTE_SCRIPT_COMPLET (tag $IMAGE_TAG)"
           REMOTE
