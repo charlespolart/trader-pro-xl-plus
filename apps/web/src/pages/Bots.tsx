@@ -329,7 +329,7 @@ function BotForm({
         {!startsInBase && (
           <Field
             label={draft.market === 'futures' ? 'Allocation de marge (quote)' : 'Allocation (USDC/USDT)'}
-            hint="capital de départ de la tranche — lu au 1er démarrage, ensuite elle compose ses gains/pertes"
+            hint="Capital de départ, lu au premier démarrage — ensuite le bot compose avec ses gains et pertes."
           >
             <input className="input" type="number" value={draft.allocation} onChange={(e) => onChange({ ...draft, allocation: Number(e.target.value) })} />
           </Field>
@@ -339,8 +339,8 @@ function BotForm({
             label={`Position initiale (${baseAsset})`}
             hint={
               draft.mode === 'paper'
-                ? 'quantité simulée — le bot démarre en position'
-                : 'adoptée au 1er démarrage — le bot démarre en position et vend au signal'
+                ? `Quantité simulée : le bot commence en détenant ces ${baseAsset}.`
+                : `Le bot commence en détenant ces ${baseAsset} — il les vendra au prochain signal de baisse.`
             }
           >
             <div className="space-y-1.5">
