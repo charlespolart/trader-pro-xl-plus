@@ -785,7 +785,17 @@ class BotRunner {
    *  est perdu jusqu'au backfill du prochain reconcile. Les stops résidents
    *  (TRIGGER_PENDING) sont exclus : ils ne se rempliront pas maintenant. */
   private async waitLiveFillsSettled(maxMs: number): Promise<void> {
-    if (!(this.rawExec instanceof OKXLiveAdapter)) return
+    if (this.rawExec instanceof SimExchange) {
+      // paper : les feeds sont déjà coupés, un market émis par onStop ne verra
+      // plus jamais de tick — on en pompe un au dernier prix connu pour le fill
+      const sim = this.rawExec
+      if (sim.lastPrice() > 0 && sim.openOrders().some((o) => o.type === 'MARKET')) {
+        sim.setTime(Date.now())
+        sim.processAggTrade(sim.lastPrice(), 0)
+      }
+      await this.chain.catch(() => {})
+      return
+    }
     const deadline = Date.now() + maxMs
     while (Date.now() < deadline) {
       const pendingMarket = this.rawExec.openOrders().some((o) => o.type === 'MARKET')
