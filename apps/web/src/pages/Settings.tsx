@@ -213,7 +213,7 @@ function PaperFeesCard({ market, fees, onDone }: { market: MarketType; fees?: { 
   const [tier, setTier] = useState('')
   // OKX level imported from the live trade-fee endpoint; null until imported.
   const [level, setLevel] = useState<string | null>(null)
-  const [noCreds, setNoCreds] = useState(false)
+  const [importError, setImportError] = useState<string | null>(null)
 
   const save = useMutation({
     mutationFn: () => api.setPaperFees(market, { makerRate: Number(maker), takerRate: Number(taker) }),
@@ -224,7 +224,7 @@ function PaperFeesCard({ market, fees, onDone }: { market: MarketType; fees?: { 
   const applyTier = (id: string): void => {
     setTier(id)
     setLevel(null)
-    setNoCreds(false)
+    setImportError(null)
     const preset = FEE_TIER_PRESETS[market].find((p) => p.id === id)
     if (preset) {
       setMaker(String(preset.makerRate))
@@ -235,15 +235,15 @@ function PaperFeesCard({ market, fees, onDone }: { market: MarketType; fees?: { 
   const importFees = useMutation({
     mutationFn: () => api.getFees('live', market, 'BTCUSDT'),
     onSuccess: (data) => {
-      if (data) {
+      if (data !== null && 'maker' in data) {
         setMaker(String(data.maker))
         setTaker(String(data.taker))
         setLevel(data.level)
-        setNoCreds(false)
+        setImportError(null)
         setTier('')
       } else {
         setLevel(null)
-        setNoCreds(true)
+        setImportError(data === null ? 'Clés API non configurées' : data.error)
       }
     },
   })
@@ -277,7 +277,7 @@ function PaperFeesCard({ market, fees, onDone }: { market: MarketType; fees?: { 
             Importer mes vrais taux
           </button>
           {level !== null && <Badge value="running" label={`Palier OKX : ${level}`} />}
-          {noCreds && <span className="text-[11px] text-zinc-500">Clés API non configurées</span>}
+          {importError !== null && <span className="text-[11px] text-down">{importError}</span>}
         </div>
       </div>
     </Card>

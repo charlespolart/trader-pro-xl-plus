@@ -273,7 +273,7 @@ export const api = {
   deleteCredentials: (name: 'live' | 'testnet') => del<{ ok: boolean }>(`/settings/credentials/${name}`),
   setPaperFees: (market: MarketType, fees: unknown) => put<{ ok: boolean }>('/settings/paper-fees', { market, fees }),
 
-  // live OKX maker/taker/level for a symbol (null when no creds / unknown symbol)
+  // live OKX maker/taker/level. null = pas de clés ; { error } = lecture impossible
   getFees: (name: 'live' | 'testnet', market: MarketType, symbol: string) =>
-    get<{ maker: number; taker: number; level: string } | null>(`/fees/${name}/${market}/${symbol}`),
+    get<{ maker: number; taker: number; level: string } | { error: string } | null>(`/fees/${name}/${market}/${symbol}`),
 }

@@ -23,6 +23,8 @@ interface RawTradeFee {
   taker: string
   makerU: string
   takerU: string
+  makerUSDC?: string
+  takerUSDC?: string
   level: string
 }
 
@@ -102,12 +104,24 @@ export class OkxAccount {
     instId: string,
   ): Promise<{ maker: number; taker: number; level: string } | null> {
     try {
-      const rows = await this.rest.signed<RawTradeFee>('GET', '/api/v5/account/trade-fee', { instType: t, instId })
+      // trade-fee n'accepte instId QUE pour SPOT/MARGIN ; pour les SWAP il
+      // faut instFamily (sinon 50016 « instId and instType don't match »)
+      const params =
+        t === 'SWAP'
+          ? { instType: t, instFamily: instId.replace(/-SWAP$/, '') }
+          : { instType: t, instId }
+      const rows = await this.rest.signed<RawTradeFee>('GET', '/api/v5/account/trade-fee', params)
       const r = rows[0]
       if (!r) return null
       // OKX rates are negative when charged; backtester wants positive cost.
-      const maker = Math.abs(Number(t === 'SWAP' ? r.makerU : r.maker))
-      const taker = Math.abs(Number(t === 'SWAP' ? r.takerU : r.taker))
+      // Le champ porteur varie (USDT-margined = makerU, USDC = makerUSDC,
+      // spot = maker) et les autres sont VIDES → premier non-vide.
+      const pick = (...vals: (string | undefined)[]): number => {
+        for (const v of vals) if (v !== undefined && v !== '') return Math.abs(Number(v))
+        return 0
+      }
+      const maker = t === 'SWAP' ? pick(r.makerU, r.makerUSDC, r.maker) : pick(r.maker, r.makerUSDC, r.makerU)
+      const taker = t === 'SWAP' ? pick(r.takerU, r.takerUSDC, r.taker) : pick(r.taker, r.takerUSDC, r.takerU)
       return { maker, taker, level: r.level }
     } catch {
       return null
