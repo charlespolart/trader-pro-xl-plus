@@ -435,7 +435,10 @@ export function buildApi(s: Services): Hono {
         .catch(() => []),
     ])
     const px = new Map<string, number>()
-    for (const t of tickers) px.set(t.instId, Number(t.last))
+    for (const t of tickers) {
+      const last = Number(t.last)
+      if (last > 0) px.set(t.instId, last) // last vide/0 = paire sans prix → « inconnu », pas 0
+    }
     const STABLES = new Set(['USDT', 'USDC', 'DAI', 'FDUSD', 'TUSD'])
     const spot = balances
       .filter((b) => b.free + b.locked > 0)
