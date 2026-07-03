@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Direction A — Poste de pilotage</title>
+<style>
+  /* ============ DIRECTION A — POSTE DE PILOTAGE ============
+     Philosophie : un panneau d'instruments, pas une page d'admin.
+     Plus de sidebar : une barre de commandement + une grille d'instruments.
+     Signature : le RAIL DE NIVEAUX vertical de chaque cycle (vente / stop /
+     rachat / prix vivant) — l'état de la machine lisible en une saccade. */
+  :root {
+    --bg: #07090d; --panel: #0e1219; --panel2: #141a24; --edge: #1e2634;
+    --ink: #d6dae2; --dim: #8b93a3; --faint: #5b6372;
+    --amber: #f2a83b; --amber-soft: rgba(242,168,59,.12);
+    --up: #2fbfa9; --down: #ef5350; --info: #7dd3fc;
+    --mono: ui-monospace, "SF Mono", Menlo, monospace;
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: var(--bg); color: var(--ink); font: 14px/1.45 var(--sans); min-height: 100vh; }
+  .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  /* ---- barre de commandement ---- */
+  .cmdbar { display:flex; align-items:center; gap:20px; height:52px; padding:0 20px;
+            border-bottom:1px solid var(--edge); background:linear-gradient(180deg,#0d1118,#0a0d13); position:sticky; top:0; z-index:5;}
+  .brand { font-weight:700; letter-spacing:-.02em; white-space:nowrap; }
+  .brand em { color:var(--amber); font-style:normal; }
+  .vitals { display:flex; gap:18px; margin:0 auto; }
+  .vital { display:flex; align-items:baseline; gap:7px; font-size:12px; color:var(--dim); white-space:nowrap; }
+  .vital b { font-family:var(--mono); font-weight:500; color:var(--ink); font-size:13px; }
+  .tag { font:600 10px/1 var(--mono); letter-spacing:.08em; padding:4px 7px; border-radius:3px; }
+  .tag.bear { color:var(--down); background:rgba(239,83,80,.12); border:1px solid rgba(239,83,80,.25); }
+  .tag.ok   { color:var(--up); background:rgba(47,191,169,.10); border:1px solid rgba(47,191,169,.22); }
+  .cmdbar .kbd { margin-left:8px; font:11px var(--mono); color:var(--faint); border:1px solid var(--edge); border-radius:4px; padding:3px 6px; }
+  .kill { font:600 12px var(--sans); color:var(--down); background:none; border:1px solid rgba(239,83,80,.4);
+          border-radius:6px; padding:6px 10px; cursor:pointer; }
+
+  .deck { max-width: 1280px; margin: 0 auto; padding: 22px 20px 60px; display: grid; gap: 14px;
+          grid-template-columns: repeat(12, 1fr); }
+  .pane { background: var(--panel); border: 1px solid var(--edge); border-radius: 10px; }
+  .pane-h { display:flex; align-items:center; gap:8px; padding: 12px 16px 0; }
+  .pane-h h2 { font: 600 11px var(--sans); letter-spacing:.14em; text-transform: uppercase; color: var(--dim); }
+  .pane-h .line { flex:1; height:1px; background: var(--edge); }
+  .pane-h .meta { font: 11px var(--mono); color: var(--faint); }
+
+  /* ---- instrument patrimoine ---- */
+  .patrimoine { grid-column: span 7; padding-bottom: 16px; }
+  .holdings { display:flex; gap: 36px; padding: 14px 20px 6px; flex-wrap: wrap; }
+  .holding .cur { font: 11px var(--sans); letter-spacing:.1em; color: var(--faint); text-transform: uppercase; }
+  .holding .qty { font: 500 34px/1.15 var(--mono); letter-spacing: -.02em; }
+  .holding .qty s { text-decoration: none; color: var(--amber); font-size: 22px; vertical-align: 6px; margin-right: 2px;}
+  .holding .usd { font: 12px var(--mono); color: var(--dim); margin-top: 2px; }
+  .holding.total { margin-left:auto; text-align:right; }
+  .holding.total .qty { color: var(--ink); font-size: 28px; }
+  .allocbar { display:flex; height: 6px; gap: 2px; margin: 12px 20px 0; border-radius: 4px; overflow: hidden; }
+  .allocbar i { display:block; }
+  .alloclegend { display:flex; gap: 16px; padding: 8px 20px 0; font: 11px var(--mono); color: var(--dim); }
+  .dot { display:inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; vertical-align: 1px;}
+
+  /* ---- instrument récolte ---- */
+  .harvest { grid-column: span 5; padding-bottom: 16px; }
+  .harvest .big { padding: 14px 20px 0; }
+  .harvest .big .v { font: 500 34px/1.1 var(--mono); color: var(--up); letter-spacing:-.02em; }
+  .harvest .big .l { font: 11px var(--sans); color: var(--faint); text-transform: uppercase; letter-spacing: .1em; margin-top: 4px;}
+  .harvest table { width: calc(100% - 40px); margin: 12px 20px 0; border-collapse: collapse; font-size: 12.5px; }
+  .harvest td { padding: 6px 0; border-top: 1px solid var(--edge); color: var(--dim); }
+  .harvest td:last-child { text-align: right; font-family: var(--mono); color: var(--ink); }
+
+  /* ---- cartes de cycle : LE cœur ---- */
+  .cycle { grid-column: span 6; display: grid; grid-template-columns: 1fr 148px; min-height: 236px; }
+  .cycle .body { padding: 12px 0 16px 20px; display:flex; flex-direction:column; }
+  .cycle .head { display:flex; align-items:center; gap: 10px; }
+  .cycle .pair { font: 600 15px var(--sans); }
+  .cycle .state { font: 600 10px var(--mono); letter-spacing: .1em; padding: 4px 8px; border-radius: 3px; }
+  .state.sold  { color: var(--amber); background: var(--amber-soft); border:1px solid rgba(242,168,59,.3); }
+  .state.hold  { color: var(--info); background: rgba(125,211,252,.08); border:1px solid rgba(125,211,252,.22); }
+  .cycle .phrase { color: var(--dim); font-size: 12.5px; margin-top: 8px; max-width: 40ch; }
+  .cycle .phrase b { color: var(--ink); font-weight: 500; font-family: var(--mono); }
+  .kpis { display:flex; gap: 26px; margin-top: auto; padding-top: 14px; }
+  .kpi .l { font: 10px var(--sans); text-transform: uppercase; letter-spacing: .1em; color: var(--faint); }
+  .kpi .v { font: 500 17px var(--mono); margin-top: 2px; }
+  .kpi .v.up { color: var(--up); } .kpi .v.dim { color: var(--dim); font-weight:400; }
+
+  /* le rail de niveaux — signature */
+  .rail { position: relative; border-left: 1px solid var(--edge); padding: 14px 14px 14px 0; }
+  .rail .track { position: absolute; left: 26px; top: 18px; bottom: 18px; width: 2px;
+                 background: linear-gradient(180deg, rgba(239,83,80,.5), var(--edge) 40%, rgba(242,168,59,.5)); border-radius: 2px; }
+  .lvl { position: absolute; left: 0; right: 10px; display: flex; align-items: center; gap: 8px; transform: translateY(-50%); }
+  .lvl .tick { width: 14px; height: 2px; margin-left: 20px; }
+  .lvl .lab { font: 9px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+  .lvl .px  { font: 11.5px var(--mono); color: var(--ink); margin-left: auto; }
+  .lvl.stop .tick { background: var(--down); } .lvl.stop .lab { color: var(--down); }
+  .lvl.sell .tick { background: var(--dim); }
+  .lvl.rebuy .tick { background: var(--amber); } .lvl.rebuy .lab { color: var(--amber); }
+  .lvl.price { z-index: 2; }
+  .lvl.price .cursor { margin-left: 12px; width: 0; height: 0; border: 6px solid transparent; border-left: 9px solid var(--info); }
+  .lvl.price .px, .lvl.price .lab { color: var(--info); font-weight: 600; }
+  @media (prefers-reduced-motion: no-preference) {
+    .lvl.price { animation: breathe 3s ease-in-out infinite; }
+    @keyframes breathe { 50% { opacity: .75; } }
+  }
+
+  /* ---- journal & portefeuille ---- */
+  .journal { grid-column: span 7; padding-bottom: 10px; }
+  .feed { list-style: none; padding: 10px 20px 8px; }
+  .feed li { display: flex; gap: 12px; padding: 7px 0; border-top: 1px solid rgba(30,38,52,.6); font-size: 12.5px; }
+  .feed li:first-child { border-top: 0; }
+  .feed time { font: 11px var(--mono); color: var(--faint); width: 96px; flex-shrink: 0; padding-top: 1px; }
+  .feed .k { width: 8px; height: 8px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
+  .k.fill { background: var(--up); } .k.stop { background: var(--down); } .k.info { background: var(--faint); } .k.sig { background: var(--amber); }
+  .feed .t b { font-family: var(--mono); font-weight: 500; }
+  .wallet { grid-column: span 5; padding-bottom: 8px; }
+  .wallet table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .wallet th { font: 600 10px var(--sans); text-transform: uppercase; letter-spacing: .1em; color: var(--faint);
+               text-align: right; padding: 10px 20px 6px; border-bottom: 1px solid var(--edge); }
+  .wallet th:first-child { text-align: left; }
+  .wallet td { padding: 8px 20px; border-bottom: 1px solid rgba(30,38,52,.5); font-family: var(--mono); text-align: right; color: var(--ink); }
+  .wallet td:first-child { text-align: left; font-family: var(--sans); font-weight: 500; }
+  .wallet tr:last-child td { border-bottom: 0; }
+
+  .mocktag { position: fixed; right: 14px; bottom: 14px; font: 11px var(--mono); color: var(--faint);
+             background: var(--panel); border: 1px solid var(--edge); border-radius: 6px; padding: 6px 10px; }
+  .mocktag a { color: var(--amber); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<header class="cmdbar">
+  <div class="brand">TPX <em>// poste de pilotage</em></div>
+  <div class="vitals">
+    <span class="vital">BTC <b>61 770</b></span>
+    <span class="vital">ETH <b>1 717,3</b></span>
+    <span class="vital"><span class="tag bear">RÉGIME BEAR</span></span>
+    <span class="vital"><span class="tag ok">WS ● OKX</span></span>
+  </div>
+  <span class="kbd">⌘K naviguer</span>
+  <button class="kill">⬡ Kill switch</button>
+</header>
+
+<main class="deck">
+
+  <section class="pane patrimoine">
+    <div class="pane-h"><h2>Patrimoine</h2><div class="line"></div><span class="meta">okx · live · 15 s</span></div>
+    <div class="holdings">
+      <div class="holding"><div class="cur">Bitcoin</div><div class="qty num"><s>₿</s>1,0190</div><div class="usd">62 944 $ · 71,4 %</div></div>
+      <div class="holding"><div class="cur">Ether</div><div class="qty num"><s>Ξ</s>12,400</div><div class="usd">21 291 $ · 24,2 %</div></div>
+      <div class="holding"><div class="cur">USDC</div><div class="qty num">3 876</div><div class="usd">poudre sèche · 4,4 %</div></div>
+      <div class="holding total"><div class="cur">Total estimé</div><div class="qty num">88 112 $</div><div class="usd">−2,1 % sur 24 h</div></div>
+    </div>
+    <div class="allocbar">
+      <i style="width:71.4%;background:#f7931a"></i><i style="width:24.2%;background:#627eea"></i><i style="width:4.4%;background:#2775ca"></i>
+    </div>
+    <div class="alloclegend">
+      <span><span class="dot" style="background:#f7931a"></span>BTC 71,4 %</span>
+      <span><span class="dot" style="background:#627eea"></span>ETH 24,2 %</span>
+      <span><span class="dot" style="background:#2775ca"></span>USDC 4,4 %</span>
+    </div>
+  </section>
+
+  <section class="pane harvest">
+    <div class="pane-h"><h2>Récolte (base denom)</h2><div class="line"></div><span class="meta">depuis le 13 nov 2025</span></div>
+    <div class="big"><div class="v num">+0,1372 ₿</div><div class="l">accumulés vs simple hold · +13,6 %</div></div>
+    <table>
+      <tr><td>Épisode en cours (vendu le 28 juin)</td><td>+0,0359 ₿ latent</td></tr>
+      <tr><td>Cycles terminés</td><td>7 · 71 % gagnants</td></tr>
+      <tr><td>Récolte ETH</td><td>+3,48 Ξ · +28,5 %</td></tr>
+    </table>
+  </section>
+
+  <section class="pane cycle">
+    <div class="body">
+      <div class="head"><span class="pair">BTC Accumulator</span><span class="state sold">VENDU · STOP ARMÉ</span></div>
+      <p class="phrase">Vendu <b>0,9800 ₿</b> à <b>64 120</b> le 28 juin. Rachète si le close 4 h repasse l'EMA50, coupe à <b>66 500</b>.</p>
+      <div class="kpis">
+        <div class="kpi"><div class="l">Gain latent</div><div class="v up">+3,67 %</div></div>
+        <div class="kpi"><div class="l">En ₿ si rachat</div><div class="v up">+0,0359</div></div>
+        <div class="kpi"><div class="l">Depuis la vente</div><div class="v dim">4 j 22 h</div></div>
+      </div>
+    </div>
+    <div class="rail">
+      <div class="track"></div>
+      <div class="lvl stop"  style="top:14%"><span class="tick"></span><span class="lab">stop</span><span class="px">66 500</span></div>
+      <div class="lvl sell"  style="top:38%"><span class="tick"></span><span class="lab">vente</span><span class="px">64 120</span></div>
+      <div class="lvl rebuy" style="top:58%"><span class="tick"></span><span class="lab">rachat ema50</span><span class="px">62 890</span></div>
+      <div class="lvl price" style="top:78%"><span class="cursor"></span><span class="lab">prix</span><span class="px">61 770</span></div>
+    </div>
+  </section>
+
+  <section class="pane cycle">
+    <div class="body">
+      <div class="head"><span class="pair">ETH Accumulator</span><span class="state hold">CONSERVE</span></div>
+      <p class="phrase">Position pleine : <b>12,400 Ξ</b>. Pas de signal — ER <b>0,31</b> &lt; 0,45, tendance 3 j déjà baissière, prix au-dessus de l'EMA50.</p>
+      <div class="kpis">
+        <div class="kpi"><div class="l">ER (20)</div><div class="v dim">0,31 / 0,45</div></div>
+        <div class="kpi"><div class="l">Dernier cycle</div><div class="v up">+0,42 Ξ</div></div>
+        <div class="kpi"><div class="l">Prochain check</div><div class="v dim">4 h · 16:00</div></div>
+      </div>
+    </div>
+    <div class="rail">
+      <div class="track" style="background:linear-gradient(180deg,var(--edge),var(--edge))"></div>
+      <div class="lvl price" style="top:30%"><span class="cursor"></span><span class="lab">prix</span><span class="px">1 717</span></div>
+      <div class="lvl rebuy" style="top:56%"><span class="tick"></span><span class="lab">ema50 4 h</span><span class="px">1 694</span></div>
+      <div class="lvl sell"  style="top:80%"><span class="tick"></span><span class="lab">vente si ER ≥ 0,45 &amp; prix &lt; ema</span><span class="px">—</span></div>
+    </div>
+  </section>
+
+  <section class="pane journal">
+    <div class="pane-h"><h2>Journal</h2><div class="line"></div><span class="meta">fills · signaux · incidents</span></div>
+    <ul class="feed">
+      <li><time>03/07 08:00</time><span class="k info"></span><span class="t">Watchdog WS : reconnexion propre après 92 s de silence — aucun fill manqué (backfill vérifié).</span></li>
+      <li><time>01/07 04:00</time><span class="k sig"></span><span class="t">BTC : régime confirmé — ER <b>0,52</b>, flow <b>0,46</b>, tendance 3 j déclinante (8 barres).</span></li>
+      <li><time>28/06 16:00</time><span class="k stop"></span><span class="t">Stop de rachat <b>ARMÉ</b> à <b>66 500</b> (2,5 × ATR, plafonné 5 %).</span></li>
+      <li><time>28/06 16:00</time><span class="k fill"></span><span class="t">VENTE <b>0,9800 BTC @ 64 120</b> — régime baissier, prix sous EMA50 (frais 62,84 USDC).</span></li>
+      <li><time>25/06 00:00</time><span class="k fill"></span><span class="t">RACHAT <b>0,9800 BTC @ 60 890</b> — recroisement EMA50 (+4,9 % en ₿ sur le cycle).</span></li>
+    </ul>
+  </section>
+
+  <section class="pane wallet">
+    <div class="pane-h"><h2>Portefeuille OKX</h2><div class="line"></div><span class="meta">live</span></div>
+    <table>
+      <thead><tr><th>Asset</th><th>Quantité</th><th>Valeur $</th></tr></thead>
+      <tbody>
+        <tr><td><span class="dot" style="background:#f7931a"></span>BTC</td><td>1,019000</td><td>62 944</td></tr>
+        <tr><td><span class="dot" style="background:#627eea"></span>ETH</td><td>12,4000</td><td>21 291</td></tr>
+        <tr><td><span class="dot" style="background:#2775ca"></span>USDC</td><td>3 876,68</td><td>3 877</td></tr>
+        <tr><td style="color:var(--faint)">Poussière (2)</td><td style="color:var(--faint)">—</td><td style="color:var(--faint)">0,84</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+</main>
+
+<div class="mocktag">Direction A — cockpit · <a href="direction-b-registre.html">voir B</a> · <a href="direction-c-console.html">voir C</a></div>
+</body>
+</html>

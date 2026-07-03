@@ -25,7 +25,7 @@ export function MetricsGrid({ m }: { m: BacktestMetrics }) {
   return (
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
       {items.map((it) => (
-        <div key={it.label} className="rounded-lg bg-panel2/40 px-3 py-2.5">
+        <div key={it.label} className="border border-edge/60 bg-panel2/40 px-3 py-2.5">
           <div className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">{it.label}</div>
           <div className={`mt-1 text-[15px] font-semibold tabular-nums ${it.cls ?? 'text-zinc-100'}`}>{it.value}</div>
         </div>

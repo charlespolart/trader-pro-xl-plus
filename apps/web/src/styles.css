@@ -1,30 +1,29 @@
 @import 'tailwindcss';
 
-/* Direction de design (skills frontend-design + ui-ux-pro-max, 2026-07) :
-   terminal de marché personnel — la donnée chiffrée en MONO (Fira Code) porte
-   l'identité, accent AMBRE (« gold trust », héritage Bitcoin + phosphore des
-   terminaux) utilisé avec parcimonie, up/down réservés au P&L. Le reste est
-   sobre : un seul élément signature par écran (barre d'allocation du
-   portefeuille sur le Dashboard). */
+/* ============================ DIRECTION D ============================
+   « Console lisible » : l'âme du terminal (statusline-fenêtres tmux,
+   panes ┤titre├, phosphore ambre, zéro rayon) + la lisibilité du
+   cockpit : le TEXTE se lit en sans, seule la DONNÉE est en mono.
+   Up/down restent réservés au P&L. Maquette : docs/design/direction-d. */
 @theme {
-  /* --- Surfaces: sober flat dark with clear elevation steps --- */
-  --color-surface: #0a0c11; /* app background */
-  --color-panel: #111620; /* cards / sidebar */
-  --color-panel2: #1a2030; /* inputs, hover, elevated */
-  --color-edge: #273043; /* borders (visible, not muddy) */
+  --color-surface: #060708; /* fond app (OLED) */
+  --color-panel: #0b0d11; /* panes */
+  --color-panel2: #12151d; /* inputs, hover, élévation */
+  --color-edge: #242a36; /* bordures */
+  --color-edge2: #39415a; /* bordures hover */
 
-  /* --- Data semantics: reserved for P&L / candles --- */
-  --color-up: #26a69a;
-  --color-down: #ef5350;
+  /* données / P&L */
+  --color-up: #5fe0a8;
+  --color-down: #ff6f6c;
+  --color-info: #74c7ff;
 
-  /* --- Accent: ambre — liens, nav active, focus (jamais pour du P&L) --- */
-  --color-accent: #f0a43c;
+  /* phosphore : nav active, liens, focus, titres de pane */
+  --color-accent: #ffb454;
+  --color-accent-ink: #201404; /* texte sur fond ambre */
 
   --font-mono: 'Fira Code Variable', ui-monospace, 'SF Mono', Menlo, monospace;
 }
 
-/* Base element styles live in @layer base so Tailwind utilities (e.g. text-right
-   on a <th>) always win — unlayered rules would otherwise override utilities. */
 @layer base {
   html,
   body,
@@ -35,18 +34,17 @@
   body {
     @apply bg-surface text-zinc-200 antialiased;
     font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-    font-feature-settings: 'tnum' 1; /* tabular numbers across the app */
+    font-size: 14px;
+    font-feature-settings: 'tnum' 1;
   }
 
   ::selection {
-    background: color-mix(in srgb, var(--color-accent) 30%, transparent);
+    background: color-mix(in srgb, var(--color-accent) 28%, transparent);
   }
 
-  /* Plancher a11y : focus clavier visible partout, sans halo au clic souris */
   :focus-visible {
     outline: 2px solid var(--color-accent);
-    outline-offset: 2px;
-    border-radius: 4px;
+    outline-offset: 1px;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -64,11 +62,10 @@
     height: 9px;
   }
   ::-webkit-scrollbar-thumb {
-    background: #2c3548;
-    border-radius: 5px;
+    background: #262c3a;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #3a455c;
+    background: #39415a;
   }
   ::-webkit-scrollbar-track {
     background: transparent;
@@ -78,24 +75,45 @@
     @apply w-full border-collapse;
   }
   thead th {
-    @apply text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-500 px-3 py-2.5 border-b border-edge whitespace-nowrap;
+    @apply text-left text-[10.5px] font-semibold uppercase tracking-[0.12em] text-zinc-500 px-3 py-2.5 border-b border-edge whitespace-nowrap;
   }
   tbody td {
-    @apply px-3 py-2.5 text-sm text-zinc-300 border-b border-edge/50 whitespace-nowrap;
+    @apply px-3 py-2.5 text-[13px] text-zinc-300 border-b whitespace-nowrap;
+    border-color: #14171e;
   }
   tbody tr {
-    @apply transition-colors hover:bg-panel2/40;
+    @apply transition-colors;
+  }
+  tbody tr:hover td {
+    background: #0e1117;
   }
   tbody tr:last-child td {
     @apply border-b-0;
   }
 }
 
-/* Component classes in @layer components so utility classes can still override
-   them on individual elements (e.g. `card` + `hover:border-zinc-600`). */
 @layer components {
+  /* ---- pane (ex-card) : carré, titre flottant sur la bordure ---- */
   .card {
-    @apply bg-panel border border-edge rounded-xl;
+    @apply relative bg-panel border border-edge transition-colors;
+    border-radius: 0;
+  }
+  .card:hover {
+    border-color: var(--color-edge2);
+  }
+  .pane-title {
+    @apply absolute -top-[9px] left-3.5 bg-surface px-2 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-accent whitespace-nowrap;
+  }
+  .pane-title::before {
+    content: '┤ ';
+    @apply font-normal text-zinc-600;
+  }
+  .pane-title::after {
+    content: ' ├';
+    @apply font-normal text-zinc-600;
+  }
+  .pane-hint {
+    @apply absolute -top-[8px] right-3.5 bg-surface px-1.5 font-mono text-[10.5px] text-zinc-600 whitespace-nowrap;
   }
 
   /* Donnée chiffrée : mono + tabulaire — LA texture de l'app */
@@ -106,10 +124,11 @@
 
   .input,
   select.input {
-    @apply w-full bg-panel2 border border-edge rounded-lg px-3 py-2 text-sm text-zinc-100 outline-none transition-colors placeholder:text-zinc-500 focus:border-accent;
+    @apply w-full bg-panel2 border border-edge px-3 py-2 text-sm text-zinc-100 outline-none transition-colors placeholder:text-zinc-600 focus:border-accent;
+    border-radius: 0;
   }
   .label {
-    @apply block text-xs font-medium text-zinc-400 mb-1.5;
+    @apply block text-[11px] font-medium uppercase tracking-[0.08em] text-zinc-500 mb-1.5;
   }
 
   .btn,
@@ -118,13 +137,15 @@
   .btn-danger,
   .btn-success,
   .btn-kill {
-    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors cursor-pointer select-none disabled:opacity-40 disabled:cursor-not-allowed active:translate-y-px;
+    @apply inline-flex items-center justify-center gap-1.5 px-3 py-2 text-[13px] font-medium transition-colors cursor-pointer select-none disabled:opacity-40 disabled:cursor-not-allowed active:translate-y-px;
+    border-radius: 0;
   }
   .btn {
-    @apply bg-panel2 border border-edge text-zinc-200 hover:border-zinc-500 hover:text-white;
+    @apply bg-panel2 border border-edge text-zinc-200 hover:border-edge2 hover:text-white;
   }
   .btn-primary {
-    @apply bg-accent text-[#1a1206] font-semibold hover:brightness-110;
+    @apply bg-accent font-bold hover:brightness-110;
+    color: var(--color-accent-ink);
   }
   .btn-ghost {
     @apply bg-transparent border border-edge text-zinc-300 hover:bg-panel2 hover:text-white;
@@ -133,7 +154,7 @@
     @apply bg-transparent border border-down/40 text-down hover:bg-down hover:text-white hover:border-down;
   }
   .btn-success {
-    @apply bg-up text-white hover:brightness-110;
+    @apply bg-up text-black font-semibold hover:brightness-110;
   }
   .btn-kill {
     @apply bg-down text-white border border-down hover:brightness-110;
@@ -145,22 +166,92 @@
     @apply h-8 w-8 p-0;
   }
 
-  /* Contrôle segmenté (ex. Live / Démo sur le portefeuille) */
+  /* touche clavier (barre d'actions, hints) */
+  .kbd {
+    @apply font-mono text-[11px] font-semibold text-accent border border-edge2 bg-panel2 px-1.5 py-0.5;
+  }
+
+  /* contrôle segmenté (Live / Démo) */
   .seg {
-    @apply inline-flex rounded-lg border border-edge bg-panel2 p-0.5;
+    @apply inline-flex border border-edge bg-panel2 p-0.5;
   }
   .seg > button {
-    @apply rounded-md px-2.5 py-1 text-xs font-medium text-zinc-400 transition-colors cursor-pointer;
+    @apply px-2.5 py-1 text-xs font-medium text-zinc-400 transition-colors cursor-pointer;
   }
   .seg > button:hover {
     @apply text-zinc-200;
   }
   .seg > button[aria-pressed='true'] {
-    @apply bg-panel text-accent shadow-sm;
+    @apply bg-panel text-accent;
   }
 
-  /* Placeholder de chargement (>300 ms) — remplace le spinner bloquant */
   .skeleton {
-    @apply animate-pulse rounded bg-panel2;
+    @apply animate-pulse bg-panel2;
+  }
+
+  /* ---- statusline (coque) ---- */
+  .statusline {
+    @apply sticky top-0 z-40 flex items-stretch border-b border-edge font-mono text-[12.5px];
+    background: #0b0c10;
+    height: 42px;
+  }
+  .sl-app {
+    @apply flex items-center px-3.5 bg-accent font-extrabold tracking-[0.04em];
+    color: var(--color-accent-ink);
+  }
+  .sl-windows {
+    @apply flex items-stretch overflow-x-auto;
+    scrollbar-width: none;
+  }
+  .sl-windows::-webkit-scrollbar {
+    display: none;
+  }
+  .sl-win {
+    @apply flex items-center gap-1.5 px-3 text-zinc-400 whitespace-nowrap cursor-pointer;
+    border-right: 1px solid #14161c;
+  }
+  .sl-win i {
+    @apply not-italic text-zinc-600;
+  }
+  .sl-win:hover {
+    @apply text-zinc-100;
+    background: #10131a;
+  }
+  .sl-win.active {
+    @apply text-accent;
+    background: #171b24;
+    box-shadow: inset 0 -2px 0 var(--color-accent);
+  }
+  .sl-win.active i {
+    @apply text-accent opacity-70;
+  }
+  .sl-cell {
+    @apply flex items-center gap-2 px-3 text-zinc-400 whitespace-nowrap;
+    border-left: 1px solid var(--color-edge);
+  }
+  .sl-cell b {
+    @apply font-medium text-zinc-200;
+  }
+
+  /* ---- barre d'actions (bas) ---- */
+  .actionbar {
+    @apply fixed bottom-0 left-0 right-0 z-40 flex items-stretch border-t border-edge text-[12.5px];
+    background: #0b0c10;
+    height: 40px;
+  }
+  .act {
+    @apply flex items-center gap-2 px-3.5 text-zinc-400 cursor-pointer;
+    border-right: 1px solid #14161c;
+  }
+  .act:hover {
+    @apply text-zinc-100;
+    background: #12151d;
+  }
+  .act-danger:hover {
+    @apply text-down;
+    background: rgba(255, 111, 108, 0.08);
+  }
+  .act-danger .kbd {
+    @apply text-down;
   }
 }

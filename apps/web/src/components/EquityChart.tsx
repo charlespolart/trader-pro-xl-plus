@@ -19,13 +19,13 @@ export function EquityChart({ points, height = 260 }: { points: EquityPoint[]; h
     const chart = createChart(el, {
       autoSize: true,
       layout: {
-        background: { type: ColorType.Solid, color: '#0b0e14' },
+        background: { type: ColorType.Solid, color: '#0b0d11' },
         textColor: '#9ca3af',
-        panes: { separatorColor: '#232a3b' },
+        panes: { separatorColor: '#242a36' },
       },
-      grid: { vertLines: { color: '#161b28' }, horzLines: { color: '#161b28' } },
-      timeScale: { timeVisible: true, borderColor: '#232a3b' },
-      rightPriceScale: { borderColor: '#232a3b' },
+      grid: { vertLines: { color: '#12151d' }, horzLines: { color: '#12151d' } },
+      timeScale: { timeVisible: true, borderColor: '#242a36' },
+      rightPriceScale: { borderColor: '#242a36' },
     })
     chartRef.current = chart
     return () => {
@@ -42,7 +42,7 @@ export function EquityChart({ points, height = 260 }: { points: EquityPoint[]; h
     for (const pane of chart.panes()) {
       for (const s of pane.getSeries()) chart.removeSeries(s)
     }
-    const equity = chart.addSeries(LineSeries, { color: '#3b82f6', lineWidth: 2, priceLineVisible: false, title: 'Équité' }, 0)
+    const equity = chart.addSeries(LineSeries, { color: '#ffb454', lineWidth: 2, priceLineVisible: false, title: 'Équité' }, 0)
     equity.setData(points.map((p) => ({ time: Math.floor(p.time / 1000) as UTCTimestamp, value: p.equity })))
     const dd = chart.addSeries(
       AreaSeries,

@@ -192,7 +192,7 @@ export function BacktestDetail() {
         }
       />
 
-      {run.error !== undefined && <div className="rounded-md border border-down/40 bg-down/10 px-3 py-2 text-sm text-down">{run.error}</div>}
+      {run.error !== undefined && <div className="border border-down/40 bg-down/10 px-3 py-2 text-sm text-down">{run.error}</div>}
       {result.run.status === 'done' && run.metrics && (
         <Card>
           <MetricsGrid m={run.metrics} />
@@ -210,7 +210,7 @@ export function BacktestDetail() {
                   <select
                     value={overviewInterval}
                     onChange={(e) => setOverviewSel(e.target.value as Interval)}
-                    className="rounded-md border border-edge bg-panel2 px-2 py-1 text-xs text-zinc-200 outline-none focus:border-accent"
+                    className="border border-edge bg-panel2 px-2 py-1 text-xs text-zinc-200 outline-none focus:border-accent"
                   >
                     {overviewOptions.map((i) => (
                       <option key={i} value={i}>

@@ -859,6 +859,9 @@ class BotRunner {
       tradesToday: this.counters.tradesToday,
       startedAt: this.startedAt,
       lastEventAt: this.lastEventAt,
+      // état de la stratégie (soldPrice/stop/bracket…) pour les rails de
+      // cycle du Dashboard — petit dict, jamais de données sensibles
+      strategyState: this.runtime ? this.runtime.getState() : undefined,
     }
   }
 

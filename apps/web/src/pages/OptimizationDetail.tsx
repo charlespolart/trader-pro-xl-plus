@@ -83,7 +83,7 @@ export function OptimizationDetail() {
         }
       />
 
-      {row.error !== null && <div className="rounded-md border border-down/40 bg-down/10 px-3 py-2 text-sm text-down">{row.error}</div>}
+      {row.error !== null && <div className="border border-down/40 bg-down/10 px-3 py-2 text-sm text-down">{row.error}</div>}
 
       {artifact?.kind === 'walkforward' && artifact.summary && (
         <>

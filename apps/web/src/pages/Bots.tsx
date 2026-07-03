@@ -337,7 +337,7 @@ function BotForm({
       </div>
 
       {draft.mode === 'live' && (
-        <div className="rounded-md border border-down/40 bg-down/10 px-3 py-2 text-sm text-down">
+        <div className="border border-down/40 bg-down/10 px-3 py-2 text-sm text-down">
           ⚠️ Mode LIVE : ce bot tradera avec de l'argent réel via vos clés API.
         </div>
       )}

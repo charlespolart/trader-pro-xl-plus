@@ -146,7 +146,7 @@ export function PatternLab() {
           <Card title={`Détections par pattern (${result.detections.length} au total)`}>
             <div className="flex flex-wrap gap-1.5">
               <button
-                className={`rounded px-2 py-1 text-xs ${activeName === null ? 'bg-accent text-white' : 'bg-panel2 text-zinc-300 hover:bg-edge'}`}
+                className={`px-2 py-1 text-xs ${activeName === null ? 'bg-accent font-semibold text-[#201404]' : 'bg-panel2 text-zinc-300 hover:bg-edge'}`}
                 onClick={() => {
                   setActiveName(null)
                   setCursor(0)
@@ -157,7 +157,7 @@ export function PatternLab() {
               {sortedCounts.map(([name, n]) => (
                 <button
                   key={name}
-                  className={`rounded px-2 py-1 text-xs ${activeName === name ? 'bg-accent text-white' : 'bg-panel2 text-zinc-300 hover:bg-edge'}`}
+                  className={`px-2 py-1 text-xs ${activeName === name ? 'bg-accent font-semibold text-[#201404]' : 'bg-panel2 text-zinc-300 hover:bg-edge'}`}
                   onClick={() => {
                     setActiveName(name)
                     setCursor(0)

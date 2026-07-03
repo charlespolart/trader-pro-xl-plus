@@ -23,27 +23,32 @@ export function Login() {
   }
 
   return (
-    <div className="flex h-full items-center justify-center">
-      <form onSubmit={submit} className="card w-80 space-y-5 p-7">
-        <div className="text-center">
-          <div className="text-xl font-bold tracking-tight">
-            Trader <span className="text-accent">Pro XL+</span>
-          </div>
-          <div className="mt-1 text-sm text-zinc-500">Connexion à votre espace</div>
+    <div className="flex h-full items-center justify-center px-4">
+      <div className="w-[340px] max-w-full">
+        <div className="mb-5 flex items-center gap-3">
+          <span className="bg-accent px-2.5 py-1 font-mono text-sm font-extrabold tracking-[0.04em] text-[#201404]">TPX</span>
+          <span className="font-mono text-xs uppercase tracking-[0.18em] text-zinc-600">accumulation terminal</span>
         </div>
-        <input
-          type="password"
-          autoFocus
-          className="input"
-          placeholder="Mot de passe"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        {error !== '' && <div className="text-sm text-down">{error}</div>}
-        <button type="submit" className="btn-primary w-full" disabled={busy}>
-          Connexion
-        </button>
-      </form>
+        <form onSubmit={submit} className="card mt-2.5 space-y-4 p-6">
+          <div className="pane-title">Connexion</div>
+          <label className="label" htmlFor="pw">
+            Mot de passe
+          </label>
+          <input
+            id="pw"
+            type="password"
+            autoFocus
+            className="input num"
+            placeholder="••••••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          {error !== '' && <div className="border border-down/40 bg-down/10 px-3 py-2 text-[13px] text-down">{error}</div>}
+          <button type="submit" className="btn-primary w-full" disabled={busy}>
+            {busy ? 'Connexion…' : 'Entrer'}
+          </button>
+        </form>
+      </div>
     </div>
   )
 }

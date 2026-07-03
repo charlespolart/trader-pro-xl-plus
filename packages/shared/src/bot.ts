@@ -61,6 +61,9 @@ export interface BotRuntimeInfo {
   tradesToday: number
   startedAt: number | null
   lastEventAt: number | null
+  /** état de la stratégie (ctx.state) — ex. accumulateurs : soldPrice, stop,
+   *  bracket. Alimente les rails de cycle du Dashboard. */
+  strategyState?: Record<string, unknown>
 }
 
 export interface GlobalRiskConfig {

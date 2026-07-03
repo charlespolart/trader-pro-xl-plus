@@ -282,7 +282,7 @@ function RefitCard({ botId }: { botId: string }) {
           <pre className="overflow-x-auto rounded bg-panel2 p-3 text-xs text-zinc-300">{state.lastReport}</pre>
         )}
         {state.proposal !== null && (
-          <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+          <div className="border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
             <div className="mb-2 font-semibold text-amber-400">Proposition en attente ({fmtDate(state.proposal.at)})</div>
             <pre className="mb-2 overflow-x-auto text-xs text-zinc-300">{state.proposal.report}</pre>
             <div className="flex gap-2">

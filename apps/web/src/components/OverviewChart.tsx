@@ -44,16 +44,16 @@ export function OverviewChart({ candles, visibleRange, onNavigate, height = 120 
     const chart = createChart(el, {
       autoSize: true,
       layout: {
-        background: { type: ColorType.Solid, color: '#0b0e14' },
+        background: { type: ColorType.Solid, color: '#0b0d11' },
         textColor: '#6b7488',
       },
-      grid: { vertLines: { color: '#0f1420' }, horzLines: { color: '#0f1420' } },
+      grid: { vertLines: { color: '#12151d' }, horzLines: { color: '#12151d' } },
       // minBarSpacing par défaut = 0,5 px/bougie → fitContent ne peut pas afficher
       // 8000+ bougies (6h/8h) sur la largeur et tronque aux plus récentes. On le
       // baisse fort pour que TOUTE la période rentre, quitte à des bougies très fines.
-      timeScale: { timeVisible: true, secondsVisible: false, borderColor: '#232a3b', minBarSpacing: 0.02 },
+      timeScale: { timeVisible: true, secondsVisible: false, borderColor: '#242a36', minBarSpacing: 0.02 },
       // largeur d'échelle fixe = alignée avec le graphe principal (même valeur)
-      rightPriceScale: { borderColor: '#232a3b', minimumWidth: 64 },
+      rightPriceScale: { borderColor: '#242a36', minimumWidth: 64 },
       crosshair: { mode: 0 },
       handleScroll: false,
       handleScale: false,

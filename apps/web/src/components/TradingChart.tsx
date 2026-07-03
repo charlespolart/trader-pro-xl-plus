@@ -116,19 +116,19 @@ export function TradingChart({ candles, indicators = [], markers = [], annotatio
     const chart = createChart(el, {
       autoSize: true,
       layout: {
-        background: { type: ColorType.Solid, color: '#0b0e14' },
+        background: { type: ColorType.Solid, color: '#0b0d11' },
         textColor: '#9ca3af',
-        panes: { separatorColor: '#232a3b' },
+        panes: { separatorColor: '#242a36' },
       },
       grid: {
-        vertLines: { color: '#161b28' },
-        horzLines: { color: '#161b28' },
+        vertLines: { color: '#12151d' },
+        horzLines: { color: '#12151d' },
       },
-      timeScale: { timeVisible: true, secondsVisible: false, borderColor: '#232a3b' },
+      timeScale: { timeVisible: true, secondsVisible: false, borderColor: '#242a36' },
       // largeur d'échelle fixe = alignée avec la vue d'ensemble (même valeur).
       // autoScale reste ON (centre/ajuste sur les bougies) ; le zoom vertical au
       // drag de l'axe est géré nous-mêmes via des marges symétriques → centré.
-      rightPriceScale: { borderColor: '#232a3b', minimumWidth: 64, autoScale: true, scaleMargins: { top: 0.12, bottom: 0.12 } },
+      rightPriceScale: { borderColor: '#242a36', minimumWidth: 64, autoScale: true, scaleMargins: { top: 0.12, bottom: 0.12 } },
       crosshair: { mode: 0 },
       // on désactive le scaling natif de l'axe des prix (il fixe une plage qui
       // DÉRIVE) ; on le remplace par un zoom centré (voir handlers plus bas).

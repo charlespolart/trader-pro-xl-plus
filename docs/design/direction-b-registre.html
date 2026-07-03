@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Direction B — Registre</title>
+<style>
+  /* ============ DIRECTION B — LE REGISTRE ============
+     Philosophie : pas une app, un LIVRE DE COMPTES. Tu accumules du bitcoin
+     comme on tient un patrimoine : relevé, écritures, tampons. Lumière,
+     encre, sérif d'édition — l'anti-dashboard. À lire le matin, au café.
+     Signature : le TAMPON encreur d'état (VENDU / STOP ARMÉ / CONSERVE)
+     + la synthèse en prose qui se lit en une gorgée. */
+  :root {
+    --paper: #f7f3ea; --paper2: #efe9dc; --ink: #211e18; --ink2: #565044;
+    --faint: #8d8778; --hairline: #d9d2c2; --rule: #b9b09b;
+    --registre: #a33327;         /* rouge d'annotation comptable */
+    --vert: #2e6e4e;             /* crédit */
+    --stamp: #3d5a80;            /* encre de tampon */
+    --serif: "Charter", "Iowan Old Style", Georgia, serif;
+    --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: var(--paper); color: var(--ink); font: 15.5px/1.55 var(--serif);
+         background-image: radial-gradient(circle at 30% 0%, rgba(255,255,255,.55), transparent 60%); }
+  .sheet { max-width: 980px; margin: 0 auto; padding: 44px 40px 90px; }
+  .num { font-family: var(--mono); font-size: .88em; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+
+  /* ---- en-tête d'édition ---- */
+  .masthead { display:flex; align-items: baseline; gap: 16px; }
+  .masthead h1 { font: 700 21px/1 var(--serif); letter-spacing: .01em; }
+  .masthead h1 span { color: var(--registre); }
+  .masthead .folio { margin-left: auto; text-align: right; color: var(--ink2); font-size: 13px; }
+  .masthead .folio .num { font-size: 12px; color: var(--faint); }
+  .doublerule { border: 0; border-top: 3px double var(--rule); margin: 12px 0 0; }
+  .kicker { display: flex; gap: 24px; padding: 8px 0 0; font-size: 12.5px; color: var(--ink2); }
+  .kicker b { font-family: var(--mono); font-weight: 500; font-size: 12px; }
+  .kicker .neg { color: var(--registre); }
+
+  /* ---- synthèse en prose ---- */
+  .synthese { margin: 34px 0 0; max-width: 62ch; }
+  .synthese .lead::first-letter { font-size: 2.6em; float: left; line-height: .82; padding: 4px 8px 0 0; color: var(--registre); font-weight: 700; }
+  .synthese p { margin-top: .7em; }
+  .synthese .num { background: rgba(61,90,128,.07); padding: 0 3px; border-radius: 2px; }
+
+  h2 { font: 700 13px var(--serif); letter-spacing: .22em; text-transform: uppercase; color: var(--ink2);
+       margin: 44px 0 0; display: flex; align-items: center; gap: 14px; }
+  h2::after { content: ""; flex: 1; border-top: 1px solid var(--rule); }
+  h2 .art { font-family: var(--mono); font-size: 11px; letter-spacing: 0; color: var(--faint); font-weight: 400; }
+
+  /* ---- tableaux réglés ---- */
+  table { width: 100%; border-collapse: collapse; margin-top: 14px; }
+  th { font: 600 11px var(--serif); letter-spacing: .14em; text-transform: uppercase; color: var(--faint);
+       text-align: right; padding: 6px 2px; border-bottom: 1px solid var(--ink); }
+  th:first-child { text-align: left; }
+  td { padding: 9px 2px; border-bottom: 1px solid var(--hairline); text-align: right; font-size: 14.5px; }
+  td:first-child { text-align: left; }
+  td .num { font-size: 13.5px; }
+  tr.total td { border-bottom: 3px double var(--rule); border-top: 1px solid var(--ink); font-weight: 700; padding-top: 10px; }
+  .credit { color: var(--vert); } .debit { color: var(--registre); }
+  .assetdot { display:inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; vertical-align: 1px; }
+
+  /* ---- comptes de cycle + tampon ---- */
+  .comptes { display: grid; grid-template-columns: 1fr 1fr; gap: 34px; margin-top: 6px; }
+  .compte { position: relative; padding-top: 12px; }
+  .compte h3 { font: 700 17px var(--serif); }
+  .compte h3 small { font-weight: 400; color: var(--faint); font-size: 12.5px; margin-left: 8px; }
+  .ecritures { margin-top: 10px; }
+  .ecritures td { font-size: 13.5px; padding: 7px 2px; }
+  .ecritures td:first-child { color: var(--ink2); }
+  .note { margin-top: 10px; font-size: 13px; color: var(--ink2); font-style: italic; max-width: 44ch; }
+  .note b { font-style: normal; font-family: var(--mono); font-size: 12px; }
+
+  .stamp { position: absolute; top: -6px; right: 0; transform: rotate(-7deg);
+           font: 800 13px/1.1 var(--mono); letter-spacing: .18em; text-transform: uppercase;
+           color: var(--stamp); border: 2.5px solid var(--stamp); border-radius: 6px;
+           padding: 6px 10px; opacity: .82; mix-blend-mode: multiply;
+           mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='40'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.9'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .8 0'/%3E%3C/filter%3E%3Crect width='120' height='40' filter='url(%23n)'/%3E%3C/svg%3E");
+           mask-size: cover; }
+  .stamp.rouge { color: var(--registre); border-color: var(--registre); transform: rotate(4deg); }
+  .stamp small { display: block; font-size: 8.5px; letter-spacing: .1em; font-weight: 600; opacity: .8; }
+
+  /* ---- mouvements ---- */
+  .mouvements td:first-child { font-family: var(--mono); font-size: 12px; color: var(--faint); width: 110px; }
+  .mouvements td:nth-child(2) { text-align: left; }
+  .mouvements .lib b { font-family: var(--mono); font-weight: 500; font-size: 13px; }
+
+  .colophon { margin-top: 60px; padding-top: 10px; border-top: 1px solid var(--rule);
+              display: flex; gap: 18px; font-size: 12px; color: var(--faint); }
+  .colophon .num { font-size: 11px; }
+
+  .mocktag { position: fixed; right: 14px; bottom: 14px; font: 11px var(--mono); color: var(--ink2);
+             background: var(--paper2); border: 1px solid var(--rule); border-radius: 6px; padding: 6px 10px; }
+  .mocktag a { color: var(--registre); }
+  @media (max-width: 760px) { .comptes { grid-template-columns: 1fr; } .sheet { padding: 28px 18px 70px; } }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <header>
+    <div class="masthead">
+      <h1>TRADER PRO <span>XL+</span> — Journal de bord</h1>
+      <div class="folio">
+        Situation au <strong>jeudi 3 juillet 2026, 14 h 32</strong><br>
+        <span class="num">feuillet nº 214 · compte OKX live · démo en annexe</span>
+      </div>
+    </div>
+    <hr class="doublerule">
+    <div class="kicker">
+      <span>BTC <b>61 770 $</b></span>
+      <span>ETH <b>1 717,3 $</b></span>
+      <span class="neg">Régime : <b>baissier confirmé</b> (3 j &amp; 1 j)</span>
+      <span style="margin-left:auto">Connexion OKX : <b style="color:var(--vert)">saine</b> · dernier fill il y a <b>4 j 22 h</b></span>
+    </div>
+  </header>
+
+  <section class="synthese">
+    <p class="lead">Au matin du 3 juillet, le patrimoine s'établit à <span class="num"><b>₿ 1,0190</b></span> et
+    <span class="num"><b>Ξ 12,400</b></span>, soit environ <span class="num">88 112 $</span> au cours du jour.
+    Le compte BTC est <em>vendu</em> depuis le 28 juin à <span class="num">64 120 $</span> ; le prix a reculé
+    de <span class="num">3,7 %</span> depuis, et le stop de rachat veille à <span class="num">66 500 $</span>.</p>
+    <p>Si le rachat se faisait au cours actuel, le cycle rendrait <span class="num"><b>+0,0359 ₿</b></span>.
+    Le compte ETH conserve sa position pleine — aucun signal (ER <span class="num">0,31</span>, seuil
+    <span class="num">0,45</span>). Rien n'exige votre attention aujourd'hui.</p>
+  </section>
+
+  <h2>État du patrimoine <span class="art">art. 1 — relevé des avoirs</span></h2>
+  <table>
+    <thead><tr><th>Avoir</th><th>Quantité</th><th>Cours</th><th>Contre-valeur</th><th>Part</th></tr></thead>
+    <tbody>
+      <tr><td><span class="assetdot" style="background:#b57a20"></span>Bitcoin</td><td class="num">1,019000</td><td class="num">61 770</td><td class="num">62 944 $</td><td class="num">71,4 %</td></tr>
+      <tr><td><span class="assetdot" style="background:#5470b8"></span>Ether</td><td class="num">12,4000</td><td class="num">1 717,3</td><td class="num">21 291 $</td><td class="num">24,2 %</td></tr>
+      <tr><td><span class="assetdot" style="background:#7a8794"></span>USD Coin <em style="color:var(--faint);font-size:12px">(poudre sèche)</em></td><td class="num">3 876,68</td><td class="num">1,00</td><td class="num">3 877 $</td><td class="num">4,4 %</td></tr>
+      <tr class="total"><td>Total</td><td></td><td></td><td class="num">88 112 $</td><td class="num">100 %</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Comptes de cycle <span class="art">art. 2 — un compte par stratégie</span></h2>
+  <div class="comptes">
+
+    <div class="compte">
+      <span class="stamp">Vendu<small>stop armé · 66 500</small></span>
+      <h3>BTC Accumulator <small>4 h · OKX spot · BTC-USDC</small></h3>
+      <table class="ecritures">
+        <tr><td>28 juin — vente de régime (ER 0,52)</td><td class="num">0,9800 ₿ → 62 838 $</td></tr>
+        <tr><td>28 juin — frais d'exécution</td><td class="num debit">− 62,84 $</td></tr>
+        <tr><td>28 juin — stop de rachat posé</td><td class="num">66 500 $ <em style="color:var(--faint)">(2,5 × ATR)</em></td></tr>
+        <tr><td>Rachat au cours du jour rendrait</td><td class="num credit">+ 0,0359 ₿</td></tr>
+      </table>
+      <p class="note">Rachète au recroisement de l'EMA50 (4 h), aujourd'hui vers <b>62 890 $</b>.
+      Récolte du compte depuis novembre : <b>+0,1372 ₿ (+13,6 %)</b> en sept cycles.</p>
+    </div>
+
+    <div class="compte">
+      <span class="stamp rouge">Conserve<small>aucun signal</small></span>
+      <h3>ETH Accumulator <small>4 h · OKX spot · ETH-USDC</small></h3>
+      <table class="ecritures">
+        <tr><td>Position</td><td class="num">12,400 Ξ, pleine</td></tr>
+        <tr><td>Efficience (ER 20)</td><td class="num">0,31 / seuil 0,45</td></tr>
+        <tr><td>Dernier cycle clos (12 juin)</td><td class="num credit">+ 0,42 Ξ</td></tr>
+        <tr><td>Prochaine bougie examinée</td><td class="num">aujourd'hui 16 h 00</td></tr>
+      </table>
+      <p class="note">La tendance 3 j est baissière mais le mouvement manque de netteté —
+      le compte attend un déclin <em>efficient</em> avant de vendre. Récolte : <b>+3,48 Ξ (+28,5 %)</b>.</p>
+    </div>
+
+  </div>
+
+  <h2>Mouvements récents <span class="art">art. 3 — dix derniers</span></h2>
+  <table class="mouvements">
+    <tr><td>03/07 08:00</td><td class="lib">Connexion privée rétablie après 92 s de silence — <b>aucun fill manqué</b> (rapprochement vérifié)</td><td></td></tr>
+    <tr><td>01/07 04:00</td><td class="lib">BTC — régime confirmé : ER <b>0,52</b>, flux vendeur <b>0,46</b>, tendance 3 j déclinante</td><td></td></tr>
+    <tr><td>28/06 16:00</td><td class="lib">BTC — stop de rachat <b>armé</b> à <b>66 500 $</b></td><td class="num"></td></tr>
+    <tr><td>28/06 16:00</td><td class="lib">BTC — <b>vente 0,9800 ₿ @ 64 120 $</b>, régime baissier</td><td class="num debit">− 0,9800 ₿</td></tr>
+    <tr><td>25/06 00:00</td><td class="lib">BTC — <b>rachat 0,9800 ₿ @ 60 890 $</b>, recroisement EMA50</td><td class="num credit">+ 0,9800 ₿</td></tr>
+  </table>
+
+  <div class="colophon">
+    <span>Établi automatiquement par le teneur de comptes TPX.</span>
+    <span class="num">142 contrôles verts · rapprochement OKX : 14 h 30</span>
+    <span style="margin-left:auto" class="num">./trader-pro-xl-plus @ 4cb3c4d</span>
+  </div>
+</div>
+
+<div class="mocktag">Direction B — registre · <a href="direction-a-cockpit.html">voir A</a> · <a href="direction-c-console.html">voir C</a></div>
+</body>
+</html>

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api, type WalletBalance } from '../lib/api'
 import { fmtNum, fmtQty } from '../lib/format'
-import { Badge, Card, Empty } from './ui'
+import { Card, Empty } from './ui'
 
 /** Couleurs d'identité des principaux assets (fallback : teinte dérivée du nom). */
 const ASSET_COLORS: Record<string, string> = {
@@ -24,13 +24,12 @@ function assetColor(asset: string): string {
   for (const c of asset) h = (h * 31 + c.charCodeAt(0)) % 360
   return `hsl(${h} 45% 55%)`
 }
-
+const UNIT: Record<string, string> = { BTC: '₿', ETH: 'Ξ' }
 const DUST_USD = 1
 
 /**
- * Portefeuille OKX complet (tous les assets du compte, pas seulement les
- * tranches des bots) avec valorisation spot et barre d'allocation — l'élément
- * signature du Dashboard : la composition du patrimoine en un coup d'œil.
+ * Pane Patrimoine : tout le portefeuille OKX — les avoirs majeurs en héros
+ * (₿/Ξ d'abord, dollars en second), la barre d'allocation, puis le détail.
  */
 export function WalletCard() {
   const [mode, setMode] = useState<'live' | 'testnet'>('live')
@@ -45,25 +44,27 @@ export function WalletCard() {
   const valued = balances.filter((b) => (b.valueQuote ?? 0) >= DUST_USD)
   const dust = balances.filter((b) => (b.valueQuote ?? 0) < DUST_USD)
   const dustValue = dust.reduce((s, b) => s + (b.valueQuote ?? 0), 0)
-
-  const modeToggle = (
-    <div className="seg" role="group" aria-label="Compte affiché">
-      <button aria-pressed={mode === 'live'} onClick={() => setMode('live')}>
-        Live
-      </button>
-      <button aria-pressed={mode === 'testnet'} onClick={() => setMode('testnet')}>
-        Démo
-      </button>
-    </div>
-  )
+  const heroes = valued.slice(0, 3)
 
   return (
-    <Card title="Portefeuille OKX" actions={modeToggle} bodyClassName="p-0">
+    <Card
+      title="Patrimoine OKX"
+      hint={
+        <button
+          className="cursor-pointer text-zinc-600 transition-colors hover:text-accent"
+          onClick={() => setMode(mode === 'live' ? 'testnet' : 'live')}
+          title="Basculer live / démo"
+        >
+          {mode === 'live' ? 'live' : 'démo'} ⇥
+        </button>
+      }
+      bodyClassName="p-0"
+    >
       {isLoading ? (
-        <div className="space-y-3 p-4">
-          <div className="skeleton h-8 w-48" />
+        <div className="space-y-3 p-5">
+          <div className="skeleton h-9 w-56" />
           <div className="skeleton h-2.5 w-full" />
-          <div className="skeleton h-24 w-full" />
+          <div className="skeleton h-20 w-full" />
         </div>
       ) : !account?.configured ? (
         <Empty>
@@ -76,66 +77,82 @@ export function WalletCard() {
         <Empty>Compte vide — aucun asset détenu.</Empty>
       ) : (
         <div>
-          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 pt-4">
-            <span className="num text-3xl font-medium text-zinc-100">{fmtNum(total, 2)}</span>
-            <span className="text-xs uppercase tracking-wider text-zinc-500">≈ USD au prix spot</span>
-            <span className="ml-auto">
-              <Badge value={mode} label={mode === 'live' ? 'live' : 'démo'} />
-            </span>
+          {/* héros : les avoirs, en unités d'abord */}
+          <div className="flex flex-wrap items-end gap-x-10 gap-y-4 p-5 pb-0">
+            {heroes.map((b) => (
+              <div key={b.asset}>
+                <div className="text-[11px] uppercase tracking-[0.12em] text-zinc-600">{b.asset}</div>
+                <div className="num mt-1 text-[28px] font-medium leading-tight text-zinc-100">
+                  {UNIT[b.asset] !== undefined && <span className="mr-1 text-[19px] text-accent">{UNIT[b.asset]}</span>}
+                  {fmtQty(b.free + b.locked)}
+                </div>
+                <div className="mt-0.5 text-xs text-zinc-500">
+                  <span className="num">{fmtNum(b.valueQuote ?? 0, 0)} $</span>
+                  {total > 0 && <> · {(((b.valueQuote ?? 0) / total) * 100).toFixed(1)} %</>}
+                </div>
+              </div>
+            ))}
+            <div className="ml-auto text-right">
+              <div className="text-[11px] uppercase tracking-[0.12em] text-zinc-600">Total estimé</div>
+              <div className="num mt-1 text-[24px] font-medium leading-tight text-zinc-100">{fmtNum(total, 0)} $</div>
+              <div className="mt-0.5 text-xs text-zinc-500">prix spot OKX</div>
+            </div>
           </div>
 
-          {/* Barre d'allocation : la composition du patrimoine, segmentée par asset */}
+          {/* barre d'allocation */}
           {total > 0 && (
-            <div className="px-4 pt-3">
-              <div className="flex h-2.5 w-full gap-px overflow-hidden rounded-full" role="img" aria-label="Répartition du portefeuille">
+            <div className="px-5 pt-4">
+              <div className="flex h-2.5 w-full bg-panel2" role="img" aria-label="Répartition du portefeuille">
                 {valued.map((b) => (
                   <div
                     key={b.asset}
-                    title={`${b.asset} — ${fmtNum(b.valueQuote ?? 0, 2)} USD (${(((b.valueQuote ?? 0) / total) * 100).toFixed(1)} %)`}
-                    style={{ width: `${Math.max(0.6, ((b.valueQuote ?? 0) / total) * 100)}%`, background: assetColor(b.asset) }}
+                    className="border-r-2 border-surface last:border-r-0"
+                    title={`${b.asset} — ${fmtNum(b.valueQuote ?? 0, 2)} $ (${(((b.valueQuote ?? 0) / total) * 100).toFixed(1)} %)`}
+                    style={{ width: `${Math.max(0.8, ((b.valueQuote ?? 0) / total) * 100)}%`, background: assetColor(b.asset) }}
                   />
                 ))}
-                {dustValue > 0 && <div title={`Poussière — ${fmtNum(dustValue, 2)} USD`} style={{ width: '0.6%', background: '#3f4a63' }} />}
               </div>
-              <div className="flex flex-wrap gap-x-4 gap-y-1 pb-1 pt-2">
+              <div className="flex flex-wrap gap-x-5 gap-y-1 pt-2.5">
                 {valued.map((b) => (
                   <span key={b.asset} className="inline-flex items-center gap-1.5 text-xs text-zinc-400">
-                    <span className="h-2 w-2 rounded-full" style={{ background: assetColor(b.asset) }} />
+                    <span className="h-2 w-2" style={{ background: assetColor(b.asset) }} />
                     {b.asset}
-                    <span className="num text-zinc-500">{(((b.valueQuote ?? 0) / total) * 100).toFixed(1)} %</span>
+                    <span className="num text-zinc-600">{(((b.valueQuote ?? 0) / total) * 100).toFixed(1)} %</span>
                   </span>
                 ))}
               </div>
             </div>
           )}
 
-          <div className="overflow-x-auto"><table className="mt-2">
-            <thead>
-              <tr>
-                <th>Asset</th>
-                <th className="text-right">Quantité</th>
-                <th className="text-right">Dont bloqué</th>
-                <th className="text-right">Prix</th>
-                <th className="text-right">Valeur (USD)</th>
-                <th className="text-right">Part</th>
-              </tr>
-            </thead>
-            <tbody>
-              {valued.map((b) => (
-                <WalletRow key={b.asset} b={b} total={total} />
-              ))}
-              {dust.length > 0 && (
+          <div className="mt-3 overflow-x-auto">
+            <table>
+              <thead>
                 <tr>
-                  <td className="text-zinc-500">Poussière ({dust.map((d) => d.asset).join(', ')})</td>
-                  <td className="text-right text-zinc-500">—</td>
-                  <td className="text-right text-zinc-500">—</td>
-                  <td className="text-right text-zinc-500">—</td>
-                  <td className="num text-right text-zinc-500">{fmtNum(dustValue, 2)}</td>
-                  <td className="num text-right text-zinc-500">{total > 0 ? `${((dustValue / total) * 100).toFixed(1)} %` : '—'}</td>
+                  <th>Asset</th>
+                  <th className="text-right">Quantité</th>
+                  <th className="text-right">Dont bloqué</th>
+                  <th className="text-right">Cours</th>
+                  <th className="text-right">Valeur $</th>
+                  <th className="text-right">Part</th>
                 </tr>
-              )}
-            </tbody>
-          </table></div>
+              </thead>
+              <tbody>
+                {valued.map((b) => (
+                  <WalletRow key={b.asset} b={b} total={total} />
+                ))}
+                {dust.length > 0 && (
+                  <tr>
+                    <td className="text-zinc-600">Poussière ({dust.map((d) => d.asset).join(', ')})</td>
+                    <td className="text-right text-zinc-600">—</td>
+                    <td className="text-right text-zinc-600">—</td>
+                    <td className="text-right text-zinc-600">—</td>
+                    <td className="num text-right text-zinc-600">{fmtNum(dustValue, 2)}</td>
+                    <td className="num text-right text-zinc-600">{total > 0 ? `${((dustValue / total) * 100).toFixed(1)} %` : '—'}</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </Card>
@@ -149,15 +166,15 @@ function WalletRow({ b, total }: { b: WalletBalance; total: number }) {
     <tr>
       <td>
         <span className="inline-flex items-center gap-2 font-medium text-zinc-200">
-          <span className="h-2.5 w-2.5 rounded-full" style={{ background: assetColor(b.asset) }} />
+          <span className="h-2.5 w-2.5" style={{ background: assetColor(b.asset) }} />
           {b.asset}
         </span>
       </td>
       <td className="num text-right">{fmtQty(qty)}</td>
-      <td className="num text-right text-zinc-500">{b.locked > 0 ? fmtQty(b.locked) : '—'}</td>
+      <td className="num text-right text-zinc-600">{b.locked > 0 ? fmtQty(b.locked) : '—'}</td>
       <td className="num text-right">{b.price != null ? fmtNum(b.price, b.price >= 100 ? 0 : 2) : '—'}</td>
       <td className="num text-right">{b.valueQuote != null ? fmtNum(b.valueQuote, 2) : '—'}</td>
-      <td className="num text-right text-zinc-400">{share !== null ? `${share.toFixed(1)} %` : '—'}</td>
+      <td className="num text-right text-zinc-500">{share !== null ? `${share.toFixed(1)} %` : '—'}</td>
     </tr>
   )
 }
