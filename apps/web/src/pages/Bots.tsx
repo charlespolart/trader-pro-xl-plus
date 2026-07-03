@@ -318,7 +318,7 @@ function BotForm({
             ))}
           </select>
         </Field>
-        <Field label="Paire" hint={strategy?.symbol !== undefined ? 'imposée par la stratégie' : undefined}>
+        <Field label="Paire">
           <input
             className="input num"
             value={draft.symbol}
