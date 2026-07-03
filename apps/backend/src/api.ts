@@ -60,7 +60,10 @@ export function buildApi(s: Services): Hono {
 
   api.onError((err, c) => {
     const msg = err instanceof Error ? err.message : String(err)
-    return c.json({ error: msg }, 400)
+    // erreur non gérée = problème SERVEUR (DB, OKX…) → 500, pas 400 : un
+    // « Bad Request » sur une panne interne envoie le débogage sur la
+    // mauvaise piste (vécu : migration locale manquante affichée en 400)
+    return c.json({ error: msg }, 500)
   })
 
   // ------------------------------------------------------------------ auth

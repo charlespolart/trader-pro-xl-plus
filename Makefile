@@ -1,4 +1,4 @@
-.PHONY: help back web db db-stop build deploy deploy-web
+.PHONY: help back web db db-stop db-migrate build deploy deploy-web
 .DEFAULT_GOAL := help
 
 # Backend natif contre Postgres dockerisé. db/db-stop passent par l'overlay dev.
@@ -12,6 +12,8 @@ db: ## DB Postgres (docker, arrière-plan)
 	$(COMPOSE_DEV) up -d postgres
 db-stop: ## Stoppe la DB
 	$(COMPOSE_DEV) down
+db-migrate: ## Applique les migrations sur la DB locale (à lancer après un pull qui en ajoute)
+	bun run --cwd packages/db migrate
 build: ## Build du front web
 	bun run --cwd apps/web build
 deploy: ## Déploie le BACKEND (CI → GHCR → VPS). Rollback : make deploy TAG=<sha7>
