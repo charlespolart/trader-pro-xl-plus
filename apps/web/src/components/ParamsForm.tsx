@@ -57,7 +57,7 @@ function ParamField({ name, def, value, onChange }: { name: string; def: ParamDe
     case 'bool':
       return (
         <label className="flex cursor-pointer items-center gap-2 py-2 text-sm text-zinc-300">
-          <input type="checkbox" checked={Boolean(value)} onChange={(e) => onChange(e.target.checked)} className="accent-blue-500" />
+          <input type="checkbox" checked={Boolean(value)} onChange={(e) => onChange(e.target.checked)} className="accent-accent" />
           {label}
         </label>
       )
