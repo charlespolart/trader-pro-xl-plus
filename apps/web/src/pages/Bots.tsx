@@ -337,11 +337,7 @@ function BotForm({
         {startsInBase && (
           <Field
             label={`Position initiale (${baseAsset})`}
-            hint={
-              draft.mode === 'paper'
-                ? `Quantité simulée : le bot commence en détenant ces ${baseAsset}.`
-                : `Le bot commence en détenant ces ${baseAsset} — il les vendra au prochain signal de baisse.`
-            }
+            hint={`Le bot commence en détenant ces ${baseAsset}${draft.mode === 'paper' ? ' (simulé)' : ''}.`}
           >
             <div className="space-y-1.5">
               {draft.mode !== 'paper' && (
