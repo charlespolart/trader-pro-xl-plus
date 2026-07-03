@@ -203,9 +203,19 @@ export class OKXLiveAdapter implements ExecutionAdapter {
     for (const ro of resting) {
       if (stillOpen.has(ro.clientId)) continue
       await guard(`backfill ${ro.clientId}`, async () => {
-        const raw = isTriggerOrder(ro.type)
+        let raw = isTriggerOrder(ro.type)
           ? await this.o.account.getAlgoOrder({ algoClOrdId: ro.clientId })
           : await this.o.account.getOrder(this.instId, { clOrdId: ro.clientId })
+        // Algo déclenché : OKX a engendré un ordre régulier (raw.ordId) — le
+        // lire directement donne accFillSz/avgPx/fee en unités SÛRES (base),
+        // là où actualSz suit l'unité du sz envoyé (quote pour un trigger BUY
+        // spot). On lui substitue la lecture de l'ordre réel quand possible.
+        if (raw && isTriggerOrder(ro.type) && raw.ordId && /effective/.test(raw.state)) {
+          const spawned = await this.o.account
+            .getOrder(this.instId, { ordId: raw.ordId })
+            .catch(() => null)
+          if (spawned) raw = spawned
+        }
         if (!raw) {
           // OKX ne le connaît pas : il n'a jamais été accepté (ou purgé) —
           // sortir l'ordre de l'état « au repos » pour ne pas re-tenter à chaque boot.
@@ -518,6 +528,12 @@ export class OKXLiveAdapter implements ExecutionAdapter {
     const toBase = (s: string | undefined) =>
       this.market === 'futures' ? contractsToBase(Number(s ?? 0), this.ctVal) : Number(s ?? 0)
     const executedQty = toBase(r.accFillSz)
+    // trigger-market BUY spot : le sz OKX est en QUOTE (budget) → base ≈ sz/trigger
+    let qty = toBase(r.sz)
+    if (this.market === 'spot' && r.ordType === 'trigger' && r.side === 'buy' && !(Number(r.px) > 0)) {
+      const trig = Number(r.triggerPx ?? 0)
+      if (trig > 0) qty = Number(r.sz) / trig
+    }
     const order: Order = {
       id: clOrdId,
       clientId: clOrdId,
@@ -527,7 +543,7 @@ export class OKXLiveAdapter implements ExecutionAdapter {
       side: r.side === 'sell' ? 'SELL' : 'BUY',
       type,
       status: mapOkxState(r.state, type, executedQty),
-      qty: toBase(r.sz),
+      qty,
       executedQty,
       cumQuote: 0,
       price: r.px !== undefined && Number(r.px) > 0 ? Number(r.px) : undefined,
@@ -552,9 +568,16 @@ export class OKXLiveAdapter implements ExecutionAdapter {
     const isAlgo = isTriggerOrder(order.type)
     if (!order.exchangeOrderId) order.exchangeOrderId = raw.ordId ?? raw.algoId
     // algo déclenché : 'effective' = le stop a exécuté actualSz à actualPx
-    const filledRaw = isAlgo ? Number(raw.actualSz ?? raw.accFillSz ?? 0) : Number(raw.accFillSz ?? 0)
-    const filledBase = this.market === 'futures' ? contractsToBase(filledRaw, this.ctVal) : filledRaw
+    const usedActualSz = isAlgo && raw.accFillSz === undefined
+    const filledRaw = usedActualSz ? Number(raw.actualSz ?? 0) : Number(raw.accFillSz ?? 0)
+    let filledBase = this.market === 'futures' ? contractsToBase(filledRaw, this.ctVal) : filledRaw
     const px = Number((isAlgo ? (raw.actualPx ?? raw.avgPx) : raw.avgPx) ?? 0)
+    // actualSz suit l'unité du sz ENVOYÉ : QUOTE pour un trigger-market BUY
+    // spot (convention OKX sondée en démo) — reconvertir en base via le prix.
+    // Ne s'applique pas quand on lit l'ordre régulier engendré (accFillSz).
+    if (usedActualSz && this.market === 'spot' && order.side === 'BUY' && order.price === undefined && px > 0) {
+      filledBase = filledRaw / px
+    }
     const missed = filledBase - order.executedQty
     let note: string | null = null
     if (missed > this.o.symbolInfo.stepSize / 10 && px > 0) {

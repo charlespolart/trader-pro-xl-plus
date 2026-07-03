@@ -116,8 +116,16 @@ export function buildOrderBody(args: BuildArgs): Record<string, unknown> {
 
 export function buildAlgoBody(args: BuildArgs): Record<string, unknown> {
   const { instId, market, req, clOrdId } = args
-  const { sz } = sizeFor(args)
   const isLimit = req.type === 'STOP_LIMIT' || req.type === 'TAKE_PROFIT_LIMIT'
+  let { sz } = sizeFor(args)
+  // SPOT + trigger à exécution MARKET côté BUY : OKX lit `sz` en QUOTE, point
+  // — et ignore tgtCcy pour ordType=trigger (sondé sur la démo le 2026-07-03 :
+  // sz en base → 51020 « minimum order amount » systématique, donc le stop de
+  // rachat de l'accumulateur ne s'armait jamais). On convertit la qty base en
+  // budget quote au prix de déclenchement (SELL et trigger-limit restent en base).
+  if (market === 'spot' && !isLimit && req.side === 'BUY') {
+    sz = fmtSz((req.qty ?? 0) * (req.stopPrice ?? 0), 0.01)
+  }
   const body: Record<string, unknown> = {
     instId,
     tdMode: tdMode(market),
@@ -129,12 +137,6 @@ export function buildAlgoBody(args: BuildArgs): Record<string, unknown> {
     orderPx: isLimit && req.price !== undefined ? String(req.price) : '-1',
     triggerPxType: 'last',
   }
-  // SPOT + exécution market : OKX lit `sz` en QUOTE par défaut pour un BUY
-  // (même convention que les markets réguliers) — nos qty sont TOUJOURS en
-  // base. Sans ceci, le stop de rachat de l'accumulateur (BUY trigger) est
-  // rejeté 51020 (« minimum order amount ») ou achèterait des miettes.
-  // Attrapé par le smoke démo du 2026-07-03.
-  if (market === 'spot' && !isLimit) body.tgtCcy = 'base_ccy'
   if (market === 'futures' && req.reduceOnly) body.reduceOnly = 'true'
   return body
 }

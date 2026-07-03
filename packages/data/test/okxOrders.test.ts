@@ -101,17 +101,25 @@ describe('okx orders', () => {
     expect(body.tgtCcy).toBeUndefined()
   })
 
-  it('spot trigger-market BUY forces tgtCcy=base_ccy (OKX lit sz en quote par défaut — smoke 2026-07-03)', () => {
+  it('spot trigger-market BUY: sz converti en QUOTE au prix de déclenchement (smoke démo 2026-07-03)', () => {
+    // OKX lit le sz d'un trigger-market BUY spot en quote et IGNORE tgtCcy
+    // (sz en base → 51020 systématique = stop de rachat jamais armé)
     const req: OrderRequest = { side: 'BUY', type: 'STOP_MARKET', qty: 0.0125, stopPrice: 60000 }
     const body = buildAlgoBody({
       instId: 'BTC-USDC', market: 'spot', req, clOrdId: 'tpxabc4', ctVal: 1, lotSz: 1e-8, refPrice: 58000,
     })
-    expect(body).toMatchObject({ ordType: 'trigger', sz: '0.0125', tgtCcy: 'base_ccy', orderPx: '-1' })
-    // trigger-LIMIT : sz est toujours en base côté OKX, tgtCcy ne s'applique pas
+    expect(body).toMatchObject({ ordType: 'trigger', sz: '750', orderPx: '-1' })
+    expect(body.tgtCcy).toBeUndefined()
+    // SELL trigger-market : sz reste en base
+    const sell = buildAlgoBody({
+      instId: 'BTC-USDC', market: 'spot', req: { side: 'SELL', type: 'STOP_MARKET', qty: 0.0125, stopPrice: 55000 }, clOrdId: 'tpxabc6', ctVal: 1, lotSz: 1e-8, refPrice: 58000,
+    })
+    expect(sell.sz).toBe('0.0125')
+    // trigger-LIMIT : sz est toujours en base côté OKX
     const limit = buildAlgoBody({
       instId: 'BTC-USDC', market: 'spot', req: { ...req, type: 'STOP_LIMIT', price: 60100 }, clOrdId: 'tpxabc5', ctVal: 1, lotSz: 1e-8, refPrice: 58000,
     })
-    expect(limit.tgtCcy).toBeUndefined()
+    expect(limit.sz).toBe('0.0125')
     expect(limit.orderPx).toBe('60100')
   })
 })

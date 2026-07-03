@@ -269,11 +269,17 @@ describe('OKXLiveAdapter idempotence des fills', () => {
 describe('OKXLiveAdapter reconcile (P0-2c backfill, spec §14)', () => {
   const cid = 'tpxbot123zz1'
 
-  it('replays a stop that TRIGGERED while the bot was down (algo → effective)', async () => {
+  it('replays a stop that TRIGGERED while the bot was down (algo effective → ordre engendré)', async () => {
+    // le trigger BUY spot a un sz/actualSz en QUOTE (convention OKX) — le
+    // backfill lit l'ordre régulier ENGENDRÉ (ordId) : unités base sûres
     const { adapter, fills, updates } = mkAdapter({
       getAlgoOrder: async () => ({
-        instId: 'BTC-USDT', algoId: 'a5', algoClOrdId: cid, ordType: 'trigger', side: 'buy',
-        sz: '0.5', triggerPx: '41000', state: 'effective', actualSz: '0.5', actualPx: '41050',
+        instId: 'BTC-USDT', algoId: 'a5', ordId: 'o55', algoClOrdId: cid, ordType: 'trigger', side: 'buy',
+        sz: '20525', triggerPx: '41000', state: 'effective', actualSz: '20525', actualPx: '41050',
+      }),
+      getOrder: async () => ({
+        instId: 'BTC-USDT', ordId: 'o55', ordType: 'market', side: 'buy', sz: '20525',
+        state: 'filled', accFillSz: '0.5', avgPx: '41050', fee: '-20', feeCcy: 'USDT',
       }),
     }, SPOT_SI, 25_000)
     adapter.restore({ posQty: 0, posEntry: 0, realizedNet: 0, quoteLedger: 21_000 })
@@ -283,9 +289,24 @@ describe('OKXLiveAdapter reconcile (P0-2c backfill, spec §14)', () => {
     expect(fills.length).toBe(1)
     expect(fills[0]!.id).toBe(`${cid}-bf0-0.5`)
     expect(adapter.position().qty).toBeCloseTo(0.5, 9)
-    expect(adapter.balances().find((b) => b.asset === 'USDT')?.free).toBeCloseTo(21_000 - 0.5 * 41_050, 6)
+    expect(adapter.balances().find((b) => b.asset === 'USDT')?.free).toBeCloseTo(21_000 - 0.5 * 41_050 - 20, 6)
     // le statut final part en DB : l'ordre sort du set « resting »
     expect(updates.at(-1)?.status).toBe('FILLED')
+  })
+
+  it('fallback sans ordre engendré lisible : actualSz (quote) reconverti en base', async () => {
+    const { adapter, fills } = mkAdapter({
+      getAlgoOrder: async () => ({
+        instId: 'BTC-USDT', algoId: 'a5', algoClOrdId: cid, ordType: 'trigger', side: 'buy',
+        sz: '20525', triggerPx: '41000', state: 'effective', actualSz: '20525', actualPx: '41050',
+      }),
+      getOrder: async () => null, // l'ordre engendré n'est pas lisible
+    }, SPOT_SI, 25_000)
+    adapter.restore({ posQty: 0, posEntry: 0, realizedNet: 0, quoteLedger: 21_000 })
+    await adapter.reconcile([{ clientId: cid, side: 'BUY', type: 'STOP_MARKET', executedQty: 0, cumQuote: 0 }])
+    expect(fills.length).toBe(1)
+    expect(fills[0]!.qty).toBeCloseTo(20_525 / 41_050, 9) // = 0.5 base
+    expect(adapter.position().qty).toBeCloseTo(0.5, 9)
   })
 
   it('replays the missed part of a regular order filled while down', async () => {
