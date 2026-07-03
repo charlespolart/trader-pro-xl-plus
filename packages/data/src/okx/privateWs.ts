@@ -18,15 +18,20 @@ export function subscribeFrames(): { op: 'subscribe'; args: { channel: string; i
   // it here returns 60018 "channel doesn't exist". Stop/TP fills still arrive via the
   // `orders` channel (a triggered algo becomes a regular order). Real-time algo-order
   // state would need a second socket to /business (follow-up).
-  return [
-    { op: 'subscribe', args: [{ channel: 'orders', instType: 'ANY' }] },
-    { op: 'subscribe', args: [{ channel: 'positions', instType: 'ANY' }] },
-  ]
+  // `positions` n'est PAS souscrit : le routeur le jetait de toute façon — la
+  // position par bot vient des fills, et le reconcile vérifie contre l'exchange.
+  return [{ op: 'subscribe', args: [{ channel: 'orders', instType: 'ANY' }] }]
 }
 
 /**
  * One private socket per account (OKX unified account carries spot + swap).
  * Reconnects with backoff, re-logs-in, re-subscribes, and pings every 25s.
+ *
+ * `start()` ne résout qu'au PREMIER login réussi (rejet OKX ou silence 20 s =
+ * rejet de la promesse) : un démarrage de bot ne doit pas « réussir » sur un
+ * flux privé mort. Un login refusé PLUS TARD (rotation de clés, IP retirée de
+ * la whitelist, horloge) déclenche `onLoginDeath` : le flux ne reviendra pas
+ * tout seul, l'appelant doit suspendre les bots au lieu de trader en aveugle.
  */
 export class OkxPrivateStream implements ExchangePrivateStream {
   private ws: WebSocket | null = null
@@ -35,11 +40,17 @@ export class OkxPrivateStream implements ExchangePrivateStream {
   private stopped = false
   private backoff = 1000
   private lastMsgAt = 0
+  private pendingLogin: {
+    resolve: () => void
+    reject: (e: Error) => void
+    timer: ReturnType<typeof setTimeout>
+  } | null = null
 
   constructor(
     private readonly creds: OkxCredentials,
     private readonly demo: boolean,
     private readonly onError: (e: Error) => void,
+    private readonly onLoginDeath?: (e: Error) => void,
   ) {}
 
   onEvent(cb: (ev: OkxPrivateEvent) => void): void {
@@ -48,7 +59,17 @@ export class OkxPrivateStream implements ExchangePrivateStream {
 
   async start(): Promise<void> {
     this.stopped = false
-    this.connect()
+    return new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        if (this.pendingLogin) {
+          this.pendingLogin = null
+          this.stop()
+          reject(new Error('OKX WS privé : pas de réponse au login sous 20 s'))
+        }
+      }, 20_000)
+      this.pendingLogin = { resolve, reject, timer }
+      this.connect()
+    })
   }
 
   stop(): void {
@@ -56,6 +77,11 @@ export class OkxPrivateStream implements ExchangePrivateStream {
     if (this.ping) {
       clearInterval(this.ping)
       this.ping = null
+    }
+    if (this.pendingLogin) {
+      clearTimeout(this.pendingLogin.timer)
+      this.pendingLogin.reject(new Error('OKX WS privé arrêté avant le login'))
+      this.pendingLogin = null
     }
     this.ws?.close()
     this.ws = null
@@ -94,13 +120,25 @@ export class OkxPrivateStream implements ExchangePrivateStream {
     if (msg.event === 'login') {
       const res = loginResult(msg)
       if (!res.ok) {
-        // Rejected login (bad creds / unauthorized IP): surface it and stop so the
-        // close handler does NOT reconnect forever with onError never firing.
-        this.onError(new Error(res.error))
+        const err = new Error(res.error)
+        this.onError(err)
+        const pending = this.pendingLogin
+        this.pendingLogin = null
+        if (pending) clearTimeout(pending.timer)
+        // Rejected login (bad creds / unauthorized IP): stop so the close handler
+        // does NOT reconnect forever. Premier login → rejet de start() (l'appelant
+        // gère) ; login de RECONNEXION → incident onLoginDeath (bots à suspendre).
         this.stop()
+        if (pending) pending.reject(err)
+        else this.onLoginDeath?.(err)
         return
       }
       this.backoff = 1000
+      if (this.pendingLogin) {
+        clearTimeout(this.pendingLogin.timer)
+        this.pendingLogin.resolve()
+        this.pendingLogin = null
+      }
       for (const f of subscribeFrames()) this.ws?.send(JSON.stringify(f))
       // Ping + garde-fou de mort silencieuse : chaque ping reçoit un 'pong',
       // donc > 90 s sans AUCUN message = connexion morte sans event 'close'

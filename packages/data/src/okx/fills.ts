@@ -12,6 +12,8 @@ export interface FillDelta {
   pnl: number
   time: number
   maker: boolean
+  /** OKX trade id — unique per instrument; empty when absent (fill synthétique) */
+  tradeId: string
 }
 
 export function parseFill(ev: OkxOrderEvent, market: MarketType, ctVal: number): FillDelta | null {
@@ -26,6 +28,7 @@ export function parseFill(ev: OkxOrderEvent, market: MarketType, ctVal: number):
     feeCcy: ev.fillFeeCcy ?? '',
     pnl: Number(ev.fillPnl ?? 0),
     time: Number(ev.fillTime ?? Date.now()),
-    maker: false,
+    maker: ev.execType === 'M',
+    tradeId: ev.tradeId ?? '',
   }
 }

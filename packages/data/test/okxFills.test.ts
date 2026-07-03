@@ -14,7 +14,18 @@ describe('parseFill', () => {
       fillSz: '5', fillPx: '50000', fillFee: '-0.025', fillFeeCcy: 'USDT', fillPnl: '0', fillTime: '1782637737000',
     }
     const d = parseFill(ev, 'futures', 0.01)
-    expect(d).toEqual({ lastQty: 0.05, price: 50000, fee: 0.025, feeCcy: 'USDT', pnl: 0, time: 1782637737000, maker: false })
+    expect(d).toEqual({ lastQty: 0.05, price: 50000, fee: 0.025, feeCcy: 'USDT', pnl: 0, time: 1782637737000, maker: false, tradeId: '' })
+  })
+
+  it('captures tradeId and maker flag (execType M)', () => {
+    const ev: OkxOrderEvent = {
+      instId: 'BTC-USDT', clOrdId: 'tpxa1', ordId: '1', state: 'filled', side: 'sell',
+      fillSz: '0.01', fillPx: '50000', fillFee: '-0.5', fillFeeCcy: 'USDT', fillTime: '1782637737000',
+      tradeId: '778899', execType: 'M',
+    }
+    const d = parseFill(ev, 'spot', 1)
+    expect(d?.tradeId).toBe('778899')
+    expect(d?.maker).toBe(true)
   })
 
   it('keeps spot fill size as-is (ctVal 1)', () => {

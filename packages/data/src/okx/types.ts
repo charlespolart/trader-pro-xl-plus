@@ -50,6 +50,10 @@ export interface OkxOrderEvent {
   fillFeeCcy?: string
   fillPnl?: string
   fillTime?: string
+  /** OKX trade id of the last fill — unique per instrument, THE dedup key */
+  tradeId?: string
+  /** T = taker, M = maker (per fill) */
+  execType?: string
   accFillSz?: string
   avgPx?: string
 }
@@ -60,7 +64,8 @@ export interface OkxPrivateEvent {
   data: OkxOrderEvent[]
 }
 
-/** A resting order returned by the orders-pending / orders-algo-pending REST endpoints. */
+/** An order returned by the orders-pending / orders-algo-pending / order /
+ *  order-algo REST endpoints (superset of the shared fields). */
 export interface OkxRestOrder {
   instId: string
   ordId?: string
@@ -72,7 +77,16 @@ export interface OkxRestOrder {
   sz: string
   px?: string
   triggerPx?: string
+  /** orders: live|partially_filled|filled|canceled — algos: live|effective|canceled|order_failed */
   state: string
   accFillSz?: string
   avgPx?: string
+  /** cumulative fee, signed (negative = charged) — GET /trade/order */
+  fee?: string
+  feeCcy?: string
+  /** cumulative realized pnl — GET /trade/order (futures) */
+  pnl?: string
+  /** executed size/price of a TRIGGERED algo — GET /trade/order-algo, state 'effective' */
+  actualSz?: string
+  actualPx?: string
 }

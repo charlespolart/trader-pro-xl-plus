@@ -1,7 +1,7 @@
 import type { Balance, MarketType } from '@tpx/shared'
 import type { ExchangeInstrument, ExchangePosition } from '../exchange/types'
 import { OkxInstruments } from './instruments'
-import type { OkxRest } from './rest'
+import { OkxApiError, type OkxRest } from './rest'
 import { contractsToBase } from './symbols'
 import type { OkxInstType, OkxOrderAck, OkxRestOrder } from './types'
 
@@ -33,6 +33,13 @@ interface RawTradeFee {
  */
 function isAlreadyGone(e: unknown): boolean {
   return /5140[012]|does not exist|already (?:canceled|cancelled|completed)/i.test(String(e))
+}
+
+/** Lecture d'un ordre inconnu d'OKX : « n'existe pas » est une RÉPONSE (l'ordre
+ *  n'a jamais été accepté), pas une erreur — à distinguer d'un échec transport
+ *  (résultat inconnu) que l'appelant doit propager. 51603 = ordre, 51293 = algo. */
+function isNotFound(e: unknown): boolean {
+  return /51603|51293|does not exist/i.test(String(e))
 }
 
 export class OkxAccount {
@@ -150,9 +157,37 @@ export class OkxAccount {
     return this.rest.signed<OkxRestOrder>('GET', '/api/v5/trade/orders-algo-pending', { instId, ordType: 'trigger' })
   }
 
+  /** État final ou courant d'un ordre par clOrdId — la source REST de vérité
+   *  qui manquait au chemin live (adoption après timeout, backfill de fills).
+   *  `null` = OKX répond « n'existe pas » (jamais accepté) ; un échec transport
+   *  est propagé (résultat inconnu ≠ ordre inexistant). */
+  async getOrder(instId: string, ids: { clOrdId?: string; ordId?: string }): Promise<OkxRestOrder | null> {
+    try {
+      const rows = await this.rest.signed<OkxRestOrder>('GET', '/api/v5/trade/order', { instId, ...ids })
+      return rows[0] ?? null
+    } catch (e) {
+      if (isNotFound(e)) return null
+      throw e
+    }
+  }
+
+  /** Idem pour un ordre algo (trigger). Un algo déclenché a state 'effective'
+   *  et porte actualSz/actualPx (l'exécution du stop). */
+  async getAlgoOrder(ids: { algoClOrdId?: string; algoId?: string }): Promise<OkxRestOrder | null> {
+    try {
+      const rows = await this.rest.signed<OkxRestOrder>('GET', '/api/v5/trade/order-algo', { ...ids })
+      return rows[0] ?? null
+    } catch (e) {
+      if (isNotFound(e)) return null
+      throw e
+    }
+  }
+
   private checkAck(ack: OkxOrderAck | undefined): OkxOrderAck {
     if (!ack) throw new Error('OKX: empty order response')
-    if (ack.sCode !== '0') throw new Error(`OKX order rejected (sCode ${ack.sCode}): ${ack.sMsg}`)
+    // OkxApiError (pas Error nue) : l'appelant doit pouvoir distinguer un REJET
+    // métier définitif (OKX a répondu) d'un échec transport (résultat inconnu).
+    if (ack.sCode !== '0') throw new OkxApiError(ack.sCode, 200, ack.sMsg || 'order rejected')
     return ack
   }
 }

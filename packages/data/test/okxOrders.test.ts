@@ -4,6 +4,7 @@ import {
   buildAlgoBody,
   buildOrderBody,
   clOrdPrefix,
+  fmtSz,
   makeClOrdId,
   mapOkxState,
   mapOrdType,
@@ -15,6 +16,50 @@ describe('okx orders', () => {
     const id = makeClOrdId(prefix, 42)
     expect(id).toMatch(/^[a-z0-9]{1,32}$/i)
     expect(id.startsWith(prefix)).toBe(true)
+  })
+
+  it('clOrdId embeds a boot component: same seq across two boots never collides (P1-8)', () => {
+    const prefix = clOrdPrefix('5708eef0-1234-5678')
+    const boot1 = Date.parse('2026-07-03T10:00:00Z')
+    const boot2 = boot1 + 15_000 // crash + redémarrage 15 s plus tard, seq perdu
+    const a = makeClOrdId(prefix, 3, boot1)
+    const b = makeClOrdId(prefix, 3, boot2)
+    expect(a).not.toBe(b)
+    expect(a).toMatch(/^[a-z0-9]{1,32}$/i)
+    expect(b.startsWith(prefix)).toBe(true)
+    // ids d'un même boot : toujours uniques par seq
+    expect(makeClOrdId(prefix, 4, boot1)).not.toBe(a)
+  })
+
+  it('fmtSz never emits exponential notation and floors to the step (P1-12)', () => {
+    expect(fmtSz(1e-7, 1e-8)).toBe('0.0000001') // String(1e-7) === '1e-7' → rejeté par OKX
+    expect(fmtSz(0.123456, 0.001)).toBe('0.123')
+    expect(fmtSz(5, 1)).toBe('5')
+    expect(fmtSz(100.999, 0.01)).toBe('100.99')
+    expect(fmtSz(0.0500, 0.0001)).toBe('0.05')
+    expect(fmtSz(0, 0.001)).toBe('0')
+  })
+
+  it('spot market sell qty is floored to the lot size', () => {
+    const req: OrderRequest = { side: 'SELL', type: 'MARKET', qty: 0.12345678 }
+    const body = buildOrderBody({
+      instId: 'BTC-USDT', market: 'spot', req, clOrdId: 'tpxabc9', ctVal: 1, lotSz: 0.0001, refPrice: 50000,
+    })
+    expect(body.sz).toBe('0.1234')
+    expect(body.tgtCcy).toBe('base_ccy')
+  })
+
+  it('spot market buy quoteQty is floored to the cent (and FP noise snaps to the intended value)', () => {
+    const req: OrderRequest = { side: 'BUY', type: 'MARKET', quoteQty: 19999.994 }
+    const body = buildOrderBody({
+      instId: 'BTC-USDT', market: 'spot', req, clOrdId: 'tpxabc8', ctVal: 1, lotSz: 0.0001, refPrice: 50000,
+    })
+    expect(body.sz).toBe('19999.99')
+    // un résidu FP d'un calcul qui visait 20000 est reconnu comme tel (floorToStep)
+    const noisy = buildOrderBody({
+      instId: 'BTC-USDT', market: 'spot', req: { ...req, quoteQty: 19999.999999999996 }, clOrdId: 'tpxabc8', ctVal: 1, lotSz: 0.0001, refPrice: 50000,
+    })
+    expect(noisy.sz).toBe('20000')
   })
 
   it('routes stops to algo orders', () => {
