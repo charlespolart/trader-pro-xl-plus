@@ -102,8 +102,10 @@ jobs:
           set -euo pipefail
           chmod +x /srv/tpx/ops/backup.sh
           mkdir -p /srv/tpx/backups
-          # cron hebdo idempotent (marqueur tpx-backup)
-          ( crontab -l 2>/dev/null | grep -v 'tpx-backup' ; \
+          # cron hebdo idempotent (marqueur tpx-backup) — le `|| true` est vital :
+          # sans crontab existante (1er run) ou sans autre ligne, `crontab -l |
+          # grep -v` sort non-zéro et set -euo pipefail tuerait le déploiement
+          ( crontab -l 2>/dev/null | grep -v 'tpx-backup' || true ; \
             echo '10 4 * * 1 /srv/tpx/ops/backup.sh >> /srv/tpx/backups/backup.log 2>&1 # tpx-backup' ) | crontab -
           # le conteneur backend tourne non-root (uid 1000) : /data doit lui appartenir
           [ "$(stat -c %u /srv/tpx/data 2>/dev/null || echo 0)" = "1000" ] || chown -R 1000:1000 /srv/tpx/data
