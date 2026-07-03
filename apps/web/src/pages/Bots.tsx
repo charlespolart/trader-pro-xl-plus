@@ -73,7 +73,7 @@ export function Bots() {
       name: '',
       strategyId: s.id,
       market: (s.markets?.[0] ?? 'spot') as MarketType,
-      symbol: s.id.startsWith('eth') ? 'ETHUSDT' : 'BTCUSDT',
+      symbol: s.symbol ?? 'BTCUSDT',
       mode: 'paper',
       allocation: base ? 0 : 1000,
       initialBaseQty: base ? 1 : undefined,
@@ -251,6 +251,7 @@ function BotForm({
       ...draft,
       strategyId: id,
       market: (s.markets?.includes(draft.market) ? draft.market : (s.markets?.[0] ?? 'spot')) as MarketType,
+      symbol: s.symbol ?? draft.symbol,
       params: s.schema ? defaultParams(s.schema) : {},
       allocation: base ? 0 : draft.allocation > 0 ? draft.allocation : 1000,
       adoptAllBase: base && draft.mode !== 'paper' ? true : undefined,
@@ -304,7 +305,12 @@ function BotForm({
           </select>
         </Field>
         <Field label="Marché">
-          <select className="input" value={draft.market} onChange={(e) => onChange({ ...draft, market: e.target.value as MarketType })}>
+          <select
+            className="input"
+            value={draft.market}
+            disabled={markets.length <= 1}
+            onChange={(e) => onChange({ ...draft, market: e.target.value as MarketType })}
+          >
             {markets.map((m) => (
               <option key={m} value={m}>
                 {m}
@@ -312,8 +318,13 @@ function BotForm({
             ))}
           </select>
         </Field>
-        <Field label="Paire">
-          <input className="input" value={draft.symbol} onChange={(e) => onChange({ ...draft, symbol: e.target.value.toUpperCase() })} />
+        <Field label="Paire" hint={strategy?.symbol !== undefined ? 'imposée par la stratégie' : undefined}>
+          <input
+            className="input num"
+            value={draft.symbol}
+            disabled={strategy?.symbol !== undefined}
+            onChange={(e) => onChange({ ...draft, symbol: e.target.value.toUpperCase() })}
+          />
         </Field>
         {!startsInBase && (
           <Field
@@ -325,11 +336,11 @@ function BotForm({
         )}
         {startsInBase && (
           <Field
-            label={`Position initiale (${baseAsset} détenus)`}
+            label={`Position initiale (${baseAsset})`}
             hint={
               draft.mode === 'paper'
-                ? 'stratégie d\'accumulation : le bot démarre EN position (paper : quantité chiffrée)'
-                : 'stratégie d\'accumulation : le bot adopte tes coins et VEND au 1er signal, comme le backtest'
+                ? 'quantité simulée — le bot démarre en position'
+                : 'adoptée au 1er démarrage — le bot démarre en position et vend au signal'
             }
           >
             <div className="space-y-1.5">
@@ -343,7 +354,7 @@ function BotForm({
                       onChange({ ...draft, adoptAllBase: e.target.checked ? true : undefined, initialBaseQty: e.target.checked ? undefined : (draft.initialBaseQty ?? 1) })
                     }
                   />
-                  Adopter tout le solde disponible (lu sur OKX au démarrage)
+                  Adopter tout le solde disponible
                 </label>
               )}
               {draft.adoptAllBase !== true && (

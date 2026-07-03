@@ -157,6 +157,9 @@ export interface StrategyDefinition {
   name: string
   description?: string
   markets: MarketType[]
+  /** paire imposée par la stratégie (ex. 'BTCUSDT') — l'UI la verrouille et
+   *  le backend la force à la création ; absente = libre choix utilisateur */
+  symbol?: string
   schema: ParamSchema
   data: (params: ParamValues) => FeedSpecMap
   /** défauts recommandés pour le formulaire de backtest */

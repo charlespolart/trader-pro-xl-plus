@@ -66,6 +66,7 @@ export default defineStrategy({
   description:
     "Accumulation de BTC : tendance générale sur un TF dédié (3d par défaut) avec double confirmation journalière (anti-drawdown). Spot, dénomination BASE.",
   markets: ['spot'],
+  symbol: 'BTCUSDT',
   backtest: { denomination: 'base', initialBalance: 1, market: 'spot' },
 
   params: {

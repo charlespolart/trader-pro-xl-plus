@@ -52,6 +52,8 @@ export interface StrategyDTO {
   name?: string
   description?: string
   markets?: MarketType[]
+  /** paire imposée par la stratégie — verrouillée dans les formulaires */
+  symbol?: string
   schema?: ParamSchema
   defaults?: ParamValues
   backtest?: { denomination?: 'quote' | 'base'; initialBalance?: number; market?: MarketType }

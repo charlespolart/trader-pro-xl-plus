@@ -73,6 +73,7 @@ export class StrategyRegistry {
       name: item.def.name,
       description: item.def.description,
       markets: item.def.markets,
+      symbol: item.def.symbol,
       schema,
       defaults: defaultParams(schema),
       backtest: item.def.backtest,

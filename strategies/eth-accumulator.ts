@@ -42,6 +42,7 @@ export default defineStrategy({
   description:
     "Accumulation d'ETH : vend tout en régime franchement baissier (tendance 3d + confirmation) pour racheter plus bas. Calibré ETH : ER≥0,45, sans filtre de flux. Spot, dénomination BASE.",
   markets: ['spot'],
+  symbol: 'ETHUSDT',
   backtest: { denomination: 'base', initialBalance: 1, market: 'spot' },
 
   params: {

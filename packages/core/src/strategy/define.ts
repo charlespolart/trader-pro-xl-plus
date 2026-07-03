@@ -7,6 +7,8 @@ export interface StrategyInput<S extends ParamBuilders, L> extends StrategyHooks
   description?: string
   /** markets this strategy supports; defaults to both */
   markets?: MarketType[]
+  /** paire imposée (ex. 'BTCUSDT') — verrouillée dans l'UI, forcée à la création */
+  symbol?: string
   params: S
   /**
    * Data subscriptions. Must include a 'main' candle feed (it drives
@@ -38,6 +40,7 @@ export function defineStrategy<S extends ParamBuilders, L = Record<string, never
     name: input.name,
     description: input.description,
     markets: input.markets ?? ['spot', 'futures'],
+    symbol: input.symbol,
     schema: toParamSchema(input.params),
     data,
     backtest: input.backtest,

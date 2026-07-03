@@ -1010,6 +1010,11 @@ export class BotManager {
 
   async create(input: Omit<BotConfig, 'id' | 'createdAt' | 'updatedAt'>): Promise<BotConfig> {
     const entry = registry.get(input.strategyId)
+    // la stratégie impose sa paire et ses marchés quand elle les déclare
+    if (entry.def.symbol !== undefined) input = { ...input, symbol: entry.def.symbol }
+    if (!entry.def.markets.includes(input.market)) {
+      throw new Error(`La stratégie '${entry.def.name}' ne supporte pas le marché ${input.market}`)
+    }
     const validation = validateParams(entry.def.schema, input.params)
     if (!validation.ok) throw new Error(`Paramètres invalides: ${validation.errors.join('; ')}`)
     if (((input.initialBaseQty ?? 0) > 0 || input.adoptAllBase === true) && input.market !== 'spot') {
@@ -1064,6 +1069,10 @@ export class BotManager {
     if (!existing) throw new Error('Bot introuvable')
     const merged = { ...existing, ...patch, updatedAt: Date.now() }
     const entry = registry.get(merged.strategyId)
+    if (entry.def.symbol !== undefined) merged.symbol = entry.def.symbol
+    if (!entry.def.markets.includes(merged.market)) {
+      throw new Error(`La stratégie '${entry.def.name}' ne supporte pas le marché ${merged.market}`)
+    }
     const validation = validateParams(entry.def.schema, merged.params)
     if (!validation.ok) throw new Error(`Paramètres invalides: ${validation.errors.join('; ')}`)
     merged.params = validation.values
