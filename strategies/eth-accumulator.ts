@@ -180,7 +180,7 @@ export default defineStrategy({
     // ---- on est en USDT (vendu) : racheter quand la baisse s'essouffle
     if (candle.close > rebuyEma.value!) {
       await ctx.order.cancelAll()
-      const quote = ctx.balances.find((b) => b.asset !== (ctx.symbolInfo?.baseAsset ?? '___'))
+      const quote = ctx.balances.find((b) => b.asset === ctx.symbolInfo?.quoteAsset)
       const usdt = quote ? quote.free : 0
       if (usdt <= 0) return
       const sold = (ctx.state['soldPrice'] as number | undefined) ?? candle.close
@@ -199,7 +199,7 @@ export default defineStrategy({
     if (order.tag === 'entry' && ctx.position.qty <= dust && ctx.state['bracket'] !== true) {
       ctx.state['bracket'] = true
       const stop = ctx.state['stop'] as number
-      const quote = ctx.balances.find((b) => b.asset !== (ctx.symbolInfo?.baseAsset ?? '___'))
+      const quote = ctx.balances.find((b) => b.asset === ctx.symbolInfo?.quoteAsset)
       const usdt = quote ? quote.free : 0
       if (stop > 0 && usdt > 0) {
         const qty = ctx.roundQty((usdt / stop) * 0.995)
@@ -223,7 +223,7 @@ export default defineStrategy({
     await ctx.order.cancelAll()
     const dust = ctx.symbolInfo?.minQty ?? 1e-8
     if (ctx.position.qty <= dust) {
-      const quote = ctx.balances.find((b) => b.asset !== (ctx.symbolInfo?.baseAsset ?? '___'))
+      const quote = ctx.balances.find((b) => b.asset === ctx.symbolInfo?.quoteAsset)
       const usdt = quote ? quote.free : 0
       if (usdt > 0) {
         await ctx.order.market({ side: 'BUY', quoteQty: usdt, reason: "Arrêt : retour en ETH", tag: 'exit' })

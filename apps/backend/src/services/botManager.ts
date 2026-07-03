@@ -11,9 +11,10 @@ import {
 import {
   DEFAULT_FEES,
   INTERVAL_MS,
+  floorToStep,
+  sleep,
   utcDayKey,
   validateParams,
-  type Balance,
   type BotConfig,
   type BotRuntimeInfo,
   type BotStatus,
@@ -120,6 +121,10 @@ class BotRunner {
   private timers: ReturnType<typeof setInterval>[] = []
   private lastSeenOpen = new Map<string, number>()
   private lastFundingBoundary = 0
+  /** vrai pendant l'exécution du hook onStop : les ordres qu'il émet (status
+   *  'stopping') passent le riskCheck — sans ça, le « retour en BTC » d'un stop
+   *  utilisateur est bloqué puis avalé. Le kill switch reste prioritaire. */
+  private onStopWindow = false
   private counters = {
     pnlDay: utcDayKey(Date.now()),
     realizedPnlToday: 0,
@@ -230,7 +235,6 @@ class BotRunner {
           }),
         )
       }
-      manager.ensureBalancePolling(config.mode, config.market, account)
       const adapter = new OKXLiveAdapter({
         market: config.market,
         demo: testnet,
@@ -240,7 +244,6 @@ class BotRunner {
         allocation: config.allocation,
         leverage: config.leverage,
         account,
-        getBalances: () => manager.cachedBalances(config.mode, config.market),
         events: {
           onFill: (fill, order) => this.enqueue(() => this.onFillEvent(fill, order)),
           onOrderUpdate: (order) => this.enqueue(() => this.onOrderEvent(order)),
@@ -324,6 +327,7 @@ class BotRunner {
         .map((o) => ({
           clientId: o.clientId,
           side: o.side as 'BUY' | 'SELL',
+          type: o.type as Order['type'],
           executedQty: o.executedQty,
           cumQuote: o.cumQuote,
         }))
@@ -600,7 +604,10 @@ class BotRunner {
   private riskCheck(req: OrderRequest): string | null {
     const { config, manager } = this.deps
     if (manager.killSwitchActive) return 'kill switch global actif'
-    if (this.status !== 'running' && this.status !== 'starting') return `bot ${this.status}`
+    const stoppingButAllowed = this.status === 'stopping' && this.onStopWindow
+    if (this.status !== 'running' && this.status !== 'starting' && !stoppingButAllowed) {
+      return `bot ${this.status}`
+    }
     if (this.counters.cooldownUntil > Date.now()) {
       return `cooldown après perte jusqu'à ${new Date(this.counters.cooldownUntil).toISOString()}`
     }
@@ -690,7 +697,15 @@ class BotRunner {
 
   // ------------------------------------------------------------------ stop
 
-  async stop(opts: { cancelOrders?: boolean; closePosition?: boolean; reason?: string; killed?: boolean } = {}): Promise<void> {
+  async stop(
+    opts: {
+      cancelOrders?: boolean
+      closePosition?: boolean
+      runOnStopHook?: boolean
+      reason?: string
+      killed?: boolean
+    } = {},
+  ): Promise<void> {
     if (this.status === 'stopped') return
     this.status = 'stopping'
     this.publishInfo()
@@ -706,18 +721,40 @@ class BotRunner {
       }
       if (opts.closePosition) {
         const pos = this.rawExec.position()
-        if (pos.qty !== 0) {
+        // arrondi au stepSize : un qty brut (résidu FP) serait rejeté par OKX
+        // et la fermeture d'urgence échouerait en silence
+        const qty = floorToStep(Math.abs(pos.qty), this.symbolInfoV.stepSize)
+        if (qty > 0) {
           await this.rawExec.submit({
             side: pos.qty > 0 ? 'SELL' : 'BUY',
             type: 'MARKET',
-            qty: Math.abs(pos.qty),
+            qty,
             reduceOnly: true,
             reason: opts.reason ?? 'Fermeture (stop bot)',
             tag: 'close',
           })
         }
       }
-      await this.runtime.stop().catch(() => {})
+      if (opts.runOnStopHook ?? true) {
+        // fenêtre onStop : le hook peut émettre des ordres (ex. « retour en
+        // BTC » de l'accumulateur) alors que status='stopping' — le riskCheck
+        // les laisse passer pendant cette fenêtre (kill switch reste prioritaire)
+        this.onStopWindow = true
+        try {
+          await this.runtime.stop()
+        } catch (err) {
+          this.pushLog({
+            time: Date.now(),
+            level: 'warn',
+            message: `onStop en erreur (ignoré): ${err instanceof Error ? err.message : String(err)}`,
+          })
+        } finally {
+          this.onStopWindow = false
+        }
+      }
+      // fenêtre pour les fills des ordres market émis ci-dessus (closePosition
+      // et/ou onStop) — sort immédiatement s'il n'y a rien en vol
+      await this.waitLiveFillsSettled(3_000)
     } finally {
       await this.saveState().catch(() => {})
       if (this.rawExec instanceof OKXLiveAdapter) {
@@ -728,6 +765,34 @@ class BotRunner {
       this.publishInfo()
       this.pushLog({ time: Date.now(), level: 'info', message: `Bot arrêté${opts.reason ? ` (${opts.reason})` : ''}` })
     }
+  }
+
+  /** Nettoyage après un start() qui a échoué à mi-chemin : libère l'adapter du
+   *  routeur (sinon zombie qui continue de recevoir les événements) et coupe
+   *  les subscriptions/timers déjà ouverts. */
+  releaseExec(): void {
+    for (const u of this.unsubs) u()
+    this.unsubs = []
+    for (const t of this.timers) clearInterval(t)
+    this.timers = []
+    if (this.rawExec instanceof OKXLiveAdapter) {
+      this.deps.manager.releaseAdapter(this.deps.config.mode, this.rawExec)
+    }
+  }
+
+  /** Après les ordres market du stop (close/onStop), laisse une courte fenêtre
+   *  aux fills WS pour arriver AVANT saveState/releaseAdapter — sinon le fill
+   *  est perdu jusqu'au backfill du prochain reconcile. Les stops résidents
+   *  (TRIGGER_PENDING) sont exclus : ils ne se rempliront pas maintenant. */
+  private async waitLiveFillsSettled(maxMs: number): Promise<void> {
+    if (!(this.rawExec instanceof OKXLiveAdapter)) return
+    const deadline = Date.now() + maxMs
+    while (Date.now() < deadline) {
+      const pendingMarket = this.rawExec.openOrders().some((o) => o.type === 'MARKET')
+      if (!pendingMarket) break
+      await new Promise((r) => setTimeout(r, 200))
+    }
+    await this.chain.catch(() => {})
   }
 
   private async saveState(): Promise<void> {
@@ -820,8 +885,7 @@ export class BotManager {
 
   private runners = new Map<string, BotRunner>()
   private routers = new Map<string, OkxUserStreamRouter>()
-  private balanceCache = new Map<string, { at: number; balances: Balance[] }>()
-  private balancePollers = new Map<string, ReturnType<typeof setInterval>>()
+  private streamRetryTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
   constructor(
     private readonly db: Db,
@@ -835,11 +899,26 @@ export class BotManager {
     const rows = await this.db.select().from(botsTable)
     for (const row of rows) {
       if (row.desiredRunning && !this.killSwitchActive) {
-        this.start(row.id).catch((err: unknown) => {
-          console.error(`Auto-start bot ${row.id} failed:`, err)
-        })
+        void this.startWithRetries(row.id, 3)
       }
     }
+  }
+
+  /** Auto-start au boot : un 5xx OKX ou un réseau lent ne doit pas laisser un
+   *  bot down en silence — 3 tentatives espacées de 30 s, puis alerte Telegram
+   *  (desiredRunning reste vrai : un prochain boot ou une reprise le relancera). */
+  private async startWithRetries(id: string, attempts: number): Promise<void> {
+    for (let n = 1; n <= attempts; n++) {
+      if (this.runners.has(id)) return // démarré entre-temps (manuellement)
+      try {
+        await this.start(id)
+        return
+      } catch (err) {
+        console.error(`Auto-start bot ${id} échoué (${n}/${attempts}):`, err instanceof Error ? err.message : err)
+        if (n < attempts) await sleep(30_000)
+      }
+    }
+    sendTelegram(`🛑 Auto-start du bot <code>${id}</code> abandonné après ${attempts} tentatives — il reste arrêté`)
   }
 
   // ------------------------------------------------------------------ CRUD
@@ -957,6 +1036,9 @@ export class BotManager {
       await runner.start()
       await this.db.update(botsTable).set({ desiredRunning: true }).where(eq(botsTable.id, id))
     } catch (err) {
+      // un start à mi-chemin peut avoir enregistré l'adapter sur le routeur et
+      // ouvert des subscriptions : les libérer, sinon adapter zombie
+      runner.releaseExec()
       this.runners.delete(id)
       hub.publish('bots', { t: 'bot:removed', botId: id })
       throw err
@@ -965,7 +1047,14 @@ export class BotManager {
 
   async stop(
     id: string,
-    opts: { closePosition?: boolean; reason?: string; killed?: boolean; keepDesired?: boolean } = {},
+    opts: {
+      cancelOrders?: boolean
+      closePosition?: boolean
+      runOnStopHook?: boolean
+      reason?: string
+      killed?: boolean
+      keepDesired?: boolean
+    } = {},
   ): Promise<void> {
     const runner = this.runners.get(id)
     if (!runner) return
@@ -1015,7 +1104,13 @@ export class BotManager {
     if (active) {
       sendTelegram('🛑 <b>KILL SWITCH</b> activé — arrêt de tous les bots')
       for (const id of [...this.runners.keys()]) {
-        await this.stop(id, { closePosition: closePositions, reason: 'kill switch', killed: true }).catch(() => {})
+        // kill = gel immédiat : pas de hook onStop (il pourrait ré-acheter)
+        await this.stop(id, {
+          closePosition: closePositions,
+          runOnStopHook: false,
+          reason: 'kill switch',
+          killed: true,
+        }).catch(() => {})
       }
     }
   }
@@ -1045,11 +1140,81 @@ export class BotManager {
     let router = this.routers.get(mode)
     if (!router) {
       const onError = (err: Error) => console.error(`User stream ${mode} error:`, err.message)
-      router = new OkxUserStreamRouter(new OkxPrivateStream(creds, mode === 'testnet', onError), onError)
+      const stream = new OkxPrivateStream(creds, mode === 'testnet', onError, () => {
+        void this.onStreamLoginDeath(mode)
+      })
+      router = new OkxUserStreamRouter(stream, onError)
       this.routers.set(mode, router)
-      await router.start()
+      try {
+        // start() ne résout qu'au login réussi : un flux privé mort fait échouer
+        // le démarrage du bot (retries) au lieu de le laisser trader en aveugle
+        await router.start()
+      } catch (err) {
+        this.routers.delete(mode)
+        router.stop()
+        throw err
+      }
     }
     return router
+  }
+
+  /**
+   * Le login du flux privé a été refusé EN PLEINE VIE (rotation de clés, IP
+   * retirée de la whitelist, horloge) : les fills n'arrivent plus et ça ne
+   * reviendra pas tout seul. Trader en aveugle est interdit → suspendre les
+   * bots du mode (ordres CONSERVÉS sur l'exchange, desiredRunning conservé),
+   * alerter, retenter toutes les 5 min — le reconcile de la reprise rattrapera
+   * les fills manqués pendant la coupure.
+   */
+  private async onStreamLoginDeath(mode: BotConfig['mode']): Promise<void> {
+    const router = this.routers.get(mode)
+    router?.stop()
+    this.routers.delete(mode)
+    const ids = [...this.runners.entries()].filter(([, r]) => r.config.mode === mode).map(([id]) => id)
+    if (ids.length > 0) {
+      sendTelegram(
+        `🚨 <b>Flux privé OKX (${mode}) mort</b> : login refusé (clés/IP/horloge ?) — ` +
+          `${ids.length} bot(s) suspendu(s), ordres conservés. Nouvelle tentative toutes les 5 min.`,
+      )
+    }
+    for (const id of ids) {
+      await this.stop(id, {
+        keepDesired: true,
+        cancelOrders: false,
+        runOnStopHook: false,
+        reason: 'flux privé OKX mort (login refusé) — bot suspendu',
+      }).catch(() => {})
+    }
+    this.scheduleStreamRetry(mode)
+  }
+
+  private scheduleStreamRetry(mode: BotConfig['mode']): void {
+    if (this.streamRetryTimers.has(mode)) return
+    const t = setTimeout(() => {
+      this.streamRetryTimers.delete(mode)
+      void this.resumeSuspended(mode)
+    }, 300_000)
+    this.streamRetryTimers.set(mode, t)
+  }
+
+  /** Reprise des bots suspendus par une mort du flux privé : start() recrée le
+   *  routeur (login attendu) — s'il échoue encore, on re-planifie dans 5 min. */
+  private async resumeSuspended(mode: BotConfig['mode']): Promise<void> {
+    if (this.killSwitchActive) return
+    const rows = await this.db.select().from(botsTable)
+    const candidates = rows.filter((r) => r.desiredRunning && r.mode === mode && !this.runners.has(r.id))
+    if (candidates.length === 0) return
+    let failed = 0
+    for (const row of candidates) {
+      try {
+        await this.start(row.id)
+      } catch (err) {
+        failed++
+        console.error(`Reprise du bot ${row.id} (${mode}) échouée:`, err instanceof Error ? err.message : err)
+      }
+    }
+    if (failed > 0) this.scheduleStreamRetry(mode)
+    else sendTelegram(`✅ Flux privé OKX (${mode}) rétabli — ${candidates.length} bot(s) relancé(s)`)
   }
 
   releaseAdapter(mode: BotConfig['mode'], adapter: OKXLiveAdapter): void {
@@ -1062,29 +1227,20 @@ export class BotManager {
     }
   }
 
-  ensureBalancePolling(mode: BotConfig['mode'], market: MarketType, account: OkxAccount): void {
-    const key = `${mode}:${market}`
-    if (this.balancePollers.has(key)) return
-    const poll = async (): Promise<void> => {
-      try {
-        const balances = await account.balances(market)
-        this.balanceCache.set(key, { at: Date.now(), balances })
-      } catch {
-        /* keep stale */
-      }
-    }
-    void poll()
-    this.balancePollers.set(key, setInterval(() => void poll(), 20_000))
-  }
-
-  cachedBalances(mode: BotConfig['mode'], market: MarketType): Balance[] {
-    return this.balanceCache.get(`${mode}:${market}`)?.balances ?? []
-  }
-
   async stopAll(): Promise<void> {
+    for (const t of this.streamRetryTimers.values()) clearTimeout(t)
+    this.streamRetryTimers.clear()
+    // Arrêt du serveur (redeploy) : NE PAS annuler les ordres (le stop de
+    // protection résident doit survivre — reconcile le ré-adopte au redémarrage)
+    // et NE PAS exécuter onStop (le « retour en BTC » n'a pas de sens ici :
+    // le bot reprend exactement où il en était).
     for (const id of [...this.runners.keys()]) {
-      await this.stop(id, { reason: 'arrêt du serveur', keepDesired: true }).catch(() => {})
+      await this.stop(id, {
+        reason: 'arrêt du serveur',
+        keepDesired: true,
+        cancelOrders: false,
+        runOnStopHook: false,
+      }).catch(() => {})
     }
-    for (const t of this.balancePollers.values()) clearInterval(t)
   }
 }
