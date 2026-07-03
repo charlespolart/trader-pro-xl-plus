@@ -44,6 +44,10 @@ export interface BotConfig {
    *  premier démarrage : le bot démarre EN POSITION, comme le backtest
    *  base-denom, et sa première action est une vente au signal. Spot only. */
   initialBaseQty?: number
+  /** adopter TOUT le solde base libre du compte au 1er démarrage (lu via
+   *  l'API OKX, floored au stepSize). Prioritaire sur initialBaseQty.
+   *  Spot + compte réel (démo/live) uniquement — pas de sens en paper. */
+  adoptAllBase?: boolean
   /** futures only */
   leverage: number
   risk: BotRiskConfig

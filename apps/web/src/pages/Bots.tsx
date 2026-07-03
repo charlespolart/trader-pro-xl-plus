@@ -19,6 +19,7 @@ interface BotDraft {
   mode: BotConfig['mode']
   allocation: number
   initialBaseQty?: number
+  adoptAllBase?: boolean
   leverage: number
   params: ParamValues
   risk: BotRiskConfig
@@ -75,6 +76,7 @@ export function Bots() {
       mode: 'paper',
       allocation: 1000,
       initialBaseQty: undefined,
+      adoptAllBase: undefined,
       leverage: 1,
       params: s.defaults ?? {},
       risk: {},
@@ -91,6 +93,7 @@ export function Bots() {
       mode: cfg.mode,
       allocation: cfg.allocation,
       initialBaseQty: cfg.initialBaseQty,
+      adoptAllBase: cfg.adoptAllBase,
       leverage: cfg.leverage,
       params: cfg.params,
       risk: cfg.risk,
@@ -269,7 +272,14 @@ function BotForm({
           </select>
         </Field>
         <Field label="Mode">
-          <select className="input" value={draft.mode} onChange={(e) => onChange({ ...draft, mode: e.target.value as BotDraft['mode'] })}>
+          <select
+            className="input"
+            value={draft.mode}
+            onChange={(e) => {
+              const mode = e.target.value as BotDraft['mode']
+              onChange({ ...draft, mode, adoptAllBase: mode === 'paper' ? undefined : draft.adoptAllBase })
+            }}
+          >
             <option value="paper">Paper (simulation live)</option>
             <option value="testnet">Testnet OKX (démo)</option>
             <option value="live">LIVE (argent réel)</option>
@@ -295,14 +305,30 @@ function BotForm({
             label={`Position initiale (${draft.symbol.replace(/(USDT|USDC|FDUSD|BUSD|EUR|USD)$/, '') || 'base'} détenus)`}
             hint="comme le backtest : le bot ADOPTE ces coins au 1er démarrage et commence par VENDRE au signal. Laisser vide pour démarrer en quote."
           >
-            <input
-              className="input"
-              type="number"
-              step="any"
-              placeholder="ex. 0.5"
-              value={draft.initialBaseQty ?? ''}
-              onChange={(e) => onChange({ ...draft, initialBaseQty: e.target.value === '' ? undefined : Number(e.target.value) })}
-            />
+            <div className="space-y-1.5">
+              {draft.mode !== 'paper' && (
+                <label className="flex cursor-pointer items-center gap-2 text-[12.5px] text-zinc-300">
+                  <input
+                    type="checkbox"
+                    className="accent-accent"
+                    checked={draft.adoptAllBase ?? false}
+                    onChange={(e) =>
+                      onChange({ ...draft, adoptAllBase: e.target.checked ? true : undefined, initialBaseQty: e.target.checked ? undefined : draft.initialBaseQty })
+                    }
+                  />
+                  Adopter tout le solde disponible (lu sur OKX au démarrage)
+                </label>
+              )}
+              <input
+                className="input"
+                type="number"
+                step="any"
+                placeholder="ex. 0.5"
+                disabled={draft.adoptAllBase === true}
+                value={draft.initialBaseQty ?? ''}
+                onChange={(e) => onChange({ ...draft, initialBaseQty: e.target.value === '' ? undefined : Number(e.target.value) })}
+              />
+            </div>
           </Field>
         )}
         {draft.market === 'futures' && (

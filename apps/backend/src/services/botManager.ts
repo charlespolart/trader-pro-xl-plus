@@ -317,26 +317,38 @@ class BotRunner {
     // ---- position initiale (« je détiens déjà X BTC ») : adoptée au TOUT
     // premier démarrage uniquement — le bot démarre EN POSITION, comme le
     // backtest base-denom, et sa première action sera une VENTE au signal.
-    const seedQty = config.initialBaseQty ?? 0
-    if (!hadAdapterState && seedQty > 0) {
+    const wantAll = config.adoptAllBase === true
+    const askedQty = config.initialBaseQty ?? 0
+    if (!hadAdapterState && (wantAll || askedQty > 0)) {
       if (config.market !== 'spot') throw new Error('Position initiale : uniquement pour les bots spot')
+      let seeded = askedQty
       if (this.rawExec instanceof OKXLiveAdapter) {
         const bals = await liveAccount!.balances('spot')
         const baseFree = bals.find((b) => b.asset === this.symbolInfoV.baseAsset)?.free ?? 0
-        if (baseFree + 1e-9 < seedQty) {
+        if (wantAll) {
+          // tout le solde libre, floored au pas de l'instrument
+          seeded = floorToStep(baseFree, this.symbolInfoV.stepSize)
+          if (seeded <= 0) {
+            throw new Error(
+              `Adoption impossible : le compte ${config.mode === 'testnet' ? 'démo' : 'live'} ne détient ` +
+                `aucun ${this.symbolInfoV.baseAsset} libre`,
+            )
+          }
+        } else if (baseFree + 1e-9 < seeded) {
           throw new Error(
             `Position initiale impossible : le compte ${config.mode === 'testnet' ? 'démo' : 'live'} ne détient ` +
-              `que ${baseFree} ${this.symbolInfoV.baseAsset} libres (${seedQty} demandés)`,
+              `que ${baseFree} ${this.symbolInfoV.baseAsset} libres (${seeded} demandés)`,
           )
         }
-        this.rawExec.restore({ posQty: seedQty, posEntry: lastPrice, realizedNet: 0, seq: 0, quoteLedger: 0 })
+        this.rawExec.restore({ posQty: seeded, posEntry: lastPrice, realizedNet: 0, seq: 0, quoteLedger: 0 })
       } else {
-        this.rawExec.restoreSnapshot({ quoteFree: 0, baseFree: seedQty, posQty: seedQty, posEntry: lastPrice })
+        if (wantAll) throw new Error("« Adopter tout » nécessite un compte réel (démo/live) — en paper, saisissez une quantité")
+        this.rawExec.restoreSnapshot({ quoteFree: 0, baseFree: seeded, posQty: seeded, posEntry: lastPrice })
       }
       this.pushLog({
         time: Date.now(),
         level: 'info',
-        message: `Position initiale adoptée : ${seedQty} ${this.symbolInfoV.baseAsset} (réf. ${lastPrice}) — première action attendue : vente au signal de régime`,
+        message: `Position initiale adoptée${wantAll ? ' (tout le solde libre)' : ''} : ${seeded} ${this.symbolInfoV.baseAsset} (réf. ${lastPrice}) — première action attendue : vente au signal de régime`,
       })
     }
 
@@ -978,6 +990,7 @@ export class BotManager {
       params: row.params as BotConfig['params'],
       allocation: row.allocation,
       initialBaseQty: row.initialBaseQty ?? undefined,
+      adoptAllBase: row.adoptAllBase ?? undefined,
       leverage: row.leverage,
       risk: row.risk as BotConfig['risk'],
       createdAt: row.createdAt,
@@ -999,8 +1012,11 @@ export class BotManager {
     const entry = registry.get(input.strategyId)
     const validation = validateParams(entry.def.schema, input.params)
     if (!validation.ok) throw new Error(`Paramètres invalides: ${validation.errors.join('; ')}`)
-    if ((input.initialBaseQty ?? 0) > 0 && input.market !== 'spot') {
+    if (((input.initialBaseQty ?? 0) > 0 || input.adoptAllBase === true) && input.market !== 'spot') {
       throw new Error('Position initiale : uniquement pour les bots spot')
+    }
+    if (input.adoptAllBase === true && input.mode === 'paper') {
+      throw new Error("« Adopter tout » lit le solde réel via l'API — en paper, saisissez une quantité chiffrée")
     }
     if (input.market === 'futures' && input.mode !== 'paper') {
       const others = (await this.listConfigs()).filter(
@@ -1029,6 +1045,7 @@ export class BotManager {
       params: config.params,
       allocation: config.allocation,
       initialBaseQty: config.initialBaseQty ?? null,
+      adoptAllBase: config.adoptAllBase ?? null,
       leverage: config.leverage,
       risk: config.risk,
       desiredRunning: false,
@@ -1058,6 +1075,7 @@ export class BotManager {
         params: merged.params,
         allocation: merged.allocation,
         initialBaseQty: merged.initialBaseQty ?? null,
+        adoptAllBase: merged.adoptAllBase ?? null,
         leverage: merged.leverage,
         risk: merged.risk,
         updatedAt: merged.updatedAt,

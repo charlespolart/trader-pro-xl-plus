@@ -1,0 +1,1 @@
+ALTER TABLE "bots" ADD COLUMN "adopt_all_base" boolean;

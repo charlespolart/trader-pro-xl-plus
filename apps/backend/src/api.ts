@@ -133,6 +133,7 @@ export function buildApi(s: Services): Hono {
       allocation: body.allocation ?? 1000,
       initialBaseQty:
         typeof body.initialBaseQty === 'number' && body.initialBaseQty > 0 ? body.initialBaseQty : undefined,
+      adoptAllBase: body.adoptAllBase === true ? true : undefined,
       leverage: body.leverage ?? 1,
       risk: body.risk ?? {},
     })
