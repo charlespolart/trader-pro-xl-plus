@@ -1018,6 +1018,9 @@ export class BotManager {
     if (input.adoptAllBase === true && input.mode === 'paper') {
       throw new Error("« Adopter tout » lit le solde réel via l'API — en paper, saisissez une quantité chiffrée")
     }
+    if (input.allocation <= 0 && (input.initialBaseQty ?? 0) <= 0 && input.adoptAllBase !== true) {
+      throw new Error('Départ vide : donnez une allocation (quote) OU une position initiale (coins) — sinon le bot n\'a rien à gérer')
+    }
     if (input.market === 'futures' && input.mode !== 'paper') {
       const others = (await this.listConfigs()).filter(
         (b) => b.market === 'futures' && b.symbol === input.symbol && b.mode === input.mode,
@@ -1064,6 +1067,9 @@ export class BotManager {
     const validation = validateParams(entry.def.schema, merged.params)
     if (!validation.ok) throw new Error(`Paramètres invalides: ${validation.errors.join('; ')}`)
     merged.params = validation.values
+    if (merged.allocation <= 0 && (merged.initialBaseQty ?? 0) <= 0 && merged.adoptAllBase !== true) {
+      throw new Error('Départ vide : donnez une allocation (quote) OU une position initiale (coins) — sinon le bot n\'a rien à gérer')
+    }
     await this.db
       .update(botsTable)
       .set({

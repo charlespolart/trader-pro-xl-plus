@@ -68,14 +68,15 @@ export function Bots() {
       void alertDialog({ message: 'Aucune stratégie valide disponible.' })
       return
     }
+    const accum = s.id.includes('accumulator')
     setDraft({
       name: '',
       strategyId: s.id,
       market: (s.markets?.[0] ?? 'spot') as MarketType,
-      symbol: 'BTCUSDT',
+      symbol: s.id.startsWith('eth') ? 'ETHUSDT' : 'BTCUSDT',
       mode: 'paper',
-      allocation: 1000,
-      initialBaseQty: undefined,
+      allocation: accum ? 0 : 1000,
+      initialBaseQty: accum ? 1 : undefined,
       adoptAllBase: undefined,
       leverage: 1,
       params: s.defaults ?? {},
@@ -237,6 +238,16 @@ function BotForm({
 }) {
   const strategy = useMemo(() => strategies.find((s) => s.id === draft.strategyId), [strategies, draft.strategyId])
   const markets = strategy?.markets ?? ['spot', 'futures']
+  const baseAsset = draft.symbol.replace(/(USDT|USDC|FDUSD|BUSD|EUR|USD)$/, '') || 'base'
+  // départ côté coins (position initiale / tout adopter) ou côté quote (allocation)
+  const startInBase = draft.market === 'spot' && (draft.adoptAllBase === true || draft.initialBaseQty !== undefined)
+  const setStartIn = (base: boolean): void => {
+    if (base) {
+      onChange({ ...draft, allocation: 0, adoptAllBase: draft.mode !== 'paper' ? true : undefined, initialBaseQty: draft.mode === 'paper' ? (draft.initialBaseQty ?? 1) : undefined })
+    } else {
+      onChange({ ...draft, allocation: draft.allocation > 0 ? draft.allocation : 1000, adoptAllBase: undefined, initialBaseQty: undefined })
+    }
+  }
 
   const setStrategy = (id: string): void => {
     const s = strategies.find((x) => x.id === id)
@@ -297,13 +308,30 @@ function BotForm({
         <Field label="Paire">
           <input className="input" value={draft.symbol} onChange={(e) => onChange({ ...draft, symbol: e.target.value.toUpperCase() })} />
         </Field>
-        <Field label="Allocation (USDC/USDT)" hint="lue au 1er démarrage seulement — ensuite la tranche compose ses gains/pertes">
-          <input className="input" type="number" value={draft.allocation} onChange={(e) => onChange({ ...draft, allocation: Number(e.target.value) })} />
-        </Field>
         {draft.market === 'spot' && (
+          <Field label="Départ" hint="accumulateurs : « coins » — le bot démarre EN position, comme le backtest, et VEND au 1er signal">
+            <div className="seg w-full">
+              <button type="button" className="flex-1" aria-pressed={startInBase} onClick={() => setStartIn(true)}>
+                Je détiens déjà les {baseAsset}
+              </button>
+              <button type="button" className="flex-1" aria-pressed={!startInBase} onClick={() => setStartIn(false)}>
+                Je pars en USDC
+              </button>
+            </div>
+          </Field>
+        )}
+        {(draft.market !== 'spot' || !startInBase) && (
           <Field
-            label={`Position initiale (${draft.symbol.replace(/(USDT|USDC|FDUSD|BUSD|EUR|USD)$/, '') || 'base'} détenus)`}
-            hint="comme le backtest : le bot ADOPTE ces coins au 1er démarrage et commence par VENDRE au signal. Laisser vide pour démarrer en quote."
+            label={draft.market === 'futures' ? 'Allocation de marge (quote)' : 'Allocation (USDC/USDT)'}
+            hint="capital de départ de la tranche — lu au 1er démarrage, ensuite elle compose ses gains/pertes"
+          >
+            <input className="input" type="number" value={draft.allocation} onChange={(e) => onChange({ ...draft, allocation: Number(e.target.value) })} />
+          </Field>
+        )}
+        {draft.market === 'spot' && startInBase && (
+          <Field
+            label={`Position initiale (${baseAsset})`}
+            hint={draft.mode === 'paper' ? 'paper : quantité chiffrée obligatoire (pas de solde réel à lire)' : 'décochez pour saisir une quantité précise'}
           >
             <div className="space-y-1.5">
               {draft.mode !== 'paper' && (
@@ -313,21 +341,22 @@ function BotForm({
                     className="accent-accent"
                     checked={draft.adoptAllBase ?? false}
                     onChange={(e) =>
-                      onChange({ ...draft, adoptAllBase: e.target.checked ? true : undefined, initialBaseQty: e.target.checked ? undefined : draft.initialBaseQty })
+                      onChange({ ...draft, adoptAllBase: e.target.checked ? true : undefined, initialBaseQty: e.target.checked ? undefined : (draft.initialBaseQty ?? 1) })
                     }
                   />
                   Adopter tout le solde disponible (lu sur OKX au démarrage)
                 </label>
               )}
-              <input
-                className="input"
-                type="number"
-                step="any"
-                placeholder="ex. 0.5"
-                disabled={draft.adoptAllBase === true}
-                value={draft.initialBaseQty ?? ''}
-                onChange={(e) => onChange({ ...draft, initialBaseQty: e.target.value === '' ? undefined : Number(e.target.value) })}
-              />
+              {draft.adoptAllBase !== true && (
+                <input
+                  className="input"
+                  type="number"
+                  step="any"
+                  placeholder="ex. 0.5"
+                  value={draft.initialBaseQty ?? ''}
+                  onChange={(e) => onChange({ ...draft, initialBaseQty: e.target.value === '' ? undefined : Number(e.target.value) })}
+                />
+              )}
             </div>
           </Field>
         )}
