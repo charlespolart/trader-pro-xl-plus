@@ -1,55 +1,47 @@
 # Audit du code de l'ère Opus 4.8 (bb7cb43..a4d7479) — chantier restant
 
-Checkup 2026-07-03 (3 agents + revue directe). Les correctifs chirurgicaux sont
-commités ; CE DOCUMENT liste ce qui reste à faire, par priorité. **Les P0 sont
-un prérequis avant de passer du démo au réel.** Cause structurelle commune :
-l'état spot d'un bot n'est reconstruit QUE par le flux WS privé, sans source
-REST de rattrapage.
+Checkup 2026-07-03 (3 agents + revue directe). **MISE À JOUR 2026-07-03 soir :
+les P0 et P1 ci-dessous sont IMPLÉMENTÉS** (commits 1722566, d7e473f, 4ac2689 —
+140 tests verts, smoke paper OK). Reste avant l'argent réel : le smoke démo sur
+le VPS (§ Validation) + supprimer le bot VPS 21d1732f (er-flow-trend).
 
-## P0 — avant l'argent réel
+## P0 — avant l'argent réel — ✅ FAIT
 
-1. **Le stop de protection n'est quasi jamais armé en live** (strategies +
-   botManager) : `onFill` lit `ctx.balances` = cache pollé 20 s → l'USDC de la
-   vente n'y est pas encore → `usdt=0`, stop sauté, `bracket=true` posé quand
-   même. Aggravants : `find(asset !== base)` prend le premier asset non-BTC du
-   compte (pas `quoteAsset`), et le montant = solde du COMPTE entier (pas la
-   tranche du bot). Fix : balances dérivées de l'état du bot exposées au
-   runtime (comme SimExchange), ou refresh du cache à chaque fill ; filtrer
-   par quoteAsset ; borner par allocation.
-2. **Fills perdables sans rattrapage** (okxLiveAdapter/privateWs) :
-   (a) l'ordre n'entre dans la map qu'APRÈS l'ack REST → un push WS `filled`
-   plus rapide est jeté ; (b) réponse REST perdue → ordre orphelin + bot error ;
-   (c) échec de login WS (rotation clés, IP, horloge) → stream stoppé
-   définitivement, bots continuent en aveugle sans alerte ; (d) rattrapage spot
-   au redémarrage = stub (spec §14) → un stop exécuté pendant le down = double
-   rachat. Fix : map avant REST ; backfill `/api/v5/trade/fills` (ou getOrder
-   par clOrdId) au reconnect/boot ; mort du login → pause bots + Telegram.
+1. ✅ **Stop jamais armé en live** : `OKXLiveAdapter.quoteLedger` (tranche de
+   quote du bot, débitée/créditée à chaque fill, persistée, clampée sur le
+   solde réel au reconcile) + `balances()` bot-scopées synchrones avec les
+   fills + stratégies `find(asset === quoteAsset)`. Cache compte 20 s supprimé.
+2. ✅ **Fills perdables** : (a) map avant REST ; (b) issue REST inconnue →
+   sonde `getOrder`/`getAlgoOrder` par clOrdId (adopte + rejoue), sinon l'ordre
+   reste suivi pour rattrapage ; (c) login WS refusé en vie → suspension des
+   bots du mode (ordres conservés) + Telegram + reprise auto 5 min ; `start()`
+   du stream n'aboutit qu'au login réussi ; (d) backfill spec §14 au reconcile
+   (algo `effective` → actualSz/actualPx, partiels rattrapés, idempotent).
 
-## P1
+## P1 — ✅ FAIT
 
-3. **Redeploy** : `stopAll` annule le stop résident (cancelOrders=true) et le
-   rachat d'`onStop` est bloqué par riskCheck (status='stopping') puis avalé —
-   sur shutdown keepDesired : ne pas annuler les ordres, ne pas appeler onStop.
-4. **clOrdId réutilisable après crash** (seq snapshoté 15 s) → rejet 51016 ou
-   écrasement d'un ancien ordre en DB. Fix : composant temporel dans le seq.
-5. **reconcile() non protégé** : un 5xx OKX au boot → auto-resume échoue en
-   silence (+ adapter zombie enregistré sur le routeur). Fix : guards +
-   retry/backoff + release dans le catch.
-6. **closePosition/quoteQty non arrondis** (`sz` rejeté par lotSz, notation
-   exponentielle) → la fermeture d'urgence peut échouer en silence. Fix :
-   floor lotSz/0,01 + format décimal fixe dans sizeFor.
+3. ✅ Redeploy : `stopAll` → `cancelOrders:false, runOnStopHook:false` (le stop
+   résident survit) ; fenêtre onStop dans riskCheck pour le stop utilisateur
+   (le « retour en BTC » s'exécute, vérifié en smoke) ; kill switch sans onStop.
+4. ✅ clOrdId : composant temporel base36 du boot dans `makeClOrdId`.
+5. ✅ reconcile guardé par étape (notes) ; auto-start 3×30 s + Telegram ;
+   échec de start → `releaseExec` (plus d'adapter zombie).
+6. ✅ `fmtSz` décimal fixe + floors (qty→lotSz, quoteQty→0,01) ;
+   closePosition arrondi au stepSize.
 
-## P2 (backend)
+## P2 (backend) — partiellement traité
 
-- Canal WS `positions` souscrit mais jeté par le routeur (le supprimer ou s'en
-  servir pour détecter les désyncs futures).
-- Pollers de balance jamais arrêtés par bot + credentials figés à la création.
-- Id de fill `${clOrdId}-${time}-${qty}` : capturer `tradeId` OKX (dédup sûre).
-- `fill.feeAsset` garde la devise d'origine après conversion en quote.
+- ✅ Canal WS `positions` retiré ; ✅ pollers de balance supprimés (obsolètes) ;
+  ✅ `tradeId` OKX = id de fill + dédup (+ garde accFillSz) ; ✅ `feeAsset` =
+  quote après conversion ; ✅ maker détecté via `execType`.
+- Credentials figés à la création du routeur (rotation de clés = redémarrer).
 - `Math.abs(fillFee)` transformerait un rebate maker en coût (sans effet tant
   qu'on n'utilise que MARKET/STOP_MARKET).
 - Live spot : pas de seed de position initiale — un compte financé en BASE
   donne posQty=0 → bot inerte (documenter « financer en quote » ou seeder).
+- Stop annulé À LA MAIN sur OKX pendant que le bot est down : marqué CANCELED
+  au reconcile mais le bot ne ré-arme pas (bracket reste true) — interférence
+  externe, hors modèle.
 - EEA : stop `triggerPxType:last` sur la paire USDC vs signal Binance USDT —
   un depeg USDC déclencherait le rachat au pire prix (risque assumé, à savoir).
 
@@ -73,10 +65,12 @@ REST de rattrapage.
 
 ---
 
-# Spec d'implémentation (préparée à chaud en fin de session d'audit)
+# Spec d'implémentation — ✅ EXÉCUTÉE le 2026-07-03 (archive)
 
-Décisions de design prises avec le contexte complet — la session d'exécution
-peut les suivre directement. Ordre = ordre d'implémentation recommandé.
+Décisions de design prises avec le contexte complet, implémentées telles
+quelles (écarts notables : la sonde d'issue inconnue attend 1,5 s avant
+getOrder ; le rattrapage couvre AUSSI les partiels d'ordres encore ouverts ;
+un tick sim synthétique remplit le rachat d'onStop en paper).
 
 ## 1. P0-1 — balances bot-locales dans l'adapter (le fix du stop jamais armé)
 
@@ -143,9 +137,16 @@ d. **Mort du login WS = incident** : le onError de OkxPrivateStream porte déjà
 
 ## 5. Validation de la session d'exécution
 
-1. `bun run typecheck` + `bun test` (113 verts aujourd'hui) + nouveaux tests
-   (ledger, getOrder-adoption, clOrdId, fmtSz).
-2. Smoke paper local : bot eth-accumulator paper (spot marche en local via
-   mirror), vérifier logs de fills + stop posé après une vente simulée.
-3. Smoke démo OKX sur le VPS (le bot 21d1732f du handoff précédent) : vérifier
-   que le stop est ARMÉ après la première vente (c'était le symptôme P0-1).
+1. ✅ `bun run typecheck` (7/7) + `bun test` : 140 verts (113 + 27 nouveaux —
+   ledger, map-avant-REST, adoption, backfill, clamp, dédup tradeId, clOrdId
+   boot, fmtSz, getOrder) + baseline backtest reproduite à l'identique
+   (btcvseth : BTC 2019→26 +61,9 %/57tr, full +126,2 % — l'édit stratégie est
+   neutre).
+2. ✅ Smoke paper local : bot eth-accumulator créé/démarré/arrêté proprement ;
+   le « retour en ETH » d'onStop s'exécute désormais (FILLED, allocation
+   entière convertie) au lieu d'être bloqué par le riskCheck puis avalé.
+3. ⬜ RESTE — smoke démo OKX sur le VPS après déploiement : (a) SUPPRIMER
+   d'abord le bot 21d1732f (er-flow-trend n'existe plus au registre), (b)
+   créer un bot btc-accumulator démo, (c) vérifier que le STOP est ARMÉ après
+   la première vente (symptôme historique P0-1) et que le ledger suit les
+   fills dans les logs de réconciliation.
