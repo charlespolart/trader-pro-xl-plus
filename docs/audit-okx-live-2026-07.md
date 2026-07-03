@@ -145,8 +145,24 @@ d. **Mort du login WS = incident** : le onError de OkxPrivateStream porte déjà
 2. ✅ Smoke paper local : bot eth-accumulator créé/démarré/arrêté proprement ;
    le « retour en ETH » d'onStop s'exécute désormais (FILLED, allocation
    entière convertie) au lieu d'être bloqué par le riskCheck puis avalé.
-3. ⬜ RESTE — smoke démo OKX sur le VPS après déploiement : (a) SUPPRIMER
-   d'abord le bot 21d1732f (er-flow-trend n'existe plus au registre), (b)
-   créer un bot btc-accumulator démo, (c) vérifier que le STOP est ARMÉ après
-   la première vente (symptôme historique P0-1) et que le ledger suit les
-   fills dans les logs de réconciliation.
+3. ✅ Smoke démo OKX sur le VPS (2026-07-03, image ed1eede) — smoke MÉCANIQUE
+   de l'adapter dans le conteneur déployé, sur la vraie API démo (BTC-USDC
+   EEA) : WS login OK, BUY→fill WS→ledger débité, SELL→ledger crédité AU
+   onFill (P0-1), **STOP ARMÉ** (algo 'live' côté OKX), reconcile ré-adopte le
+   stop (redeploy simulé), cancel propre. Le smoke a DÉCOUVERT puis validé le
+   fix « sz en quote » (voir ci-dessous). Bot 21d1732f : déjà supprimé.
+   → Bot persistant `BTC Accumulator (démo)` (e7138dae, testnet, alloc 1000)
+   démarré : validation passive du cycle complet réel (rachat → vente → stop)
+   sur les prochains signaux 4h — à surveiller via Telegram/UI.
+
+**Découverte du smoke (fix commité ed1eede)** : OKX lit le `sz` d'un
+trigger-market **BUY spot en QUOTE** et **ignore tgtCcy** pour ordType=trigger
+(SELL/limit restent en base). En base → 51020 systématique = le stop de rachat
+ne se serait JAMAIS armé, même avec P0-1 corrigé. buildAlgoBody convertit
+qty×triggerPx ; le backfill lit l'ordre régulier engendré (unités sûres).
+
+**Incidents workflow corrigés au passage** (premiers runs réels du deploy) :
+cron backup vs pipefail sans crontab existante (6849889) ; `docker exec -T`
+qui avalait le heredoc stdin → le script « réussissait » sans redémarrer le
+backend (bc25da0, sentinelle REMOTE_SCRIPT_COMPLET ajoutée) ; ADMIN_PASSWORD
+requis en prod → généré et posé dans /srv/tpx/.env avant le déploiement.
