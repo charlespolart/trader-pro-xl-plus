@@ -36,6 +36,9 @@
     font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
     font-size: 14px;
     font-feature-settings: 'tnum' 1;
+    /* thème les contrôles natifs (checkbox, radio, range, progress) en
+       phosphore — hérité partout, plus jamais de bleu système */
+    accent-color: var(--color-accent);
   }
 
   ::selection {
