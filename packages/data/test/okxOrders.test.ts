@@ -98,5 +98,20 @@ describe('okx orders', () => {
       instId: 'BTC-USDT-SWAP', market: 'futures', req, clOrdId: 'tpxabc3', ctVal: 0.01, lotSz: 1, refPrice: 50000,
     })
     expect(body).toMatchObject({ ordType: 'trigger', triggerPx: '48000', orderPx: '-1', sz: '5', reduceOnly: 'true' })
+    expect(body.tgtCcy).toBeUndefined()
+  })
+
+  it('spot trigger-market BUY forces tgtCcy=base_ccy (OKX lit sz en quote par défaut — smoke 2026-07-03)', () => {
+    const req: OrderRequest = { side: 'BUY', type: 'STOP_MARKET', qty: 0.0125, stopPrice: 60000 }
+    const body = buildAlgoBody({
+      instId: 'BTC-USDC', market: 'spot', req, clOrdId: 'tpxabc4', ctVal: 1, lotSz: 1e-8, refPrice: 58000,
+    })
+    expect(body).toMatchObject({ ordType: 'trigger', sz: '0.0125', tgtCcy: 'base_ccy', orderPx: '-1' })
+    // trigger-LIMIT : sz est toujours en base côté OKX, tgtCcy ne s'applique pas
+    const limit = buildAlgoBody({
+      instId: 'BTC-USDC', market: 'spot', req: { ...req, type: 'STOP_LIMIT', price: 60100 }, clOrdId: 'tpxabc5', ctVal: 1, lotSz: 1e-8, refPrice: 58000,
+    })
+    expect(limit.tgtCcy).toBeUndefined()
+    expect(limit.orderPx).toBe('60100')
   })
 })

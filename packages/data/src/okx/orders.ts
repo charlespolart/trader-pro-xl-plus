@@ -129,6 +129,12 @@ export function buildAlgoBody(args: BuildArgs): Record<string, unknown> {
     orderPx: isLimit && req.price !== undefined ? String(req.price) : '-1',
     triggerPxType: 'last',
   }
+  // SPOT + exécution market : OKX lit `sz` en QUOTE par défaut pour un BUY
+  // (même convention que les markets réguliers) — nos qty sont TOUJOURS en
+  // base. Sans ceci, le stop de rachat de l'accumulateur (BUY trigger) est
+  // rejeté 51020 (« minimum order amount ») ou achèterait des miettes.
+  // Attrapé par le smoke démo du 2026-07-03.
+  if (market === 'spot' && !isLimit) body.tgtCcy = 'base_ccy'
   if (market === 'futures' && req.reduceOnly) body.reduceOnly = 'true'
   return body
 }
