@@ -131,6 +131,8 @@ export function buildApi(s: Services): Hono {
       mode: body.mode,
       params: body.params ?? defaultParams(entry.def.schema),
       allocation: body.allocation ?? 1000,
+      initialBaseQty:
+        typeof body.initialBaseQty === 'number' && body.initialBaseQty > 0 ? body.initialBaseQty : undefined,
       leverage: body.leverage ?? 1,
       risk: body.risk ?? {},
     })

@@ -87,6 +87,9 @@ export const bots = pgTable('bots', {
   mode: text('mode').notNull(),
   params: jsonb('params').notNull(),
   allocation: doublePrecision('allocation').notNull(),
+  /** position initiale en BASE (accumulateurs : « je détiens déjà X BTC ») —
+   *  adoptée au tout premier démarrage, comme le départ du backtest */
+  initialBaseQty: doublePrecision('initial_base_qty'),
   leverage: integer('leverage').notNull().default(1),
   risk: jsonb('risk').notNull(),
   /** restart the bot automatically when the server boots */

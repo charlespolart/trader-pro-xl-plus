@@ -18,6 +18,7 @@ interface BotDraft {
   symbol: string
   mode: BotConfig['mode']
   allocation: number
+  initialBaseQty?: number
   leverage: number
   params: ParamValues
   risk: BotRiskConfig
@@ -73,6 +74,7 @@ export function Bots() {
       symbol: 'BTCUSDT',
       mode: 'paper',
       allocation: 1000,
+      initialBaseQty: undefined,
       leverage: 1,
       params: s.defaults ?? {},
       risk: {},
@@ -88,6 +90,7 @@ export function Bots() {
       symbol: cfg.symbol,
       mode: cfg.mode,
       allocation: cfg.allocation,
+      initialBaseQty: cfg.initialBaseQty,
       leverage: cfg.leverage,
       params: cfg.params,
       risk: cfg.risk,
@@ -284,9 +287,24 @@ function BotForm({
         <Field label="Paire">
           <input className="input" value={draft.symbol} onChange={(e) => onChange({ ...draft, symbol: e.target.value.toUpperCase() })} />
         </Field>
-        <Field label="Allocation (quote)">
+        <Field label="Allocation (USDC/USDT)" hint="lue au 1er démarrage seulement — ensuite la tranche compose ses gains/pertes">
           <input className="input" type="number" value={draft.allocation} onChange={(e) => onChange({ ...draft, allocation: Number(e.target.value) })} />
         </Field>
+        {draft.market === 'spot' && (
+          <Field
+            label={`Position initiale (${draft.symbol.replace(/(USDT|USDC|FDUSD|BUSD|EUR|USD)$/, '') || 'base'} détenus)`}
+            hint="comme le backtest : le bot ADOPTE ces coins au 1er démarrage et commence par VENDRE au signal. Laisser vide pour démarrer en quote."
+          >
+            <input
+              className="input"
+              type="number"
+              step="any"
+              placeholder="ex. 0.5"
+              value={draft.initialBaseQty ?? ''}
+              onChange={(e) => onChange({ ...draft, initialBaseQty: e.target.value === '' ? undefined : Number(e.target.value) })}
+            />
+          </Field>
+        )}
         {draft.market === 'futures' && (
           <Field label="Levier">
             <input

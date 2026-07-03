@@ -434,6 +434,12 @@ export class OKXLiveAdapter implements ExecutionAdapter {
   }
 
   equity(): number {
+    if (this.market === 'spot') {
+      // valeur de marché de la tranche (quote + coins au dernier prix) —
+      // vraie pour un départ en quote COMME pour une position initiale
+      // adoptée (où « allocation + PnL » n'aurait aucun sens)
+      return Math.max(0, this.quoteLedger) + this.posQty * this.lastPriceV
+    }
     const uPnl = this.posQty === 0 ? 0 : (this.lastPriceV - this.posEntry) * this.posQty
     return this.o.allocation + this.realizedNet + uPnl
   }

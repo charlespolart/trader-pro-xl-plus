@@ -40,6 +40,10 @@ export interface BotConfig {
   params: ParamValues
   /** virtual budget allocated to this bot, in quote currency */
   allocation: number
+  /** position initiale en BASE (« je détiens déjà X BTC ») — adoptée au tout
+   *  premier démarrage : le bot démarre EN POSITION, comme le backtest
+   *  base-denom, et sa première action est une vente au signal. Spot only. */
+  initialBaseQty?: number
   /** futures only */
   leverage: number
   risk: BotRiskConfig

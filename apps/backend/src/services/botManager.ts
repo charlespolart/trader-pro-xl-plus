@@ -162,6 +162,7 @@ class BotRunner {
     const lastPrice = await envMkt.price(config.symbol)
 
     // ---- execution adapter
+    let liveAccount: OkxAccount | null = null
     if (config.mode === 'paper') {
       const sim = new SimExchange({
         market: config.market,
@@ -203,6 +204,7 @@ class BotRunner {
       const instId = toInstId(symbolInfo.baseAsset, execQuote, config.market)
       const rest = new OkxRest({ demo: testnet, credentials: creds })
       const account = new OkxAccount(rest)
+      liveAccount = account
       let instrument
       try {
         instrument = await account.instrument(instId)
@@ -288,6 +290,9 @@ class BotRunner {
 
     // ---- restore persisted state
     const stateRows = await db.select().from(botStateTable).where(eq(botStateTable.botId, config.id))
+    const hadAdapterState =
+      stateRows.length > 0 &&
+      ((stateRows[0]!.state ?? {}) as Record<string, unknown>)[ADAPTER_STATE_KEY] !== undefined
     if (stateRows.length > 0) {
       const row = stateRows[0]!
       const state = (row.state ?? {}) as Record<string, unknown>
@@ -307,6 +312,32 @@ class BotRunner {
         this.counters.pnlDay = row.pnlDay
         this.counters.realizedPnlToday = row.realizedPnlToday
       }
+    }
+
+    // ---- position initiale (« je détiens déjà X BTC ») : adoptée au TOUT
+    // premier démarrage uniquement — le bot démarre EN POSITION, comme le
+    // backtest base-denom, et sa première action sera une VENTE au signal.
+    const seedQty = config.initialBaseQty ?? 0
+    if (!hadAdapterState && seedQty > 0) {
+      if (config.market !== 'spot') throw new Error('Position initiale : uniquement pour les bots spot')
+      if (this.rawExec instanceof OKXLiveAdapter) {
+        const bals = await liveAccount!.balances('spot')
+        const baseFree = bals.find((b) => b.asset === this.symbolInfoV.baseAsset)?.free ?? 0
+        if (baseFree + 1e-9 < seedQty) {
+          throw new Error(
+            `Position initiale impossible : le compte ${config.mode === 'testnet' ? 'démo' : 'live'} ne détient ` +
+              `que ${baseFree} ${this.symbolInfoV.baseAsset} libres (${seedQty} demandés)`,
+          )
+        }
+        this.rawExec.restore({ posQty: seedQty, posEntry: lastPrice, realizedNet: 0, seq: 0, quoteLedger: 0 })
+      } else {
+        this.rawExec.restoreSnapshot({ quoteFree: 0, baseFree: seedQty, posQty: seedQty, posEntry: lastPrice })
+      }
+      this.pushLog({
+        time: Date.now(),
+        level: 'info',
+        message: `Position initiale adoptée : ${seedQty} ${this.symbolInfoV.baseAsset} (réf. ${lastPrice}) — première action attendue : vente au signal de régime`,
+      })
     }
 
     if (this.rawExec instanceof OKXLiveAdapter) {
@@ -946,6 +977,7 @@ export class BotManager {
       mode: row.mode as BotConfig['mode'],
       params: row.params as BotConfig['params'],
       allocation: row.allocation,
+      initialBaseQty: row.initialBaseQty ?? undefined,
       leverage: row.leverage,
       risk: row.risk as BotConfig['risk'],
       createdAt: row.createdAt,
@@ -967,6 +999,9 @@ export class BotManager {
     const entry = registry.get(input.strategyId)
     const validation = validateParams(entry.def.schema, input.params)
     if (!validation.ok) throw new Error(`Paramètres invalides: ${validation.errors.join('; ')}`)
+    if ((input.initialBaseQty ?? 0) > 0 && input.market !== 'spot') {
+      throw new Error('Position initiale : uniquement pour les bots spot')
+    }
     if (input.market === 'futures' && input.mode !== 'paper') {
       const others = (await this.listConfigs()).filter(
         (b) => b.market === 'futures' && b.symbol === input.symbol && b.mode === input.mode,
@@ -993,6 +1028,7 @@ export class BotManager {
       mode: config.mode,
       params: config.params,
       allocation: config.allocation,
+      initialBaseQty: config.initialBaseQty ?? null,
       leverage: config.leverage,
       risk: config.risk,
       desiredRunning: false,
@@ -1021,6 +1057,7 @@ export class BotManager {
         mode: merged.mode,
         params: merged.params,
         allocation: merged.allocation,
+        initialBaseQty: merged.initialBaseQty ?? null,
         leverage: merged.leverage,
         risk: merged.risk,
         updatedAt: merged.updatedAt,

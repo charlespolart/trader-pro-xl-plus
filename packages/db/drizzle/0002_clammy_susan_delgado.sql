@@ -1,0 +1,1 @@
+ALTER TABLE "bots" ADD COLUMN "initial_base_qty" double precision;

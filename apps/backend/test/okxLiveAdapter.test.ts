@@ -149,6 +149,19 @@ describe('OKXLiveAdapter quoteLedger (P0-1)', () => {
     expect(adapter.balances().find((b) => b.asset === 'BTC')?.free).toBeCloseTo(0.1998, 9)
   })
 
+  it('tranche seedée (position initiale) : équité mark-to-market, la vente crédite le ledger', async () => {
+    const { adapter } = mkAdapter({ captured: [] }, SPOT_SI, 0)
+    adapter.restore({ posQty: 0.5, posEntry: 60_000, realizedNet: 0, seq: 0, quoteLedger: 0 })
+    adapter.setLastPrice(61_000)
+    expect(adapter.balances().find((b) => b.asset === 'BTC')?.free).toBeCloseTo(0.5, 9)
+    expect(adapter.balances().find((b) => b.asset === 'USDT')?.free).toBe(0)
+    expect(adapter.equity()).toBeCloseTo(0.5 * 61_000, 6)
+    const order = await adapter.submit({ side: 'SELL', type: 'MARKET', qty: 0.5 })
+    adapter.handleOrderEvent(fillEvent(order.clientId, { side: 'sell', fillSz: '0.5', fillPx: '61000', fillFee: '-15.25', accFillSz: '0.5' }))
+    expect(adapter.balances().find((b) => b.asset === 'USDT')?.free).toBeCloseTo(0.5 * 61_000 - 15.25, 6)
+    expect(adapter.equity()).toBeCloseTo(0.5 * 61_000 - 15.25, 6)
+  })
+
   it('round-trips quoteLedger through snapshot/restore and derives it for legacy snapshots', () => {
     const { adapter } = mkAdapter({}, SPOT_SI, 10_000)
     adapter.restore({ posQty: 0, posEntry: 0, realizedNet: 500, quoteLedger: 10_500 })
