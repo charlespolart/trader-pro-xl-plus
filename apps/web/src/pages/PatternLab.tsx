@@ -115,21 +115,21 @@ export function PatternLab() {
             <input className="input w-36" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
           </Field>
           <label className="flex cursor-pointer items-center gap-2 py-2 text-sm">
-            <input type="checkbox" checked={requireTrend} onChange={(e) => setRequireTrend(e.target.checked)} className="accent-blue-500" />
+            <input type="checkbox" checked={requireTrend} onChange={(e) => setRequireTrend(e.target.checked)} className="accent-accent" />
             Contexte de tendance
           </label>
           <label
             className="flex cursor-pointer items-center gap-2 py-2 text-sm"
             title="Hammer/inverted hammer verts, hanging man/shooting star rouges. Les références (Nison, StockCharts) ne font pas de la couleur un critère — option pour suivre les fiches simplifiées."
           >
-            <input type="checkbox" checked={strictColor} onChange={(e) => setStrictColor(e.target.checked)} className="accent-blue-500" />
+            <input type="checkbox" checked={strictColor} onChange={(e) => setStrictColor(e.target.checked)} className="accent-accent" />
             Couleur stricte
           </label>
           <label
             className="flex cursor-pointer items-center gap-2 py-2 text-sm"
             title="Exiger les gaps des définitions canoniques (piercing sous le plus bas, dark cloud au-dessus du plus haut, gaps des étoiles…). Quasi muet en crypto 24/7."
           >
-            <input type="checkbox" checked={strictGaps} onChange={(e) => setStrictGaps(e.target.checked)} className="accent-blue-500" />
+            <input type="checkbox" checked={strictGaps} onChange={(e) => setStrictGaps(e.target.checked)} className="accent-accent" />
             Gaps stricts
           </label>
           <Field label="Tendance min (%)">

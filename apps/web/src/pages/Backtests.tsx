@@ -360,7 +360,7 @@ function BacktestForm({
         </Field>
         {draft.market === 'futures' && (
           <label className="flex cursor-pointer items-center gap-2 self-end py-2 text-sm">
-            <input type="checkbox" checked={draft.fundingEnabled} onChange={(e) => onChange({ ...draft, fundingEnabled: e.target.checked })} className="accent-blue-500" />
+            <input type="checkbox" checked={draft.fundingEnabled} onChange={(e) => onChange({ ...draft, fundingEnabled: e.target.checked })} className="accent-accent" />
             Funding historique
           </label>
         )}

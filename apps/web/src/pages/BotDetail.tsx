@@ -246,7 +246,7 @@ function RefitCard({ botId }: { botId: string }) {
               type="checkbox"
               checked={draft.enabled}
               onChange={(e) => setDraft({ ...draft, enabled: e.target.checked })}
-              className="accent-blue-500"
+              className="accent-accent"
             />
             Activé
           </label>

@@ -228,7 +228,7 @@ export function BacktestDetail() {
                     max={candles.length}
                     value={replay}
                     onChange={(e) => setReplay(Number(e.target.value))}
-                    className="w-64 accent-blue-500"
+                    className="w-64 accent-accent"
                   />
                   <button className="btn-ghost btn-sm btn-icon" onClick={() => setPlaying((p) => !p)}>
                     {playing ? <Pause size={15} /> : <Play size={15} />}

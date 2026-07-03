@@ -349,7 +349,7 @@ function OptForm({
             type="checkbox"
             checked={draft.useWalkForward}
             onChange={(e) => onChange({ ...draft, useWalkForward: e.target.checked })}
-            className="accent-blue-500"
+            className="accent-accent"
           />
           Walk-forward (anti-overfitting)
         </label>
@@ -383,7 +383,7 @@ function OptForm({
               return (
                 <tr key={key}>
                   <td>
-                    <input type="checkbox" checked={sweep.enabled} onChange={(e) => setSweep(key, { enabled: e.target.checked })} className="accent-blue-500" />
+                    <input type="checkbox" checked={sweep.enabled} onChange={(e) => setSweep(key, { enabled: e.target.checked })} className="accent-accent" />
                   </td>
                   <td>{def?.label ?? key}</td>
                   <td>
@@ -407,7 +407,7 @@ function OptForm({
                       type="checkbox"
                       checked={on}
                       onChange={(e) => onChange({ ...draft, sweepOptions: { ...draft.sweepOptions, [key]: e.target.checked } })}
-                      className="accent-blue-500"
+                      className="accent-accent"
                     />
                   </td>
                   <td>{def?.label ?? key}</td>
