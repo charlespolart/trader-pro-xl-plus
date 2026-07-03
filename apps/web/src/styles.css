@@ -1,5 +1,11 @@
 @import 'tailwindcss';
 
+/* Direction de design (skills frontend-design + ui-ux-pro-max, 2026-07) :
+   terminal de marché personnel — la donnée chiffrée en MONO (Fira Code) porte
+   l'identité, accent AMBRE (« gold trust », héritage Bitcoin + phosphore des
+   terminaux) utilisé avec parcimonie, up/down réservés au P&L. Le reste est
+   sobre : un seul élément signature par écran (barre d'allocation du
+   portefeuille sur le Dashboard). */
 @theme {
   /* --- Surfaces: sober flat dark with clear elevation steps --- */
   --color-surface: #0a0c11; /* app background */
@@ -11,8 +17,10 @@
   --color-up: #26a69a;
   --color-down: #ef5350;
 
-  /* --- Accent: used sparingly (links + active nav) --- */
-  --color-accent: #3b82f6;
+  /* --- Accent: ambre — liens, nav active, focus (jamais pour du P&L) --- */
+  --color-accent: #f0a43c;
+
+  --font-mono: 'Fira Code Variable', ui-monospace, 'SF Mono', Menlo, monospace;
 }
 
 /* Base element styles live in @layer base so Tailwind utilities (e.g. text-right
@@ -28,6 +36,27 @@
     @apply bg-surface text-zinc-200 antialiased;
     font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
     font-feature-settings: 'tnum' 1; /* tabular numbers across the app */
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--color-accent) 30%, transparent);
+  }
+
+  /* Plancher a11y : focus clavier visible partout, sans halo au clic souris */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 
   ::-webkit-scrollbar {
@@ -69,6 +98,12 @@
     @apply bg-panel border border-edge rounded-xl;
   }
 
+  /* Donnée chiffrée : mono + tabulaire — LA texture de l'app */
+  .num {
+    @apply font-mono tabular-nums;
+    font-variant-ligatures: none;
+  }
+
   .input,
   select.input {
     @apply w-full bg-panel2 border border-edge rounded-lg px-3 py-2 text-sm text-zinc-100 outline-none transition-colors placeholder:text-zinc-500 focus:border-accent;
@@ -83,13 +118,13 @@
   .btn-danger,
   .btn-success,
   .btn-kill {
-    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors cursor-pointer select-none disabled:opacity-40 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors cursor-pointer select-none disabled:opacity-40 disabled:cursor-not-allowed active:translate-y-px;
   }
   .btn {
     @apply bg-panel2 border border-edge text-zinc-200 hover:border-zinc-500 hover:text-white;
   }
   .btn-primary {
-    @apply bg-accent text-white hover:bg-blue-500;
+    @apply bg-accent text-[#1a1206] font-semibold hover:brightness-110;
   }
   .btn-ghost {
     @apply bg-transparent border border-edge text-zinc-300 hover:bg-panel2 hover:text-white;
@@ -108,5 +143,24 @@
   }
   .btn-icon {
     @apply h-8 w-8 p-0;
+  }
+
+  /* Contrôle segmenté (ex. Live / Démo sur le portefeuille) */
+  .seg {
+    @apply inline-flex rounded-lg border border-edge bg-panel2 p-0.5;
+  }
+  .seg > button {
+    @apply rounded-md px-2.5 py-1 text-xs font-medium text-zinc-400 transition-colors cursor-pointer;
+  }
+  .seg > button:hover {
+    @apply text-zinc-200;
+  }
+  .seg > button[aria-pressed='true'] {
+    @apply bg-panel text-accent shadow-sm;
+  }
+
+  /* Placeholder de chargement (>300 ms) — remplace le spinner bloquant */
+  .skeleton {
+    @apply animate-pulse rounded bg-panel2;
   }
 }

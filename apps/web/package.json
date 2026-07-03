@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@fontsource-variable/fira-code": "^5.2.7",
     "@monaco-editor/react": "^4.7.0",
     "@tanstack/react-query": "^5.80.0",
     "@tpx/shared": "workspace:*",

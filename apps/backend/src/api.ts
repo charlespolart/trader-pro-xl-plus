@@ -426,14 +426,31 @@ export function buildApi(s: Services): Hono {
     }
     const testnet = mode === 'testnet'
     const account = new OkxAccount(new OkxRest({ demo: testnet, credentials: creds }))
-    const [balances, positions] = await Promise.all([
+    const [balances, positions, tickers] = await Promise.all([
       account.balances('spot').catch(() => []),
       account.allPositions().catch(() => []),
+      // valorisation : tous les tickers spot en 1 appel public (prix last)
+      new OkxRest({ demo: testnet })
+        .public<{ instId: string; last: string }>('/api/v5/market/tickers', { instType: 'SPOT' })
+        .catch(() => []),
     ])
+    const px = new Map<string, number>()
+    for (const t of tickers) px.set(t.instId, Number(t.last))
+    const STABLES = new Set(['USDT', 'USDC', 'DAI', 'FDUSD', 'TUSD'])
+    const spot = balances
+      .filter((b) => b.free + b.locked > 0)
+      .map((b) => {
+        const qty = b.free + b.locked
+        const price = STABLES.has(b.asset) ? 1 : (px.get(`${b.asset}-USDT`) ?? px.get(`${b.asset}-USDC`) ?? null)
+        return { ...b, price, valueQuote: price !== null ? qty * price : null }
+      })
+      .sort((a, c) => (c.valueQuote ?? 0) - (a.valueQuote ?? 0))
+    const totalValueQuote = spot.reduce((s2, b) => s2 + (b.valueQuote ?? 0), 0)
     const data = {
       configured: true,
       mode,
-      spot: balances,
+      spot,
+      totalValueQuote,
       futures: [],
       positions: positions
         .filter((p) => p.qty !== 0)

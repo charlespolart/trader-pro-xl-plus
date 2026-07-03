@@ -31,7 +31,7 @@ export function Stat({ label, value, sub, tone = 'default' }: { label: ReactNode
   return (
     <div className="card p-4">
       <div className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">{label}</div>
-      <div className={`mt-1.5 text-2xl font-semibold tabular-nums ${toneCls}`}>{value}</div>
+      <div className={`num mt-1.5 text-2xl font-medium ${toneCls}`}>{value}</div>
       {sub !== undefined && <div className="mt-1 text-xs text-zinc-500">{sub}</div>}
     </div>
   )
@@ -44,7 +44,11 @@ export function Modal({ open, onClose, title, children, wide = false }: { open: 
       <div className={`card ${wide ? 'w-[900px]' : 'w-[560px]'} max-w-[95vw]`} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-4 py-3 border-b border-edge">
           <div className="text-sm font-semibold">{title}</div>
-          <button className="text-zinc-500 transition-colors hover:text-zinc-200" onClick={onClose}>
+          <button
+            aria-label="Fermer"
+            className="rounded p-1 text-zinc-500 transition-colors cursor-pointer hover:text-zinc-200"
+            onClick={onClose}
+          >
             ✕
           </button>
         </div>

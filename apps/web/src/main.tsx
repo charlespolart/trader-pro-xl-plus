@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter } from 'react-router-dom'
+import '@fontsource-variable/fira-code' // la donnée chiffrée porte l'identité (auto-hébergée, pas de requête externe)
 import App from './App'
 import './styles.css'
 

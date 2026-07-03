@@ -97,10 +97,20 @@ export interface PatternScanResult {
   available: string[]
 }
 
+export interface WalletBalance {
+  asset: string
+  free: number
+  locked: number
+  /** prix spot en USD (1 pour les stables) — null si aucune paire connue */
+  price?: number | null
+  valueQuote?: number | null
+}
+
 export interface AccountData {
   configured: boolean
   mode: 'live' | 'testnet'
-  spot?: { asset: string; free: number; locked: number }[]
+  spot?: WalletBalance[]
+  totalValueQuote?: number
   futures?: { asset: string; free: number; locked: number }[]
   positions?: { symbol: string; positionAmt: number; entryPrice: number; leverage: number; liquidationPrice: number; unRealizedProfit: number }[]
   totalExposureQuote?: number

@@ -61,8 +61,11 @@ export function Layout() {
   return (
     <div className="flex h-full">
       <aside className="flex w-56 shrink-0 flex-col border-r border-edge bg-panel">
-        <div className="px-5 py-5 text-base font-bold tracking-tight">
-          Trader <span className="text-accent">Pro XL+</span>
+        <div className="px-5 py-5">
+          <div className="text-base font-bold tracking-tight">
+            Trader <span className="text-accent">Pro XL+</span>
+          </div>
+          <div className="num mt-0.5 text-[10px] uppercase tracking-[0.2em] text-zinc-600">accumulation terminal</div>
         </div>
         <nav className="flex-1 space-y-0.5 px-3">
           {nav.map((n) => (
@@ -88,7 +91,12 @@ export function Layout() {
           </div>
           <div>
             {running} bot{running > 1 ? 's' : ''} actif{running > 1 ? 's' : ''}
-            {liveEquity > 0 && <span> · {fmtNum(liveEquity, 0)} USDT live</span>}
+            {liveEquity > 0 && (
+              <span>
+                {' · '}
+                <span className="num">{fmtNum(liveEquity, 0)}</span> USDT live
+              </span>
+            )}
           </div>
         </div>
       </aside>

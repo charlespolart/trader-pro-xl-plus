@@ -5,6 +5,7 @@ import { api } from '../lib/api'
 import { useBots } from '../lib/ws'
 import { fmtNum, fmtPct, fmtPrice, pnlClass } from '../lib/format'
 import { Badge, Card, Empty, PageHeader, Stat } from '../components/ui'
+import { WalletCard } from '../components/WalletCard'
 import { confirmDialog } from '../components/dialog'
 
 export function Dashboard() {
@@ -64,13 +65,15 @@ export function Dashboard() {
         }
       />
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <Stat label="Bots actifs" value={running.length} sub="En cours d'exécution" />
         <Stat label="PnL réalisé aujourd'hui" value={fmtNum(pnlToday)} tone={pnlToday === 0 ? 'default' : pnlToday > 0 ? 'up' : 'down'} sub="Tous bots confondus" />
         <Stat label="Exposition live" value={`${fmtNum(account?.totalExposureQuote ?? 0, 0)} USDT`} sub="Notional engagé" />
       </div>
 
-      <Card title="Bots" actions={<Link className="btn-primary btn-sm" to="/bots">Gérer</Link>} bodyClassName={bots.length === 0 ? 'p-4' : 'p-0'}>
+      <WalletCard />
+
+      <Card title="Bots" actions={<Link className="btn-primary btn-sm" to="/bots">Gérer</Link>} bodyClassName={bots.length === 0 ? 'p-4' : 'p-0 overflow-x-auto'}>
         {bots.length === 0 ? (
           <Empty>
             Aucun bot. <Link to="/bots" className="text-accent hover:underline">Créez votre premier bot</Link>.
@@ -114,9 +117,9 @@ export function Dashboard() {
                       <span className="text-zinc-500">flat</span>
                     )}
                   </td>
-                  <td className="text-right tabular-nums">{fmtNum(b.equity)}</td>
-                  <td className={`text-right tabular-nums ${pnlClass(b.realizedPnlToday)}`}>{fmtNum(b.realizedPnlToday)}</td>
-                  <td className={`text-right tabular-nums ${pnlClass(b.realizedPnlTotal)}`}>{fmtNum(b.realizedPnlTotal)}</td>
+                  <td className="num text-right">{fmtNum(b.equity)}</td>
+                  <td className={`num text-right ${pnlClass(b.realizedPnlToday)}`}>{fmtNum(b.realizedPnlToday)}</td>
+                  <td className={`num text-right ${pnlClass(b.realizedPnlTotal)}`}>{fmtNum(b.realizedPnlTotal)}</td>
                 </tr>
               ))}
             </tbody>
@@ -124,7 +127,7 @@ export function Dashboard() {
         )}
       </Card>
 
-      <Card title="Derniers backtests" actions={<Link className="btn-ghost btn-sm" to="/backtests">Tout voir</Link>} bodyClassName={!backtests || backtests.length === 0 ? 'p-4' : 'p-0'}>
+      <Card title="Derniers backtests" actions={<Link className="btn-ghost btn-sm" to="/backtests">Tout voir</Link>} bodyClassName={!backtests || backtests.length === 0 ? 'p-4' : 'p-0 overflow-x-auto'}>
         {!backtests || backtests.length === 0 ? (
           <Empty>Aucun backtest</Empty>
         ) : (
@@ -151,9 +154,9 @@ export function Dashboard() {
                     {r.config.symbol} <Badge value={r.config.market} />
                   </td>
                   <td><Badge value={r.status} /></td>
-                  <td className={`text-right tabular-nums ${pnlClass(r.metrics?.netProfitPct)}`}>{r.metrics ? fmtPct(r.metrics.netProfitPct) : '—'}</td>
-                  <td className="text-right tabular-nums">{r.metrics?.totalTrades ?? '—'}</td>
-                  <td className="text-right tabular-nums text-down">{r.metrics ? fmtPct(-r.metrics.maxDrawdownPct) : '—'}</td>
+                  <td className={`num text-right ${pnlClass(r.metrics?.netProfitPct)}`}>{r.metrics ? fmtPct(r.metrics.netProfitPct) : '—'}</td>
+                  <td className="num text-right">{r.metrics?.totalTrades ?? '—'}</td>
+                  <td className="num text-right text-down">{r.metrics ? fmtPct(-r.metrics.maxDrawdownPct) : '—'}</td>
                 </tr>
               ))}
             </tbody>
