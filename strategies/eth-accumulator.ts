@@ -28,12 +28,15 @@ import { defineStrategy, ind, p } from '@tpx/core'
  * quand le prix fait -80% ; 2022 : +76%), ZÉRO trade en bull 2020-21 (dort
  * correctement), 2023 (chop) : -4,6%.
  *
- * ⚠ HONNÊTETÉ (à lire avant de déployer) : le holdout 2024-01→2026-07 a donné
- * -2% avec DD -41% (aucun bear ETH propre sur la période, que du chop en V —
- * la stratégie a payé la taxe whipsaw sans récolte). Le mécanisme est validé
- * (mêmes preuves que BTC : 2018+2022, plateau, coûts), la CALIBRATION ETH n'a
- * pas encore eu son test hors-échantillon réussi. C'est une stratégie de BEAR :
- * l'essentiel du gain viendra du prochain marché baissier soutenu.
+ * ⚠ HONNÊTETÉ (à lire avant de déployer) : le holdout 2024-01→2026-07 n'a
+ * aucun bear ETH propre (que du chop en V). La calibration ETH seule
+ * (confirmMode='eth') y donne -2% / DD -41% — taxe whipsaw pleine, sans
+ * récolte. Les défauts produit ('both') donnent +14,2% / DD -23,8% (14tr) :
+ * le co-filtre BTC coupe les dips idiosyncratiques et ne garde que les
+ * corrections co-confirmées — positif, mais une seule mesure sans bear, pas
+ * encore un OOS réussi. Le mécanisme est validé (mêmes preuves que BTC :
+ * 2018+2022, plateau, coûts). C'est une stratégie de BEAR : l'essentiel du
+ * gain viendra du prochain marché baissier soutenu.
  *
  * À lancer en backtest avec denomination='base' (capital en ETH). Spot.
  */
