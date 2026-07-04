@@ -45,6 +45,13 @@ export default defineStrategy({
 })
 ```
 
+## `symbol` et `backtest` — défauts imposés par la stratégie
+
+Deux champs optionnels de `defineStrategy` (les deux accumulateurs les utilisent) :
+
+- `symbol: 'BTCUSDT'` — la stratégie **impose sa paire** : le champ est verrouillé dans les formulaires (bots et backtests) et le backend refuse toute autre valeur. À utiliser quand la calibration est spécifique à un actif.
+- `backtest: { denomination: 'base', initialBalance: 1, market: 'spot' }` — pré-remplit le formulaire de backtest à la sélection (dénomination, capital, marché). `denomination: 'base'` signale aussi aux formulaires de bots que la stratégie **démarre en position** (position initiale en actif de base à la création).
+
 ## Paramètres (`p.*`)
 
 Chaque paramètre est déclaré avec métadonnées → l'UI génère le formulaire de configuration, et l'optimiseur peut balayer les valeurs.
@@ -162,9 +169,7 @@ onCandle(ctx) {
 - Adaptations crypto : pas de gaps en 24/7 → piercing line / dark cloud assouplis (pas d'exigence de gap d'ouverture), windows et abandoned baby quasi muets sur les paires liquides.
 - **Non couvert (phase 2)** : patterns structurels multi-bougies (double top/bottom, cup & handle, wedge, flag) — ils nécessitent un moteur de pivots/zigzag.
 
-**Vérifier visuellement les détecteurs** : la page **Patterns** de l'UI scanne n'importe quelle plage (paire/intervalle/période) et permet de naviguer détection par détection sur la chart — mêmes détecteurs et mêmes seuils que dans les stratégies. Pour le workflow backtest (avec replay), la stratégie `pattern-scanner` détecte un pattern au choix sans jamais trader.
-
-Exemple complet : `strategies/pattern-reversal.ts`.
+**Vérifier visuellement les détecteurs** : la page **Patterns** de l'UI scanne n'importe quelle plage (paire/intervalle/période) et permet de naviguer détection par détection sur la chart — mêmes détecteurs et mêmes seuils que dans les stratégies.
 
 ## Ordres
 
@@ -222,7 +227,7 @@ const qty2 = ctx.risk.sizeByEquityPct(25)
 - **Warmup** : l'historique nécessaire aux indicateurs est préchargé ; vos hooks ne sont PAS appelés pendant le warmup (les indicateurs se remplissent silencieusement).
 - **Fills `candle`** (défaut) : chemin intra-bougie O→L→H→C (vert) / O→H→L→C (rouge), ou `pessimistic` (les stops d'abord). Ordres market remplis à l'open suivant ± slippage. Limits maker au toucher, gaps gérés.
 - **Fills `aggtrades`** : chaque trade agrégé est rejoué — déclenchements exacts, fills partiels proportionnels au volume imprimé (`limitFillRatio`). Beaucoup plus lent, beaucoup plus fidèle. Les données se téléchargent automatiquement (ZIP Binance Vision).
-- **Frais** : maker/taker configurables, réduction BNB (-25 % spot / -10 % futures). Sans BNB, les frais rognent l'actif reçu, comme sur Binance — votre position reflète ce que vous détenez réellement.
+- **Frais** : maker/taker configurables, modèle **OKX** (presets de paliers dans le formulaire ; « Importer mes vrais taux » dans Settings lit vos taux réels via l'API). Les frais rognent l'actif reçu — votre position reflète ce que vous détenez réellement.
 - **Futures** : funding historique appliqué toutes les 8 h, liquidation approximée (marge isolée), levier, shorts.
 - Un trade clôturé porte : PnL net, frais, funding, **MAE/MFE** (pire/meilleure excursion), raisons d'entrée/sortie.
 
@@ -242,4 +247,6 @@ Par défaut un backtest mesure la performance en **USDT** (`denomination: 'quote
 - le benchmark buy & hold = « garder son BTC » = **0 %** (chaque % au-dessus = du BTC gagné) ;
 - un trade = une excursion **vendre → racheter** ; son P&L est le **BTC gagné** (racheter plus bas accumule, racheter plus haut perd du BTC).
 
-Côté stratégie, c'est du spot normal : `ctx.position.qty > 0` = on détient du BTC (état neutre), `== 0` = on a vendu (en USDT). On vend (`SELL`) pour ouvrir l'excursion, on rachète (`BUY` avec `quoteQty` = tout l'USDT) pour la fermer. Voir `strategies/btc-accumulator.ts` (vend uniquement en vrai bear : EMA200 1d en déclin). Réglable dans le formulaire de backtest (sélecteur **Dénomination**, marchés spot).
+Côté stratégie, c'est du spot normal : `ctx.position.qty > 0` = on détient du BTC (état neutre), `== 0` = on a vendu (en USDT). On vend (`SELL`) pour ouvrir l'excursion, on rachète (`BUY` avec `quoteQty` = tout l'USDT) pour la fermer. Voir `strategies/btc-accumulator.ts` (vend uniquement en vrai bear : tendance 3d en déclin, confirmée par l'EMA200 1d). Réglable dans le formulaire de backtest (sélecteur **Dénomination**, marchés spot).
+
+En live et en paper, le bot démarre **comme le backtest** : position initiale en actif de base saisie à la création (simulée en paper, vérifiée contre le solde réel en live), ou adoption de **tout le solde disponible** au premier démarrage.

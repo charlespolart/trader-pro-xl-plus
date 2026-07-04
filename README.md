@@ -24,7 +24,7 @@ make web                # UI dev sur :5173 (proxy vers :3001)
 - **Backtests haute fidélité** : fills sur bougies (chemin intra-bar configurable) ou sur **aggTrades rejoués** (fills partiels, déclenchements exacts), frais maker/taker, slippage, funding historique, liquidations futures, warmup automatique, MAE/MFE et **raison de chaque entrée/sortie**.
 - **Données locales d'abord** : bougies en Postgres avec suivi de couverture, aggTrades en fichiers binaires compressés ; téléchargement massif via les ZIP **Binance Vision**, l'API REST ne comble que les bouts récents. Re-backtester la même période ne retélécharge rien.
 - **Optimiseur** : grid search parallélisé (workers) + **walk-forward** (in-sample/out-of-sample) avec verdict anti-overfitting.
-- **Bots** : instances stratégie × paire × mode (`paper` / `testnet` / `live`), allocation virtuelle, levier, reprise après redémarrage (état persisté + réconciliation des ordres par préfixe de clientOrderId).
+- **Bots** : instances stratégie × paire × mode (`paper` / `testnet` / `live`), allocation virtuelle, **position initiale en actif de base** (le live démarre comme le backtest : quantité choisie ou adoption de tout le solde disponible), levier, reprise après redémarrage (état persisté + réconciliation des ordres par préfixe de clientOrderId).
 - **Risque** : par bot (position max, perte journalière, drawdown max, pertes consécutives, cooldown) + global (exposition totale, **kill switch** avec fermeture optionnelle des positions). Alertes Telegram.
 - **UI temps réel** : dashboard, chart Lightweight Charts (indicateurs en panes, marqueurs de trades avec raisons, annotations de stratégie, **replay bougie par bougie** des backtests), équité/drawdown, éditeur de stratégies (Monaco) avec rechargement à chaud, gestionnaire de données.
 
@@ -38,7 +38,7 @@ make web                # UI dev sur :5173 (proxy vers :3001)
 | `packages/data` | Client Binance market-data (REST/WS publics, Vision), client OKX d'exécution (compte, ordres, fills, WS privé), stores de données |
 | `apps/backend` | API Hono + WS, gestionnaire de bots, moteurs live, runner de backtests (workers Bun) |
 | `apps/web` | UI React 19 + Tailwind 4 + Lightweight Charts v5 |
-| `strategies/` | Vos stratégies (3 exemples fournis) |
+| `strategies/` | Les stratégies produit (`btc-accumulator`, `eth-accumulator`) — ajoutez les vôtres |
 
 ## Notes importantes
 
