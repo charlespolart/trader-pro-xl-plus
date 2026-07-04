@@ -2,8 +2,12 @@
 
 Checkup 2026-07-03 (3 agents + revue directe). **MISE À JOUR 2026-07-03 soir :
 les P0 et P1 ci-dessous sont IMPLÉMENTÉS** (commits 1722566, d7e473f, 4ac2689 —
-140 tests verts, smoke paper OK). Reste avant l'argent réel : le smoke démo sur
-le VPS (§ Validation) + supprimer le bot VPS 21d1732f (er-flow-trend).
+140 tests verts, smoke paper OK). **2026-07-03/04 : smoke démo VPS passé 5/5**
+(STOP ARMÉ vérifié sur OKX — le smoke a débusqué un dernier bug critique, les
+triggers BUY spot exigent sz en QUOTE, corrigé ed1eede) ; bot er-flow-trend
+supprimé ; baselines backtest re-vérifiées au dixième (c1f3d6b). Reste avant
+l'argent réel : un cycle démo COMPLET du bot accumulateur (vente → stop →
+rachat) — bot en validation passive.
 
 ## P0 — avant l'argent réel — ✅ FAIT
 
