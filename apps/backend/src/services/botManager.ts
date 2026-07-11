@@ -1068,6 +1068,16 @@ export class BotManager {
     const existing = await this.getConfig(id)
     if (!existing) throw new Error('Bot introuvable')
     const merged = { ...existing, ...patch, updatedAt: Date.now() }
+    // Départ en base : le front envoie le formulaire COMPLET et JSON.stringify
+    // supprime les clés undefined → « décoché » / « vidé » arrive comme ABSENCE
+    // de clé. Dès que le patch touche l'un des deux champs, l'absence de
+    // l'autre signifie « effacé » — sinon un adoptAllBase=true sauvegardé une
+    // fois se recolle à chaque édition (impossible à décocher).
+    if ('adoptAllBase' in patch || 'initialBaseQty' in patch) {
+      merged.adoptAllBase = patch.adoptAllBase === true ? true : undefined
+      merged.initialBaseQty =
+        typeof patch.initialBaseQty === 'number' && patch.initialBaseQty > 0 ? patch.initialBaseQty : undefined
+    }
     const entry = registry.get(merged.strategyId)
     if (entry.def.symbol !== undefined) merged.symbol = entry.def.symbol
     if (!entry.def.markets.includes(merged.market)) {
@@ -1076,6 +1086,12 @@ export class BotManager {
     const validation = validateParams(entry.def.schema, merged.params)
     if (!validation.ok) throw new Error(`Paramètres invalides: ${validation.errors.join('; ')}`)
     merged.params = validation.values
+    if (((merged.initialBaseQty ?? 0) > 0 || merged.adoptAllBase === true) && merged.market !== 'spot') {
+      throw new Error('Position initiale : uniquement pour les bots spot')
+    }
+    if (merged.adoptAllBase === true && merged.mode === 'paper') {
+      throw new Error("« Adopter tout » lit le solde réel via l'API — en paper, saisissez une quantité chiffrée")
+    }
     if (merged.allocation <= 0 && (merged.initialBaseQty ?? 0) <= 0 && merged.adoptAllBase !== true) {
       throw new Error('Départ vide : donnez une allocation (quote) OU une position initiale (coins) — sinon le bot n\'a rien à gérer')
     }

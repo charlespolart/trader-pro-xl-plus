@@ -238,6 +238,9 @@ function BotForm({
 }) {
   const strategy = useMemo(() => strategies.find((s) => s.id === draft.strategyId), [strategies, draft.strategyId])
   const markets = strategy?.markets ?? ['spot', 'futures']
+  // texte de saisie de la position initiale (null = affiché depuis le draft) —
+  // permet de taper « 0, » ou « 0,202221025 » sans que le parseur efface le champ
+  const [qtyText, setQtyText] = useState<string | null>(null)
   const baseAsset = draft.symbol.replace(/(USDT|USDC|FDUSD|BUSD|EUR|USD)$/, '') || 'base'
   // le DÉPART est imposé par la stratégie : base-denom (accumulateurs) = on
   // détient déjà les coins ; les autres = capital en quote. Pas de choix.
@@ -331,7 +334,7 @@ function BotForm({
             label={draft.market === 'futures' ? 'Allocation de marge (quote)' : 'Allocation (USDC/USDT)'}
             hint="Capital de départ, lu au premier démarrage — ensuite le bot compose avec ses gains et pertes."
           >
-            <input className="input" type="number" value={draft.allocation} onChange={(e) => onChange({ ...draft, allocation: Number(e.target.value) })} />
+            <input className="input" type="number" step="any" value={draft.allocation} onChange={(e) => onChange({ ...draft, allocation: Number(e.target.value) })} />
           </Field>
         )}
         {startsInBase && (
@@ -346,9 +349,10 @@ function BotForm({
                     type="checkbox"
                     className="accent-accent"
                     checked={draft.adoptAllBase ?? false}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      setQtyText(null)
                       onChange({ ...draft, adoptAllBase: e.target.checked ? true : undefined, initialBaseQty: e.target.checked ? undefined : (draft.initialBaseQty ?? 1) })
-                    }
+                    }}
                   />
                   Adopter tout le solde disponible
                 </label>
@@ -356,11 +360,21 @@ function BotForm({
               {draft.adoptAllBase !== true && (
                 <input
                   className="input"
-                  type="number"
-                  step="any"
-                  placeholder="ex. 0.5"
-                  value={draft.initialBaseQty ?? ''}
-                  onChange={(e) => onChange({ ...draft, initialBaseQty: e.target.value === '' ? undefined : Number(e.target.value) })}
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="ex. 0.5 ou 0,202221025"
+                  value={qtyText ?? (draft.initialBaseQty !== undefined ? String(draft.initialBaseQty) : '')}
+                  onChange={(e) => {
+                    // saisie tolérante : virgule française OU point, précision libre
+                    // (type="number" refuse la virgule selon la locale et vide le
+                    // champ en silence — ici on garde le texte tel quel pendant la
+                    // frappe et on ne committe que les nombres finis)
+                    const raw = e.target.value
+                    setQtyText(raw)
+                    const n = Number(raw.replace(',', '.').trim())
+                    onChange({ ...draft, initialBaseQty: raw.trim() === '' || !Number.isFinite(n) ? undefined : n })
+                  }}
+                  onBlur={() => setQtyText(null)}
                 />
               )}
             </div>
@@ -390,13 +404,13 @@ function BotForm({
         <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">Gestion du risque (vide = désactivé)</div>
         <div className="grid grid-cols-3 gap-3">
           <Field label="Position max (quote)">
-            <input className="input" type="number" value={draft.risk.maxPositionQuote ?? ''} onChange={(e) => setRisk('maxPositionQuote', e.target.value)} />
+            <input className="input" type="number" step="any" value={draft.risk.maxPositionQuote ?? ''} onChange={(e) => setRisk('maxPositionQuote', e.target.value)} />
           </Field>
           <Field label="Perte max / jour (quote)">
-            <input className="input" type="number" value={draft.risk.maxDailyLossQuote ?? ''} onChange={(e) => setRisk('maxDailyLossQuote', e.target.value)} />
+            <input className="input" type="number" step="any" value={draft.risk.maxDailyLossQuote ?? ''} onChange={(e) => setRisk('maxDailyLossQuote', e.target.value)} />
           </Field>
           <Field label="Drawdown max (%)">
-            <input className="input" type="number" value={draft.risk.maxDrawdownPct ?? ''} onChange={(e) => setRisk('maxDrawdownPct', e.target.value)} />
+            <input className="input" type="number" step="any" value={draft.risk.maxDrawdownPct ?? ''} onChange={(e) => setRisk('maxDrawdownPct', e.target.value)} />
           </Field>
           <Field label="Pertes consécutives max">
             <input className="input" type="number" value={draft.risk.maxConsecutiveLosses ?? ''} onChange={(e) => setRisk('maxConsecutiveLosses', e.target.value)} />
