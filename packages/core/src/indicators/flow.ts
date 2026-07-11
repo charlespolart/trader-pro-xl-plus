@@ -104,3 +104,47 @@ export const squeezeRatio = (period = 20, bbMult = 2, kcMult = 1.5, atrPeriod = 
       }
     },
   })
+
+/**
+ * Variance Ratio (Lo-MacKinlay appliqué en fenêtre glissante) :
+ * var(retours log agrégés sur `agg` barres) / (agg × var(retours 1 barre)),
+ * les deux variances estimées (ddof=1) sur les `window` dernières barres.
+ * ≈ 1 : marche aléatoire ; > 1 : bouffées directionnelles (momentum de chemin) ;
+ * < 1 : chemin compressé / mean-reverting.
+ * Découverte accum3 (2026-07) : sur BTC 4h, vr(5,60) haut → retours 5 j
+ * FAIBLES/NÉGATIFS (IC −0,15, répliqué ETH −0,13) — la base de btc-vrx.
+ */
+export const varianceRatio = (agg = 5, window = 60) =>
+  defineIndicator({
+    id: `vr(${agg},${window})`,
+    warmup: agg + window + 1,
+    defaultPlot: 'pane',
+    create: () => {
+      const closes: number[] = []
+      const r1: number[] = []
+      const rA: number[] = []
+      const variance = (xs: number[]): number => {
+        const n = xs.length
+        let m = 0
+        for (const x of xs) m += x
+        m /= n
+        let v = 0
+        for (const x of xs) v += (x - m) ** 2
+        return v / (n - 1)
+      }
+      return (c) => {
+        closes.push(c.close)
+        if (closes.length > agg + 1) closes.shift()
+        if (closes.length >= 2) {
+          r1.push(Math.log(closes[closes.length - 1]! / closes[closes.length - 2]!))
+          if (r1.length > window) r1.shift()
+        }
+        if (closes.length >= agg + 1) {
+          rA.push(Math.log(closes[closes.length - 1]! / closes[0]!))
+          if (rA.length > window) rA.shift()
+        }
+        if (r1.length < window || rA.length < window) return null
+        return variance(rA) / (agg * variance(r1) + 1e-12)
+      }
+    },
+  })
