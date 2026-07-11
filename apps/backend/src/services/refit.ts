@@ -70,6 +70,14 @@ export const DEFAULT_SPACES: Record<string, OptimizeSpace> = {
     trendMaLen: [50, 60, 80],
     trendSlopeBars: [6, 8, 10],
   },
+  // BTC VRX : intérieur du plateau accum3 (vrx2.py, 2026-07) — tout le bloc
+  // in 1,10-1,25 × out 0,85-0,95 est positif avec moitiés positives ; les
+  // défauts 1,15/0,90 sont statiquement validés (IS+OOS), le refit glissant
+  // de ces seuils n'a PAS été validé — même prudence que trendInterval v2.
+  'btc-vrx': {
+    thIn: [1.1, 1.15, 1.2, 1.25],
+    thOut: [0.85, 0.9, 0.95],
+  },
 }
 
 /** objectif de score par stratégie (défaut : profitFactor). */
@@ -77,6 +85,7 @@ export const DEFAULT_OBJECTIVE: Record<string, Objective> = {
   // accumulateurs : maximiser l'actif accumulé (net % en dénomination base)
   'btc-accumulator': 'netProfit',
   'eth-accumulator': 'netProfit',
+  'btc-vrx': 'netProfit',
 }
 
 const key = (botId: string): string => `refit:${botId}`

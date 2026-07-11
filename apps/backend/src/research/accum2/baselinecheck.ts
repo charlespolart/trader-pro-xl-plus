@@ -13,6 +13,7 @@ import { PgDataProvider } from '@tpx/data'
 import { createDb } from '@tpx/db'
 import { DEFAULT_FEES, type BacktestConfig, type ParamValues } from '@tpx/shared'
 import btcAccum from '../../../../../strategies/btc-accumulator'
+import btcVrx from '../../../../../strategies/btc-vrx'
 import ethAccum from '../../../../../strategies/eth-accumulator'
 
 const db = createDb(process.env.DATABASE_URL ?? 'postgres://tpx:tpx@localhost:5436/tpx')
@@ -59,13 +60,19 @@ const CHECKS: Check[] = [
   //  ici on fige le comportement des DÉFAUTS produit, 'both')
   { label: 'ETH holdout 2024→2026', def: ethAccum, symbol: 'ETHUSDT', start: '2024-01-01', end: '2026-07-01',
     net: [14.2, 0.15], dd: [23.8, 0.15], trades: 14 },
+  // — BTC VRX : baselines docstring (campagne accum3 2026-07, parité python vérifiée)
+  { label: 'VRX IS 2018→2024', def: btcVrx, symbol: 'BTCUSDT', start: '2018-04-05', end: '2024-01-01',
+    net: [243.7, 0.15], dd: [29.1, 0.15], trades: 81 },
+  { label: 'VRX OOS 2024→2026', def: btcVrx, symbol: 'BTCUSDT', start: '2024-01-01', end: '2026-07-01',
+    net: [16.9, 0.15], dd: [19.7, 0.15], trades: 19 },
 ]
 
 const f = (v: number, d = 1): string => (Number.isFinite(v) ? (v >= 0 ? '+' : '') + v.toFixed(d) : '—')
 let failed = 0
 
 for (const c of CHECKS) {
-  const res = await runBacktest({ config: cfg(c.def === btcAccum ? 'btc-accumulator' : 'eth-accumulator', c.symbol, c.start, c.end), def: c.def, provider })
+  const id = c.def === btcAccum ? 'btc-accumulator' : c.def === btcVrx ? 'btc-vrx' : 'eth-accumulator'
+  const res = await runBacktest({ config: cfg(id, c.symbol, c.start, c.end), def: c.def, provider })
   const m = res.metrics
   const probs: string[] = []
   const check = (name: string, got: number, exp: number, tol: number): void => {
