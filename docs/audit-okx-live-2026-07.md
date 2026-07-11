@@ -1,5 +1,12 @@
 # Audit du code de l'ère Opus 4.8 (bb7cb43..a4d7479) — chantier restant
 
+> ⚠ **Addendum 2026-07-11** : ce document décrit des comportements SUPPRIMÉS
+> depuis (incident « Fermer la position » sur le live). `closePosition` et le
+> « retour en BTC/ETH » du hook onStop n'existent plus : **arrêter un bot ne
+> déclenche plus jamais de transaction** (blocage dur dans RiskGuardedAdapter,
+> même pour les ordres reduceOnly ; kill switch = gel sans fermeture). Les
+> mentions ci-dessous restent comme trace de ce qui avait été vérifié à l'époque.
+
 Checkup 2026-07-03 (3 agents + revue directe). **MISE À JOUR 2026-07-03 soir :
 les P0 et P1 ci-dessous sont IMPLÉMENTÉS** (commits 1722566, d7e473f, 4ac2689 —
 140 tests verts, smoke paper OK). **2026-07-03/04 : smoke démo VPS passé 5/5**

@@ -183,7 +183,7 @@ function RiskCard({
             <button
               className="btn-danger"
               onClick={async () => {
-                if (await confirmDialog({ title: 'Kill switch', message: 'Arrêter tous les bots ? Aucune transaction ne sera passée — les positions ouvertes restent telles quelles (corrections à la main sur la plateforme).', confirmLabel: 'Activer', tone: 'danger' }))
+                if (await confirmDialog({ title: 'Kill switch', message: 'Arrêter tous les bots ? Aucun achat/vente ne sera passé — les positions restent telles quelles (corrections à la main sur la plateforme). Les ordres résidents (stop-loss, limites) sont annulés : gel complet, plus rien ne peut s\'exécuter.', confirmLabel: 'Activer', tone: 'danger' }))
                   kill.mutate(true)
               }}
             >

@@ -66,7 +66,8 @@ export function Layout() {
     if (
       await confirmDialog({
         title: 'Kill switch',
-        message: 'Arrêter tous les bots ? Les positions ouvertes sont conservées.',
+        message:
+          'Arrêter tous les bots ? Aucun achat/vente ne sera passé — les positions restent telles quelles. Les ordres résidents (stop-loss, limites) sont annulés : gel complet, plus rien ne peut s\'exécuter.',
         confirmLabel: 'Activer',
         tone: 'danger',
       })

@@ -5,6 +5,10 @@ import { defaultParams, type BotConfig, type BotRiskConfig, type MarketType, typ
 import { api, type StrategyDTO } from '../lib/api'
 import { useBots } from '../lib/ws'
 import { Pencil, Play, Plus, Square, Trash2 } from 'lucide-react'
+import { fmtNum, pnlClass } from '../lib/format'
+import { Badge, Card, Empty, Field, Modal, PageHeader } from '../components/ui'
+import { alertDialog, confirmDialog } from '../components/dialog'
+import { ParamsForm } from '../components/ParamsForm'
 
 /** un stop-loss / take-profit = ordre conditionnel déposé sur l'exchange (pas
  *  une position spot classique) — l'annuler à l'arrêt laisse la position à nu */
@@ -23,10 +27,6 @@ function orderLabel(o: Order): string {
   const trigger = o.stopPrice ?? o.price
   return `${kind} · ${o.side} ${o.qty}${trigger !== undefined ? ` @ ${trigger}` : ''}`
 }
-import { fmtNum, pnlClass } from '../lib/format'
-import { Badge, Card, Empty, Field, Modal, PageHeader } from '../components/ui'
-import { alertDialog, confirmDialog } from '../components/dialog'
-import { ParamsForm } from '../components/ParamsForm'
 
 interface BotDraft {
   id?: string

@@ -1357,8 +1357,8 @@ export class BotManager {
     this.streamRetryTimers.clear()
     // Arrêt du serveur (redeploy) : NE PAS annuler les ordres (le stop de
     // protection résident doit survivre — reconcile le ré-adopte au redémarrage)
-    // et NE PAS exécuter onStop (le « retour en BTC » n'a pas de sens ici :
-    // le bot reprend exactement où il en était).
+    // et NE PAS exécuter onStop (même son cancelAll est indésirable ici :
+    // le bot reprend exactement où il en était, ordres résidents compris).
     for (const id of [...this.runners.keys()]) {
       await this.stop(id, {
         reason: 'arrêt du serveur',
