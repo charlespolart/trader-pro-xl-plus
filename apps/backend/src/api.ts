@@ -156,8 +156,8 @@ export function buildApi(s: Services): Hono {
   })
 
   api.post('/bots/:id/stop', async (c) => {
-    const body = (await c.req.json().catch(() => ({}))) as { closePosition?: boolean }
-    await s.bots.stop(c.req.param('id'), { closePosition: body.closePosition ?? false, reason: 'arrêt manuel' })
+    // arrêter un bot ne transige jamais — pas de fermeture de position
+    await s.bots.stop(c.req.param('id'), { reason: 'arrêt manuel' })
     return c.json({ ok: true })
   })
 
@@ -506,8 +506,9 @@ export function buildApi(s: Services): Hono {
   })
 
   api.post('/risk/killswitch', async (c) => {
-    const body = (await c.req.json()) as { active: boolean; closePositions?: boolean }
-    await s.bots.setKillSwitch(body.active, body.closePositions ?? false)
+    // le kill switch gèle les bots sans aucune transaction (pas de fermeture)
+    const body = (await c.req.json()) as { active: boolean }
+    await s.bots.setKillSwitch(body.active)
     return c.json({ killSwitchActive: s.bots.killSwitchActive })
   })
 

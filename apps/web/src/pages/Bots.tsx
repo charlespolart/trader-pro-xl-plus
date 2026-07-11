@@ -48,10 +48,9 @@ export function Bots() {
   })
 
   const action = useMutation({
-    mutationFn: async ({ id, act }: { id: string; act: 'start' | 'stop' | 'stop-close' | 'resume' | 'delete' }) => {
+    mutationFn: async ({ id, act }: { id: string; act: 'start' | 'stop' | 'resume' | 'delete' }) => {
       if (act === 'start') await api.startBot(id)
-      else if (act === 'stop') await api.stopBot(id, false)
-      else if (act === 'stop-close') await api.stopBot(id, true)
+      else if (act === 'stop') await api.stopBot(id)
       else if (act === 'resume') await api.resumeBot(id)
       else await api.deleteBot(id)
     },
@@ -180,20 +179,13 @@ export function Bots() {
                           </button>
                         )}
                         {!stopped && (
-                          <>
-                            <button className="btn-ghost btn-sm" onClick={() => action.mutate({ id: b.config.id, act: 'stop' })}>
-                              <Square size={14} /> Stop
-                            </button>
-                            <button
-                              className="btn-danger btn-sm"
-                              onClick={async () => {
-                                if (await confirmDialog({ title: 'Fermer la position', message: 'Arrêter le bot ET fermer sa position au marché ?', confirmLabel: 'Arrêter & fermer', tone: 'danger' }))
-                                  action.mutate({ id: b.config.id, act: 'stop-close' })
-                              }}
-                            >
-                              <Square size={14} /> Fermer
-                            </button>
-                          </>
+                          <button
+                            className="btn-ghost btn-sm"
+                            title="Arrête le bot sans aucune transaction — la position reste telle quelle (corrections à la main sur la plateforme)"
+                            onClick={() => action.mutate({ id: b.config.id, act: 'stop' })}
+                          >
+                            <Square size={14} /> Stop
+                          </button>
                         )}
                       </div>
                     </td>

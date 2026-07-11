@@ -58,7 +58,7 @@ export function Layout() {
   })
 
   const kill = useMutation({
-    mutationFn: (active: boolean) => api.killSwitch(active, false),
+    mutationFn: (active: boolean) => api.killSwitch(active),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['account'] }),
   })
 

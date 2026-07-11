@@ -195,7 +195,7 @@ export const api = {
   updateBot: (id: string, patch: Partial<BotConfig>) => put<BotConfig>(`/bots/${id}`, patch),
   deleteBot: (id: string) => del<{ ok: boolean }>(`/bots/${id}`),
   startBot: (id: string) => post<{ ok: boolean }>(`/bots/${id}/start`),
-  stopBot: (id: string, closePosition: boolean) => post<{ ok: boolean }>(`/bots/${id}/stop`, { closePosition }),
+  stopBot: (id: string) => post<{ ok: boolean }>(`/bots/${id}/stop`),
   resumeBot: (id: string) => post<{ ok: boolean }>(`/bots/${id}/resume`),
   botChart: (id: string) => get<BotChartData>(`/bots/${id}/chart`),
   botLogs: (id: string) => get<LogEntry[]>(`/bots/${id}/logs`),
@@ -252,8 +252,7 @@ export const api = {
   account: (mode: 'live' | 'testnet') => get<AccountData>(`/account?mode=${mode}`),
   risk: () => get<GlobalRiskConfig>('/risk'),
   setRisk: (cfg: GlobalRiskConfig) => put<GlobalRiskConfig>('/risk', cfg),
-  killSwitch: (active: boolean, closePositions: boolean) =>
-    post<{ killSwitchActive: boolean }>('/risk/killswitch', { active, closePositions }),
+  killSwitch: (active: boolean) => post<{ killSwitchActive: boolean }>('/risk/killswitch', { active }),
 
   // data
   coverage: (market: MarketType, symbol: string, interval: Interval) =>

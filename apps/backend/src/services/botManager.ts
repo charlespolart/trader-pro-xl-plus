@@ -53,10 +53,18 @@ const ADAPTER_STATE_KEY = '__adapter'
 const RING = 500
 
 /** blocks position-increasing orders when a risk rule is violated */
-class RiskGuardedAdapter implements ExecutionAdapter {
+/** Un blocage d'ordre. `hard` = JAMAIS contournable (statut du bot, kill switch)
+ *  — même un ordre protecteur reduceOnly est refusé. `hard:false` = plafond de
+ *  risque, qu'un ordre reduceOnly (stop-loss/TP) peut franchir pour protéger. */
+export interface OrderBlock {
+  reason: string
+  hard: boolean
+}
+
+export class RiskGuardedAdapter implements ExecutionAdapter {
   constructor(
     private readonly inner: ExecutionAdapter,
-    private readonly check: (req: OrderRequest) => string | null,
+    private readonly check: (req: OrderRequest) => OrderBlock | null,
   ) {}
 
   get market() {
@@ -73,8 +81,11 @@ class RiskGuardedAdapter implements ExecutionAdapter {
   }
   submit(req: OrderRequest): Promise<Order> {
     const block = this.check(req)
-    if (block !== null && req.reduceOnly !== true) {
-      return Promise.reject(new Error(`Ordre bloqué (risk management): ${block}`))
+    // un reduceOnly peut franchir un PLAFOND (placer un stop protecteur), jamais
+    // un blocage dur (bot non-running / kill switch) : arrêter un bot ne doit
+    // JAMAIS déclencher une transaction, y compris via un ordre reduceOnly.
+    if (block !== null && (block.hard || req.reduceOnly !== true)) {
+      return Promise.reject(new Error(`Ordre bloqué (${block.hard ? 'état du bot' : 'risk management'}): ${block.reason}`))
     }
     return this.inner.submit(req)
   }
@@ -121,10 +132,6 @@ class BotRunner {
   private timers: ReturnType<typeof setInterval>[] = []
   private lastSeenOpen = new Map<string, number>()
   private lastFundingBoundary = 0
-  /** vrai pendant l'exécution du hook onStop : les ordres qu'il émet (status
-   *  'stopping') passent le riskCheck — sans ça, le « retour en BTC » d'un stop
-   *  utilisateur est bloqué puis avalé. Le kill switch reste prioritaire. */
-  private onStopWindow = false
   private counters = {
     pnlDay: utcDayKey(Date.now()),
     realizedPnlToday: 0,
@@ -668,33 +675,43 @@ class BotRunner {
 
   // ------------------------------------------------------------------ risk
 
-  private riskCheck(req: OrderRequest): string | null {
+  private riskCheck(req: OrderRequest): OrderBlock | null {
     const { config, manager } = this.deps
-    if (manager.killSwitchActive) return 'kill switch global actif'
-    const stoppingButAllowed = this.status === 'stopping' && this.onStopWindow
-    if (this.status !== 'running' && this.status !== 'starting' && !stoppingButAllowed) {
-      return `bot ${this.status}`
+    // ---- BLOCAGES DURS (jamais contournables, même par un reduceOnly protecteur)
+    // Arrêter un bot ne doit JAMAIS déclencher de transaction : les états d'arrêt
+    // et le kill switch coupent tout ordre. Un ordre ne part QUE pendant la
+    // marche normale — 'running', ou 'starting' (bascule warmup→live, où la
+    // stratégie peut légitimement trader sur la 1re bougie). Les corrections
+    // manuelles se font sur la plateforme (règle produit, incident 2026-07-11).
+    if (manager.killSwitchActive) return { reason: 'kill switch global actif', hard: true }
+    if (this.status === 'stopping' || this.status === 'stopped' || this.status === 'killed' || this.status === 'error') {
+      return { reason: `bot ${this.status} — aucune transaction à l'arrêt`, hard: true }
     }
+    if (this.status !== 'running' && this.status !== 'starting') {
+      // paused_risk : pas de nouvelle entrée, mais un stop protecteur reste permis
+      return { reason: `bot ${this.status}`, hard: false }
+    }
+    // ---- PLAFONDS (un ordre protecteur reduceOnly peut les franchir)
     if (this.counters.cooldownUntil > Date.now()) {
-      return `cooldown après perte jusqu'à ${new Date(this.counters.cooldownUntil).toISOString()}`
+      return { reason: `cooldown après perte jusqu'à ${new Date(this.counters.cooldownUntil).toISOString()}`, hard: false }
     }
     const risk = config.risk
     const open = this.rawExec.openOrders().length
     if (risk.maxOpenOrders !== undefined && open >= risk.maxOpenOrders) {
-      return `nombre max d'ordres ouverts atteint (${risk.maxOpenOrders})`
+      return { reason: `nombre max d'ordres ouverts atteint (${risk.maxOpenOrders})`, hard: false }
     }
     const price = req.price ?? req.stopPrice ?? this.rawExec.lastPrice()
     const reqNotional = req.quoteQty ?? (req.qty ?? 0) * price
     const pos = this.rawExec.position()
     const posNotional = Math.abs(pos.qty) * this.rawExec.lastPrice()
     if (risk.maxPositionQuote !== undefined && posNotional + reqNotional > risk.maxPositionQuote * 1.001) {
-      return `position max dépassée (${(posNotional + reqNotional).toFixed(0)} > ${risk.maxPositionQuote})`
+      return { reason: `position max dépassée (${(posNotional + reqNotional).toFixed(0)} > ${risk.maxPositionQuote})`, hard: false }
     }
     const globalCap = manager.globalRisk.maxTotalExposureQuote
     if (globalCap !== undefined && config.mode === 'live') {
       const total = manager.totalExposureQuote(['live'])
       if (total + reqNotional > globalCap * 1.001) {
-        return `exposition globale max dépassée (${(total + reqNotional).toFixed(0)} > ${globalCap})`
+        return { reason: `exposition globale max dépassée (${(total + reqNotional).toFixed(0)} > ${globalCap})`, hard: false }
       }
     }
     return null
@@ -767,7 +784,6 @@ class BotRunner {
   async stop(
     opts: {
       cancelOrders?: boolean
-      closePosition?: boolean
       runOnStopHook?: boolean
       reason?: string
       killed?: boolean
@@ -783,30 +799,19 @@ class BotRunner {
 
     await this.chain.catch(() => {})
     try {
+      // Arrêter un bot ne déclenche JAMAIS d'achat/vente (règle produit,
+      // incident 2026-07-11 : « Fermer » avait vendu puis racheté le stack).
+      // On annule seulement les ordres AU REPOS (stop/limit résidents) — ce
+      // n'est pas une transaction, et ça empêche un fill non désiré APRÈS
+      // l'arrêt. Aucune fermeture de position, aucun « retour en BTC ».
       if (opts.cancelOrders ?? true) {
         for (const o of [...this.rawExec.openOrders()]) await this.rawExec.cancel(o.id).catch(() => {})
       }
-      if (opts.closePosition) {
-        const pos = this.rawExec.position()
-        // arrondi au stepSize : un qty brut (résidu FP) serait rejeté par OKX
-        // et la fermeture d'urgence échouerait en silence
-        const qty = floorToStep(Math.abs(pos.qty), this.symbolInfoV.stepSize)
-        if (qty > 0) {
-          await this.rawExec.submit({
-            side: pos.qty > 0 ? 'SELL' : 'BUY',
-            type: 'MARKET',
-            qty,
-            reduceOnly: true,
-            reason: opts.reason ?? 'Fermeture (stop bot)',
-            tag: 'close',
-          })
-        }
-      }
       if (opts.runOnStopHook ?? true) {
-        // fenêtre onStop : le hook peut émettre des ordres (ex. « retour en
-        // BTC » de l'accumulateur) alors que status='stopping' — le riskCheck
-        // les laisse passer pendant cette fenêtre (kill switch reste prioritaire)
-        this.onStopWindow = true
+        // onStop peut encore annuler des ordres résidents, mais TOUTE
+        // soumission d'ordre y est refusée (statut 'stopping' ≠ 'running',
+        // blocage dur du riskCheck) — filet systémique même si une stratégie
+        // tente une transaction dans son onStop.
         try {
           await this.runtime.stop()
         } catch (err) {
@@ -815,12 +820,10 @@ class BotRunner {
             level: 'warn',
             message: `onStop en erreur (ignoré): ${err instanceof Error ? err.message : String(err)}`,
           })
-        } finally {
-          this.onStopWindow = false
         }
       }
-      // fenêtre pour les fills des ordres market émis ci-dessus (closePosition
-      // et/ou onStop) — sort immédiatement s'il n'y a rien en vol
+      // laisse retomber d'éventuels fills d'ordres de la stratégie encore en vol
+      // au moment de l'arrêt — sort immédiatement s'il n'y a rien
       await this.waitLiveFillsSettled(3_000)
     } finally {
       await this.saveState().catch(() => {})
@@ -1172,7 +1175,6 @@ export class BotManager {
     id: string,
     opts: {
       cancelOrders?: boolean
-      closePosition?: boolean
       runOnStopHook?: boolean
       reason?: string
       killed?: boolean
@@ -1220,16 +1222,16 @@ export class BotManager {
     })
   }
 
-  async setKillSwitch(active: boolean, closePositions: boolean): Promise<void> {
+  async setKillSwitch(active: boolean): Promise<void> {
     this.killSwitchActive = active
     this.globalRisk = { ...this.globalRisk, killSwitchActive: active }
     await this.settings.setGlobalRisk(this.globalRisk)
     if (active) {
       sendTelegram('🛑 <b>KILL SWITCH</b> activé — arrêt de tous les bots')
       for (const id of [...this.runners.keys()]) {
-        // kill = gel immédiat : pas de hook onStop (il pourrait ré-acheter)
+        // kill = gel immédiat : aucune transaction (pas de hook onStop, pas de
+        // fermeture). Les positions restent telles quelles, corrections à la main.
         await this.stop(id, {
-          closePosition: closePositions,
           runOnStopHook: false,
           reason: 'kill switch',
           killed: true,

@@ -190,14 +190,9 @@ export default defineStrategy({
   },
 
   async onStop(ctx) {
+    // Arrêter le bot ne transige JAMAIS : on annule seulement les ordres
+    // résidents. Si le bot était en excursion (vendu), il reste en USDT — la
+    // reprise le rachètera au signal, ou l'utilisateur ajuste à la main.
     await ctx.order.cancelAll()
-    const dust = ctx.symbolInfo?.minQty ?? 1e-8
-    if (ctx.position.qty <= dust) {
-      const quote = ctx.balances.find((b) => b.asset === ctx.symbolInfo?.quoteAsset)
-      const usdt = quote ? quote.free : 0
-      if (usdt > 0) {
-        await ctx.order.market({ side: 'BUY', quoteQty: usdt, reason: 'Arrêt : retour en BTC', tag: 'exit' })
-      }
-    }
   },
 })
