@@ -132,6 +132,13 @@ class BotRunner {
   private timers: ReturnType<typeof setInterval>[] = []
   private lastSeenOpen = new Map<string, number>()
   private lastFundingBoundary = 0
+  /** SÉRIALISATION start/stop : un Stop cliqué pendant le boot attendait la fin
+   *  du start() qui reposait status='running' → bot zombie (abonnements vivants,
+   *  ordres possibles après « arrêt »). Les opérations de cycle de vie passent
+   *  par cette file ; stopRequested fait avorter un boot en cours à son prochain
+   *  checkpoint, PUIS le stop s'exécute — jamais les deux entrelacés. */
+  private lifecycle: Promise<unknown> = Promise.resolve()
+  private stopRequested = false
   private counters = {
     pnlDay: utcDayKey(Date.now()),
     realizedPnlToday: 0,
@@ -151,7 +158,25 @@ class BotRunner {
 
   // ----------------------------------------------------------------- start
 
-  async start(): Promise<void> {
+  /** enchaîne une opération de cycle de vie APRÈS celles déjà en file (les
+   *  erreurs de la précédente n'annulent pas la suivante) */
+  private runExclusive<T>(fn: () => Promise<T>): Promise<T> {
+    const run = this.lifecycle.then(fn, fn)
+    this.lifecycle = run.catch(() => {})
+    return run
+  }
+
+  /** point d'abandon du boot : si un arrêt a été demandé pendant le démarrage,
+   *  on jette ICI (entre deux phases) — le stop en file fera le nettoyage */
+  private abortIfStopRequested(): void {
+    if (this.stopRequested) throw new Error('démarrage interrompu : arrêt demandé pendant le boot')
+  }
+
+  start(): Promise<void> {
+    return this.runExclusive(() => this.startInner())
+  }
+
+  private async startInner(): Promise<void> {
     const { config, db, manager } = this.deps
     const entry = registry.get(config.strategyId)
     const def = entry.def
@@ -408,6 +433,7 @@ class BotRunner {
       const notes = await this.rawExec.reconcile(resting)
       for (const n of notes) this.pushLog({ time: Date.now(), level: 'warn', message: `Réconciliation: ${n}` })
     }
+    this.abortIfStopRequested()
 
     // ---- warmup + live subscription (buffer the overlap)
     const feeds = this.runtime.feedList
@@ -468,9 +494,12 @@ class BotRunner {
         await this.runtime.handleCandle(feed.id, c, true)
         this.lastSeenOpen.set(feed.id, c.openTime)
       }
+      this.abortIfStopRequested()
     }
 
-    // replay buffered candles that closed during warmup, then go live
+    // replay buffered candles that closed during warmup, then go live —
+    // dernier point d'abandon AVANT que la stratégie ne puisse émettre des ordres
+    this.abortIfStopRequested()
     for (const feed of feeds) {
       for (const c of preBuffer.get(feed.id) ?? []) this.dispatchCandle(feed.id, c)
     }
@@ -486,6 +515,7 @@ class BotRunner {
 
     this.timers.push(setInterval(() => void this.saveState(), 15_000))
 
+    this.abortIfStopRequested()
     const equityNow = this.rawExec.equity()
     this.counters.equityDayStart = this.counters.equityDayStart || equityNow
     this.counters.equityPeak = Math.max(this.counters.equityPeak, equityNow)
@@ -781,7 +811,7 @@ class BotRunner {
 
   // ------------------------------------------------------------------ stop
 
-  async stop(
+  stop(
     opts: {
       cancelOrders?: boolean
       runOnStopHook?: boolean
@@ -789,13 +819,35 @@ class BotRunner {
       killed?: boolean
     } = {},
   ): Promise<void> {
+    // 1) le drapeau fait avorter un start() en cours à son prochain checkpoint ;
+    // 2) le stop réel s'exécute APRÈS lui dans la file — jamais entrelacés.
+    this.stopRequested = true
+    return this.runExclusive(() => this.stopInner(opts))
+  }
+
+  private async stopInner(opts: {
+    cancelOrders?: boolean
+    runOnStopHook?: boolean
+    reason?: string
+    killed?: boolean
+  }): Promise<void> {
     if (this.status === 'stopped') return
+    // un start avorté a pu ne jamais construire rawExec (créé en premier) ni
+    // runtime (créé après) : le démontage complet exige les deux
+    const booted = (this.rawExec as unknown) !== undefined && (this.runtime as unknown) !== undefined
     this.status = 'stopping'
     this.publishInfo()
     for (const u of this.unsubs) u()
     this.unsubs = []
     for (const t of this.timers) clearInterval(t)
     this.timers = []
+    if (!booted) {
+      this.status = opts.killed ? 'killed' : 'stopped'
+      this.statusReason = opts.reason
+      this.publishInfo()
+      this.pushLog({ time: Date.now(), level: 'info', message: `Bot arrêté avant la fin du démarrage${opts.reason ? ` (${opts.reason})` : ''}` })
+      return
+    }
 
     await this.chain.catch(() => {})
     try {
