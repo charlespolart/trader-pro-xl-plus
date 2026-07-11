@@ -1,10 +1,28 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { defaultParams, type BotConfig, type BotRiskConfig, type MarketType, type ParamValues } from '@tpx/shared'
+import { defaultParams, type BotConfig, type BotRiskConfig, type MarketType, type Order, type ParamValues } from '@tpx/shared'
 import { api, type StrategyDTO } from '../lib/api'
 import { useBots } from '../lib/ws'
 import { Pencil, Play, Plus, Square, Trash2 } from 'lucide-react'
+
+/** un stop-loss / take-profit = ordre conditionnel déposé sur l'exchange (pas
+ *  une position spot classique) — l'annuler à l'arrêt laisse la position à nu */
+const isProtective = (o: Order): boolean =>
+  o.type === 'STOP_MARKET' || o.type === 'STOP_LIMIT' || o.type === 'TAKE_PROFIT_MARKET' || o.type === 'TAKE_PROFIT_LIMIT' || o.tag === 'sl' || o.tag === 'tp'
+
+function orderLabel(o: Order): string {
+  const kind =
+    o.type === 'STOP_MARKET' || o.type === 'STOP_LIMIT' || o.tag === 'sl'
+      ? 'Stop-loss'
+      : o.type === 'TAKE_PROFIT_MARKET' || o.type === 'TAKE_PROFIT_LIMIT' || o.tag === 'tp'
+        ? 'Take-profit'
+        : o.type === 'LIMIT' || o.type === 'LIMIT_MAKER'
+          ? 'Ordre limite'
+          : o.type
+  const trigger = o.stopPrice ?? o.price
+  return `${kind} · ${o.side} ${o.qty}${trigger !== undefined ? ` @ ${trigger}` : ''}`
+}
 import { fmtNum, pnlClass } from '../lib/format'
 import { Badge, Card, Empty, Field, Modal, PageHeader } from '../components/ui'
 import { alertDialog, confirmDialog } from '../components/dialog'
@@ -182,7 +200,49 @@ export function Bots() {
                           <button
                             className="btn-ghost btn-sm"
                             title="Arrête le bot sans aucune transaction — la position reste telle quelle (corrections à la main sur la plateforme)"
-                            onClick={() => action.mutate({ id: b.config.id, act: 'stop' })}
+                            onClick={async () => {
+                              const open = b.openOrders ?? []
+                              // warning UNIQUEMENT s'il y a vraiment un ordre résident
+                              // (stop-loss/TP/limite) : l'annuler laisse la position à nu
+                              if (open.length > 0) {
+                                const protective = open.filter(isProtective)
+                                const ok = await confirmDialog({
+                                  title: protective.length > 0 ? '⚠ Stop-loss en cours' : 'Ordres en cours',
+                                  message: (
+                                    <div className="space-y-2">
+                                      <p>
+                                        Ce bot a {open.length} ordre{open.length > 1 ? 's' : ''} déposé{open.length > 1 ? 's' : ''} sur l'exchange
+                                        {protective.length > 0 ? (
+                                          <>
+                                            , dont <strong className="text-down">{protective.length} ordre{protective.length > 1 ? 's' : ''} de protection</strong>
+                                          </>
+                                        ) : null}{' '}:
+                                      </p>
+                                      <ul className="rounded-md border border-edge bg-panel2/60 px-3 py-2 font-mono text-[12px] leading-relaxed">
+                                        {open.map((o) => (
+                                          <li key={o.id} className={isProtective(o) ? 'text-down' : 'text-zinc-300'}>
+                                            {orderLabel(o)}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                      <p>
+                                        Arrêter le bot va les <strong>annuler</strong>
+                                        {protective.length > 0 ? (
+                                          <>
+                                            {' '}— la position ne sera <strong className="text-down">plus protégée</strong>
+                                          </>
+                                        ) : null}
+                                        . Aucun achat/vente n'est passé ; les corrections se font à la main sur la plateforme.
+                                      </p>
+                                    </div>
+                                  ),
+                                  confirmLabel: 'Annuler les ordres & arrêter',
+                                  tone: 'danger',
+                                })
+                                if (!ok) return
+                              }
+                              action.mutate({ id: b.config.id, act: 'stop' })
+                            }}
                           >
                             <Square size={14} /> Stop
                           </button>
