@@ -46,6 +46,9 @@ export interface LiveAdapterOptions {
   events: LiveAdapterEvents
   /** délai avant la sonde getOrder quand l'issue d'un place est inconnue (tests: 0) */
   probeDelayMs?: number
+  /** somme des posQty persistés des AUTRES bots spot de la même paire/mode —
+   *  pour la garde anti-sur-revendication du solde base au reconcile */
+  siblingBaseClaims?: () => Promise<number>
 }
 
 /** A resting order known to the bot (from the DB), passed to reconcile() to
@@ -263,6 +266,25 @@ export class OKXLiveAdapter implements ExecutionAdapter {
           )
         }
         this.quoteLedger = Math.max(0, real.free)
+      }
+      // ---- garde anti-SUR-REVENDICATION du solde base : la somme des tranches
+      // (ce bot + les autres bots spot de la même paire/mode) ne doit jamais
+      // excéder le solde réel du compte. Un semis double (adopt-all fantôme,
+      // bots jumeaux, retrait manuel) se détecte ICI, à chaque (re)démarrage —
+      // sinon le premier bot qui vend emporte les coins des autres.
+      const base = bals.find((b) => b.asset === this.o.symbolInfo.baseAsset)
+      if (base && this.posQty > 0 && this.o.siblingBaseClaims) {
+        const siblings = await this.o.siblingBaseClaims()
+        const realTotal = base.free + base.locked
+        const eps = Math.max(this.lotSz, realTotal * 1e-6)
+        if (this.posQty + siblings > realTotal + eps) {
+          notes.push(
+            `⚠ SUR-REVENDICATION ${this.o.symbolInfo.baseAsset} : ce bot ${this.posQty.toFixed(8)} ` +
+              `+ autres bots ${siblings.toFixed(8)} = ${(this.posQty + siblings).toFixed(8)} ` +
+              `> solde réel ${realTotal.toFixed(8)} — corriger les positions initiales ` +
+              `(le premier bot qui vend emportera les coins des autres)`,
+          )
+        }
       }
     })
     return notes

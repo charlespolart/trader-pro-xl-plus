@@ -241,10 +241,25 @@ function BotForm({
   // texte de saisie de la position initiale (null = affiché depuis le draft) —
   // permet de taper « 0, » ou « 0,202221025 » sans que le parseur efface le champ
   const [qtyText, setQtyText] = useState<string | null>(null)
+  // saisie en % du solde base réel (live/testnet) : le slider calcule une
+  // quantité ABSOLUE stockée dans initialBaseQty — jamais un « % » persistant
+  // (deux bots à 50 % résolus à des moments différents = sur-revendication).
+  const [pctMode, setPctMode] = useState(false)
+  const [pct, setPct] = useState(50)
   const baseAsset = draft.symbol.replace(/(USDT|USDC|FDUSD|BUSD|EUR|USD)$/, '') || 'base'
   // le DÉPART est imposé par la stratégie : base-denom (accumulateurs) = on
   // détient déjà les coins ; les autres = capital en quote. Pas de choix.
   const startsInBase = draft.market === 'spot' && strategy?.backtest?.denomination === 'base'
+  // solde base réel (live/testnet) pour la saisie en % — cache serveur 10 s
+  const { data: account } = useQuery({
+    queryKey: ['account', draft.mode],
+    queryFn: () => api.account(draft.mode as 'live' | 'testnet'),
+    enabled: startsInBase && draft.mode !== 'paper',
+    staleTime: 10_000,
+  })
+  const baseFree = account?.spot?.find((b) => b.asset === baseAsset)?.free
+  const pctQty = (p: number): number | undefined =>
+    baseFree !== undefined && baseFree > 0 ? Math.floor(((baseFree * p) / 100) * 1e8) / 1e8 : undefined
 
   const setStrategy = (id: string): void => {
     const s = strategies.find((x) => x.id === id)
@@ -358,24 +373,76 @@ function BotForm({
                 </label>
               )}
               {draft.adoptAllBase !== true && (
-                <input
-                  className="input"
-                  type="text"
-                  inputMode="decimal"
-                  placeholder="ex. 0.5 ou 0,202221025"
-                  value={qtyText ?? (draft.initialBaseQty !== undefined ? String(draft.initialBaseQty) : '')}
-                  onChange={(e) => {
-                    // saisie tolérante : virgule française OU point, précision libre
-                    // (type="number" refuse la virgule selon la locale et vide le
-                    // champ en silence — ici on garde le texte tel quel pendant la
-                    // frappe et on ne committe que les nombres finis)
-                    const raw = e.target.value
-                    setQtyText(raw)
-                    const n = Number(raw.replace(',', '.').trim())
-                    onChange({ ...draft, initialBaseQty: raw.trim() === '' || !Number.isFinite(n) ? undefined : n })
-                  }}
-                  onBlur={() => setQtyText(null)}
-                />
+                <>
+                  {draft.mode !== 'paper' && (
+                    <div className="flex gap-1">
+                      {([['Quantité', false], ['% du solde', true]] as const).map(([label, m]) => (
+                        <button
+                          key={label}
+                          type="button"
+                          className={`rounded-md px-2 py-0.5 text-[11.5px] ${pctMode === m ? 'bg-accent/20 text-accent' : 'text-zinc-500 hover:text-zinc-300'}`}
+                          onClick={() => {
+                            setPctMode(m)
+                            setQtyText(null)
+                            if (m) {
+                              const q = pctQty(pct)
+                              if (q !== undefined) onChange({ ...draft, initialBaseQty: q })
+                            }
+                          }}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {pctMode && draft.mode !== 'paper' ? (
+                    baseFree !== undefined && baseFree > 0 ? (
+                      <div className="space-y-1">
+                        <input
+                          type="range"
+                          min={1}
+                          max={100}
+                          step={1}
+                          value={pct}
+                          className="w-full accent-accent"
+                          onChange={(e) => {
+                            const p = Number(e.target.value)
+                            setPct(p)
+                            const q = pctQty(p)
+                            if (q !== undefined) onChange({ ...draft, initialBaseQty: q })
+                          }}
+                        />
+                        <div className="text-[12.5px] text-zinc-400">
+                          {pct} % ≈ <span className="tabular-nums text-zinc-200">{draft.initialBaseQty ?? '—'}</span> {baseAsset}
+                          <span className="ml-2 text-zinc-500">(solde libre : {baseFree} {baseAsset})</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-[12.5px] text-zinc-500">
+                        Solde {baseAsset} indisponible ({account?.configured === false ? 'clés OKX non configurées pour ce mode' : 'aucun solde libre'}) — utilisez la saisie en quantité.
+                      </div>
+                    )
+                  ) : (
+                    <input
+                      className="input"
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="ex. 0.5 ou 0,202221025"
+                      value={qtyText ?? (draft.initialBaseQty !== undefined ? String(draft.initialBaseQty) : '')}
+                      onChange={(e) => {
+                        // saisie tolérante : virgule française OU point, précision libre
+                        // (type="number" refuse la virgule selon la locale et vide le
+                        // champ en silence — ici on garde le texte tel quel pendant la
+                        // frappe et on ne committe que les nombres finis)
+                        const raw = e.target.value
+                        setQtyText(raw)
+                        const n = Number(raw.replace(',', '.').trim())
+                        onChange({ ...draft, initialBaseQty: raw.trim() === '' || !Number.isFinite(n) ? undefined : n })
+                      }}
+                      onBlur={() => setQtyText(null)}
+                    />
+                  )}
+                </>
               )}
             </div>
           </Field>

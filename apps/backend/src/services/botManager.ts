@@ -250,6 +250,30 @@ class BotRunner {
           onFill: (fill, order) => this.enqueue(() => this.onFillEvent(fill, order)),
           onOrderUpdate: (order) => this.enqueue(() => this.onOrderEvent(order)),
         },
+        // somme des tranches revendiquées par les AUTRES bots spot de la même
+        // paire/mode (états persistés) — nourrit la garde anti-sur-revendication
+        siblingBaseClaims: async () => {
+          const rows = await db
+            .select({ id: botsTable.id, state: botStateTable.state })
+            .from(botsTable)
+            .innerJoin(botStateTable, eq(botStateTable.botId, botsTable.id))
+            .where(
+              and(
+                eq(botsTable.market, 'spot'),
+                eq(botsTable.symbol, config.symbol),
+                eq(botsTable.mode, config.mode),
+                eq(botsTable.desiredRunning, true),
+              ),
+            )
+          let sum = 0
+          for (const r of rows) {
+            if (r.id === config.id) continue
+            const st = (r.state ?? {}) as Record<string, unknown>
+            const ad = st[ADAPTER_STATE_KEY] as { posQty?: number } | undefined
+            sum += Math.max(0, ad?.posQty ?? 0)
+          }
+          return sum
+        },
       })
       adapter.setLastPrice(lastPrice)
       this.rawExec = adapter
