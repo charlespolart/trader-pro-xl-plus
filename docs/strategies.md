@@ -108,7 +108,7 @@ Les handles mono-sortie sont des séries. Multi-sorties : `macdH.out('hist')`.
 
 ## Indicateurs
 
-Intégrés (`ind.*`) : `sma, ema, wma, hma, vwap, rollingVwap, rsi, macd, stoch, stochRsi, cci, mfi, obv, roc, willr, atr, bbands, keltner, donchian, adx, supertrend, psar`.
+Intégrés (`ind.*`) : `sma, ema, wma, hma, vwap, rollingVwap, rsi, macd, stoch, stochRsi, cci, mfi, obv, roc, willr, atr, bbands, keltner, donchian, adx, supertrend, psar` — plus les indicateurs de régime/flux maison : `takerFlow` (part du volume taker acheteur, spécifique à nos données Binance), `efficiencyRatio` (Kaufman), `atrPercentile`, `squeezeRatio` (Bollinger/Keltner), `varianceRatio` (Lo-MacKinlay glissant — bouffées vs compression du chemin, le cœur de btc-vrx). Le moteur de pivots/swings (`fractalPivots`, `zigzag` — base de btc-swing) s'importe directement : `import { zigzag } from '@tpx/core'`.
 
 La plupart acceptent une source : `'close' | 'open' | 'high' | 'low' | 'hl2' | 'hlc3' | 'ohlc4' | 'volume'` ou une fonction `(c: Candle) => number`.
 
@@ -247,6 +247,6 @@ Par défaut un backtest mesure la performance en **USDT** (`denomination: 'quote
 - le benchmark buy & hold = « garder son BTC » = **0 %** (chaque % au-dessus = du BTC gagné) ;
 - un trade = une excursion **vendre → racheter** ; son P&L est le **BTC gagné** (racheter plus bas accumule, racheter plus haut perd du BTC).
 
-Côté stratégie, c'est du spot normal : `ctx.position.qty > 0` = on détient du BTC (état neutre), `== 0` = on a vendu (en USDT). On vend (`SELL`) pour ouvrir l'excursion, on rachète (`BUY` avec `quoteQty` = tout l'USDT) pour la fermer. Voir `strategies/btc-accumulator.ts` (vend uniquement en vrai bear : tendance 3d en déclin, confirmée par l'EMA200 1d). Réglable dans le formulaire de backtest (sélecteur **Dénomination**, marchés spot).
+Côté stratégie, c'est du spot normal : `ctx.position.qty > 0` = on détient du BTC (état neutre), `== 0` = on a vendu (en USDT). On vend (`SELL`) pour ouvrir l'excursion, on rachète (`BUY` avec `quoteQty` = tout l'USDT) pour la fermer. Deux exemples produit, aux détecteurs complémentaires (recouvrement des sorties : 27 %) : `strategies/btc-accumulator.ts` (vend uniquement en vrai bear : tendance 3d en déclin, confirmée par l'EMA200 1d) et `strategies/btc-vrx.ts` (vend les bouffées directionnelles — variance ratio 4h > 1,15 — hors régime haussier, rachète à la recompression ; docs : `docs/btc-vrx.html`, vulgarisation `docs/btc-vrx-explique.html`, comparatif `docs/btc-acc-vs-vrx.html`). Réglable dans le formulaire de backtest (sélecteur **Dénomination**, marchés spot).
 
 En live et en paper, le bot démarre **comme le backtest** : position initiale en actif de base saisie à la création (simulée en paper, vérifiée contre le solde réel en live), ou adoption de **tout le solde disponible** au premier démarrage.

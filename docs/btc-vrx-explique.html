@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BTC VRX — expliquée simplement</title>
+<style>
+  :root {
+    --bg: #0b0e14; --panel: #11151f; --panel2: #161b28; --edge: #232a3b;
+    --txt: #e4e7ee; --muted: #9aa3b5; --dim: #6b7488;
+    --up: #26a69a; --down: #ef5350; --accent: #3b82f6; --orange: #ff9800;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: radial-gradient(1200px 700px at 70% -10%, #15203a 0%, var(--bg) 55%);
+    color: var(--txt); font: 16px/1.68 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 20px 90px; }
+  code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: .92em;
+    background: var(--panel2); border: 1px solid var(--edge); border-radius: 6px; padding: 1px 6px; }
+  header { padding: 58px 0 30px; border-bottom: 1px solid var(--edge); }
+  .kicker { display:inline-block; font-size:12px; letter-spacing:.18em; text-transform:uppercase;
+    color: var(--accent); background: rgba(59,130,246,.1); border:1px solid rgba(59,130,246,.3);
+    padding:4px 11px; border-radius:999px; margin-bottom:18px; }
+  h1 { font-size: 38px; line-height: 1.12; margin: 0 0 12px; letter-spacing: -.02em; }
+  h1 .b { color: var(--accent); }
+  .lead { font-size: 18.5px; color: var(--muted); max-width: 720px; margin: 0; }
+  section { padding: 42px 0 0; }
+  h2 { font-size: 13px; letter-spacing:.16em; text-transform:uppercase; color: var(--dim);
+    margin: 0 0 18px; padding-bottom: 10px; border-bottom: 1px solid var(--edge); }
+  h3 { font-size: 19px; margin: 24px 0 8px; }
+  p { color: #cfd5e2; margin: 10px 0; }
+  strong { color: #fff; }
+  .muted { color: var(--muted); }
+  .grid3 { display:grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .grid2 { display:grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 740px) { .grid3, .grid2 { grid-template-columns: 1fr; } }
+  .card { background: var(--panel); border:1px solid var(--edge); border-radius: 12px; padding: 18px 20px; }
+  .card h3 { margin: 0 0 8px; font-size: 16.5px; }
+  .card p { font-size: 14.8px; margin: 6px 0 0; }
+  .num { display:inline-block; width:28px; height:28px; line-height:28px; text-align:center; border-radius:999px;
+    background: var(--accent); color:#fff; font-weight:700; font-size:14px; margin-right:9px; vertical-align:-6px; }
+  .callout { background: linear-gradient(180deg, rgba(59,130,246,.10), rgba(59,130,246,.03));
+    border: 1px solid rgba(59,130,246,.3); border-left: 3px solid var(--accent);
+    border-radius: 12px; padding: 18px 22px; margin: 14px 0 0; }
+  .callout .big { font-size: 19px; line-height: 1.55; color: #fff; margin: 0; }
+  .aside { background: rgba(38,166,154,.06); border:1px solid rgba(38,166,154,.25); border-left:3px solid var(--up);
+    border-radius:12px; padding:14px 18px; margin:16px 0 0; }
+  .aside .t, .warn .t { font-size:11px; letter-spacing:.12em; text-transform:uppercase; font-weight:700; }
+  .aside .t { color: var(--up); }
+  .warn { background: rgba(239,83,80,.06); border:1px solid rgba(239,83,80,.3); border-left:3px solid var(--down);
+    border-radius:12px; padding:14px 18px; margin:16px 0 0; }
+  .warn .t { color: var(--down); }
+  .warn ol { margin: 8px 0 0; padding-left: 20px; }
+  .warn li { margin: 7px 0; color:#cfd5e2; }
+  .example { border-radius:12px; padding:16px 20px; border:1px solid var(--edge); background: var(--panel); }
+  .example.win { border-color: rgba(38,166,154,.4); }
+  .example.lose { border-color: rgba(239,83,80,.4); }
+  .example .tag { display:inline-block; font-size:11px; letter-spacing:.12em; text-transform:uppercase;
+    padding:3px 9px; border-radius:6px; margin-bottom:9px; font-weight:600; }
+  .example.win .tag { color: var(--up); background: rgba(38,166,154,.12); }
+  .example.lose .tag { color: var(--down); background: rgba(239,83,80,.12); }
+  .example p { font-size: 14.8px; margin: 4px 0; }
+  .bigpct { font-size: 26px; font-weight: 800; letter-spacing:-.01em; }
+  .win .bigpct { color: var(--up); } .lose .bigpct { color: var(--down); }
+  figure { margin: 14px 0 0; }
+  figcaption { font-size: 13px; color: var(--dim); margin-top: 6px; }
+  svg { display: block; width: 100%; height: auto; }
+  .svgpanel { background: var(--panel2); border: 1px solid var(--edge); border-radius: 10px; padding: 10px; }
+  ul.checks { padding-left: 0; list-style: none; margin: 8px 0 0; }
+  ul.checks li { margin: 10px 0; padding-left: 30px; position: relative; color:#cfd5e2; }
+  ul.checks li::before { content:'✓'; position:absolute; left: 4px; top: 0; color: var(--up); font-weight: 800; }
+  table { width:100%; border-collapse: collapse; margin: 12px 0 4px; font-size: 14.5px; }
+  th { text-align:left; font-size:11.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--dim);
+    padding: 7px 9px; border-bottom: 1px solid var(--edge); }
+  td { padding: 8px 9px; border-bottom: 1px solid rgba(35,42,59,.55); }
+  .pos { color: var(--up); font-weight:600; } .neg { color: var(--down); font-weight:600; }
+  footer { margin-top: 60px; padding-top: 18px; border-top: 1px solid var(--edge); color: var(--dim); font-size: 13.5px; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <span class="kicker">Stratégie spot · dénomination BTC · sans levier</span>
+  <h1>BTC <span class="b">VRX</span>, expliquée simplement</h1>
+  <p class="lead">Son travail : finir l'année avec <strong>plus de bitcoins</strong> qu'au départ.
+  Pas plus de dollars — plus de BTC. Le point de comparaison est brutal de simplicité :
+  ne rien faire et garder ses BTC = 0&nbsp;%. Tout ce qui est au-dessus est gagné, tout ce qui est
+  en dessous est perdu.</p>
+</header>
+
+<section>
+  <h2>Les trois règles</h2>
+  <div class="grid3">
+    <div class="card">
+      <h3><span class="num">1</span>En marché haussier : rien</h3>
+      <p>Tant que le prix est au-dessus de sa moyenne 200 jours <em>et</em> que cette moyenne monte,
+      la stratégie a <strong>interdiction de trader</strong>. Elle garde le BTC et dort. C'est la règle
+      la plus importante des trois : en bull, vendre ses BTC est presque toujours une erreur.</p>
+    </div>
+    <div class="card">
+      <h3><span class="num">2</span>Bouffée → tout vendre</h3>
+      <p>Hors marché haussier, quand le prix part en <strong>bouffée directionnelle</strong>
+      (variance ratio &gt; 1,15 — voir plus bas), elle vend <strong>100&nbsp;% du BTC</strong> contre USDT.
+      Le pari : ce déplacement-là est déjà vieux, la suite est en moyenne perdante.</p>
+    </div>
+    <div class="card">
+      <h3><span class="num">3</span>Accalmie → tout racheter</h3>
+      <p>Quand le chemin se <strong>recomprime</strong> (variance ratio &lt; 0,90) — ou si le marché
+      redevient haussier — elle rachète tout. Si le prix a baissé entre-temps, le même argent
+      rachète <strong>plus de BTC</strong>. C'est toute l'accumulation.</p>
+    </div>
+  </div>
+  <p class="muted" style="margin-top:12px">Rythme réel sur 2018→2026 : 100 excursions en 8 ans,
+  soit ~12 par an, durant chacune de quelques jours à trois semaines. Tout ou rien, spot, sans levier.</p>
+</section>
+
+<section>
+  <h2>Le « variance ratio », sans les maths</h2>
+  <p>Toutes les 4 heures, on note le pas que fait le prix. Le variance ratio compare la distance
+  parcourue en <strong>enjambées de 5 pas</strong> à ce qu'on attendrait si les pas étaient
+  indépendants les uns des autres. Trois cas :</p>
+  <div class="grid3">
+    <figure>
+      <div class="svgpanel"><svg viewBox="0 0 260 84" role="img" aria-label="Chemin aléatoire">
+        <polyline points="12,44 33,36 54,48 75,40 96,52 117,42 138,50 159,38 180,48 201,40 222,50 246,42"
+          fill="none" stroke="#9aa3b5" stroke-width="2" stroke-linejoin="round"/>
+      </svg></div>
+      <figcaption><strong style="color:var(--txt)">vr ≈ 1 — marche au hasard.</strong> Les pas ne
+      s'additionnent ni ne s'annulent. Rien à faire.</figcaption>
+    </figure>
+    <figure>
+      <div class="svgpanel"><svg viewBox="0 0 260 84" role="img" aria-label="Bouffée directionnelle">
+        <polyline points="12,16 33,22 54,20 75,30 96,36 117,34 138,46 159,52 180,50 201,62 222,66 246,72"
+          fill="none" stroke="#3b82f6" stroke-width="2" stroke-linejoin="round"/>
+      </svg></div>
+      <figcaption><strong style="color:var(--txt)">vr &gt; 1 — bouffée.</strong> Les pas s'enchaînent
+      dans le même sens : le prix <em>va quelque part</em>, vite. C'est le signal de vente.</figcaption>
+    </figure>
+    <figure>
+      <div class="svgpanel"><svg viewBox="0 0 260 84" role="img" aria-label="Compression">
+        <polyline points="12,42 33,36 54,46 75,38 96,46 117,40 138,46 159,40 180,45 201,41 222,45 246,42"
+          fill="none" stroke="#26a69a" stroke-width="2" stroke-linejoin="round"/>
+      </svg></div>
+      <figcaption><strong style="color:var(--txt)">vr &lt; 1 — compression.</strong> Les pas
+      s'annulent, le marché piétine et digère. C'est le signal de rachat.</figcaption>
+    </figure>
+  </div>
+  <p>Le ratio est mesuré sur les 60 dernières bougies de 4&nbsp;h, soit une fenêtre glissante de
+  ~10 jours. Les seuils exacts (vendre &gt; 1,15, racheter &lt; 0,90) ne sont pas magiques : tous
+  leurs voisins fonctionnent aussi — on y revient plus bas.</p>
+</section>
+
+<section>
+  <h2>L'edge — le fait mesuré, puis son interprétation</h2>
+  <div class="callout"><p class="big">Sur 2018→2024, hors marché haussier : après une <strong>bouffée</strong>,
+  les 5 jours suivants du BTC perdent en moyenne <strong style="color:var(--down)">−1,0&nbsp;%</strong> ;
+  après une <strong>compression</strong>, ils gagnent en moyenne
+  <strong style="color:var(--up)">+2,4&nbsp;%</strong>. Et l'effet est gradué entre les deux.
+  C'est ça, l'edge. Tout le reste n'est que de la plomberie autour de ce fait.</p></div>
+
+  <div class="grid2" style="margin-top:14px">
+    <figure>
+      <div class="svgpanel"><svg viewBox="0 0 420 168" role="img" aria-label="Quintiles BTC">
+        <text x="10" y="16" fill="#9aa3b5" font-size="12.5" font-weight="600">BTC — retour moyen des 5 jours suivants</text>
+        <line x1="205" y1="26" x2="205" y2="152" stroke="#232a3b" stroke-width="1.5"/>
+        <!-- Q1 +2.43 -->
+        <text x="10" y="41" fill="#9aa3b5" font-size="12">Q1 compression</text>
+        <path d="M205 30 L286.5 30 Q290.5 30 290.5 34 L290.5 40 Q290.5 44 286.5 44 L205 44 Z" fill="#26a69a"/>
+        <text x="296" y="41" fill="#e4e7ee" font-size="12" font-weight="600">+2,43 %</text>
+        <!-- Q2 +0.42 -->
+        <text x="10" y="67" fill="#6b7488" font-size="12">Q2</text>
+        <path d="M205 56 L216 56 Q220 56 220 60 L220 66 Q220 70 216 70 L205 70 Z" fill="#26a69a"/>
+        <text x="226" y="67" fill="#9aa3b5" font-size="12">+0,42 %</text>
+        <!-- Q3 +0.25 -->
+        <text x="10" y="93" fill="#6b7488" font-size="12">Q3</text>
+        <path d="M205 82 L210 82 Q214 82 214 86 L214 92 Q214 96 210 96 L205 96 Z" fill="#26a69a"/>
+        <text x="220" y="93" fill="#9aa3b5" font-size="12">+0,25 %</text>
+        <!-- Q4 +0.15 -->
+        <text x="10" y="119" fill="#6b7488" font-size="12">Q4</text>
+        <path d="M205 108 L207 108 Q211 108 211 112 L211 118 Q211 122 207 122 L205 122 Z" fill="#26a69a"/>
+        <text x="217" y="119" fill="#9aa3b5" font-size="12">+0,15 %</text>
+        <!-- Q5 -1.03 -->
+        <text x="10" y="145" fill="#9aa3b5" font-size="12">Q5 bouffée</text>
+        <path d="M205 134 L172 134 Q168 134 168 138 L168 144 Q168 148 172 148 L205 148 Z" fill="#ef5350"/>
+        <text x="162" y="145" fill="#e4e7ee" font-size="12" font-weight="600" text-anchor="end">−1,03 %</text>
+      </svg></div>
+    </figure>
+    <figure>
+      <div class="svgpanel"><svg viewBox="0 0 420 168" role="img" aria-label="Quintiles ETH">
+        <text x="10" y="16" fill="#9aa3b5" font-size="12.5" font-weight="600">ETH — le même effet, mesuré indépendamment</text>
+        <line x1="205" y1="26" x2="205" y2="152" stroke="#232a3b" stroke-width="1.5"/>
+        <text x="10" y="41" fill="#9aa3b5" font-size="12">Q1 compression</text>
+        <path d="M205 30 L263 30 Q267 30 267 34 L267 40 Q267 44 263 44 L205 44 Z" fill="#26a69a"/>
+        <text x="273" y="41" fill="#e4e7ee" font-size="12" font-weight="600">+1,73 %</text>
+        <text x="10" y="67" fill="#6b7488" font-size="12">Q2</text>
+        <path d="M205 56 L242.8 56 Q246.8 56 246.8 60 L246.8 66 Q246.8 70 242.8 70 L205 70 Z" fill="#26a69a"/>
+        <text x="253" y="67" fill="#9aa3b5" font-size="12">+1,16 %</text>
+        <text x="10" y="93" fill="#6b7488" font-size="12">Q3</text>
+        <path d="M205 82 L231.6 82 Q235.6 82 235.6 86 L235.6 92 Q235.6 96 231.6 96 L205 96 Z" fill="#26a69a"/>
+        <text x="242" y="93" fill="#9aa3b5" font-size="12">+0,85 %</text>
+        <text x="10" y="119" fill="#6b7488" font-size="12">Q4</text>
+        <path d="M205 108 L202.1 108 L202.1 122 L205 122 Z" fill="#ef5350"/>
+        <text x="196" y="119" fill="#9aa3b5" font-size="12" text-anchor="end">−0,08 %</text>
+        <text x="10" y="145" fill="#9aa3b5" font-size="12">Q5 bouffée</text>
+        <path d="M205 134 L153.9 134 Q149.9 134 149.9 138 L149.9 144 Q149.9 148 153.9 148 L205 148 Z" fill="#ef5350"/>
+        <text x="144" y="145" fill="#e4e7ee" font-size="12" font-weight="600" text-anchor="end">−1,53 %</text>
+      </svg></div>
+    </figure>
+  </div>
+  <figcaption style="margin-top:8px">Barres = retour moyen du BTC (à gauche) et de l'ETH (à droite)
+  sur les 5 jours qui suivent, selon l'état du variance ratio (Q1 = cinquième le plus comprimé,
+  Q5 = le plus en bouffée). Période 2018-04 → 2024-01, bougies 4&nbsp;h, hors warmup.</figcaption>
+
+  <h3>Pourquoi c'est exploitable</h3>
+  <p>Deux détails font qu'on peut en vivre. D'abord le Q5 est <strong>vraiment négatif</strong> —
+  pas juste « moins bon » : on peut payer les 0,30&nbsp;% d'un aller-retour (frais + slippage OKX)
+  et garder de la marge. Ensuite l'effet est <strong>gradué</strong> (Q1 &gt; Q2 &gt; Q3 &gt; Q4 &gt; Q5)
+  et se retrouve tel quel sur l'ETH, qui n'a servi à rien dans sa découverte — deux signatures
+  typiques d'un phénomène réel plutôt que d'une coïncidence statistique.</p>
+
+  <h3>Comment on l'interprète — et c'est une interprétation, pas un fait</h3>
+  <p>Hors marché haussier, les grands déplacements du BTC <strong>s'épuisent</strong> : une jambe de
+  panique attire les vendeurs tardifs, un rallye violent attire les acheteurs FOMO — puis le
+  mouvement meurt et se corrige. La stratégie vend quand le déplacement est déjà mûr, et rachète
+  dans l'accalmie qui suit, là où les mains ont fini de trembler. En marché haussier, c'est
+  l'inverse qui est vrai (le momentum se prolonge) — d'où la règle n°1. On n'a <strong>pas</strong>
+  de preuve causale de cette histoire ; on a un fait statistique répliqué, et une histoire
+  cohérente avec tout ce qu'on sait par ailleurs du BTC (les campagnes précédentes ont montré un
+  marché baissier fait de momentum et de rallyes brutaux).</p>
+  <p class="muted">Pourquoi des bougies de 4&nbsp;h ? Parce que c'est mesuré : la même mécanique en
+  1&nbsp;h est dévorée par les frais (−62&nbsp;%), en 1&nbsp;jour elle réagit trop tard (−39&nbsp;%).
+  Le 4&nbsp;h est le seul grain où l'edge survit aux coûts — le même verdict, exactement, que pour
+  btc-accumulator.</p>
+</section>
+
+<section>
+  <h2>Deux excursions réelles</h2>
+  <div class="grid2">
+    <div class="example win">
+      <span class="tag">Gagnée · mars 2020 (COVID)</span>
+      <p><strong>9 mars 2020</strong> : le krach COVID s'accélère, le variance ratio explose
+      → vente de tout le BTC à ≈ 7 900 $.</p>
+      <p><strong>12 mars 2020</strong> : trois jours plus tard, le chemin se recomprime après la
+      capitulation → rachat à ≈ 6 070 $.</p>
+      <p class="bigpct">+29,9 % de BTC</p>
+      <p class="muted">en 3 jours, frais compris. À noter : btc-accumulator a dormi pendant tout
+      l'épisode — un krach éclair n'est pas un bear « confirmé » sur 3 jours/EMA200. C'est
+      exactement le trou que VRX vient boucher.</p>
+    </div>
+    <div class="example lose">
+      <span class="tag">Perdue · mars 2023 (rally SVB)</span>
+      <p><strong>10 mars 2023</strong> : la faillite de SVB fait dévisser le marché, bouffée
+      baissière → vente à ≈ 19 750 $.</p>
+      <p><strong>13 mars 2023</strong> : le sauvetage est annoncé, le prix repart en V violent
+      → rachat forcé à ≈ 22 000 $, plus haut qu'à la vente.</p>
+      <p class="bigpct">−10,4 % de BTC</p>
+      <p class="muted">C'est LE mode d'échec de la stratégie : la bouffée qui se retourne en
+      V-recovery. Pire excursion de tout l'historique : −11,0 % (février 2019). Environ une
+      excursion sur deux est perdante — le gain vient de l'asymétrie (les gagnées font jusqu'à
+      +30 %, les perdues coûtent −2 à −11 %), pas de la fréquence.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Pourquoi on peut lui faire confiance</h2>
+  <p>Pas « parce que le backtest est joli ». Voici les vraies raisons, dans l'ordre où elles comptent :</p>
+  <ul class="checks">
+    <li><strong>La façon dont elle a été trouvée.</strong> On n'est pas parti d'une idée séduisante
+    qu'on aurait confirmée. On a construit <strong>122 indicateurs</strong> (classiques et inventés) et on les a
+    tous testés en aveugle — 10 008 combinaisons — avec des pièges à illusions : du bruit pur injecté
+    dans le lot (qui doit échouer, et a échoué), une correction pour le grand nombre de tests, la
+    réplication obligatoire sur ETH, et un détecteur mécanique de triche temporelle (aucun indicateur
+    ne peut lire le futur). <strong>121 familles sont mortes. Une a survécu : celle-ci.</strong></li>
+    <li><strong>Le test du hasard.</strong> On a rejoué 300 fois les mêmes périodes hors-bull en
+    sortant du BTC au hasard, avec le même nombre d'excursions et les mêmes durées : le hasard
+    <strong>perd</strong> (−15 % en médiane). La vraie stratégie fait +244 % — mieux que 98,3 % des
+    tirages. Ce n'est donc pas « être souvent dehors » qui paie : c'est le <em>timing</em> du
+    variance ratio.</li>
+    <li><strong>Aucun réglage magique.</strong> Vendre à 1,10, 1,15, 1,20 ou 1,25 ; racheter à 0,85,
+    0,90 ou 0,95 ; lire le régime sur une moyenne 150, 200 ou 250 jours : <em>toutes</em> les
+    combinaisons voisines gagnent. Les 12 dates de départ mensuelles testées gagnent toutes. Avec
+    des frais doublés elle fait encore +62 %. Une stratégie sur-ajustée ne survit à aucun de ces tests.</li>
+    <li><strong>L'examen final, gelé d'avance.</strong> La période 2024→2026 n'a jamais servi à la
+    construire : réglages figés, puis un seul regard. Résultat : <strong>+16,9 %</strong> (drawdown
+    −19,7 %) là où btc-accumulator ne fait que +4,9 % — précisément le régime de marché qui est son
+    angle mort.</li>
+    <li><strong>Les chiffres de cette page sont ceux de l'app.</strong> La simulation de recherche et
+    le moteur de backtest produisent les mêmes résultats au dixième près, et ces valeurs sont
+    verrouillées dans un contrôle de non-régression automatique.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Ce qui doit te faire douter — sans fard</h2>
+  <div class="warn"><span class="t">Les limites, honnêtement</span>
+    <ol>
+      <li><strong>La preuve hors-échantillon est encore mince.</strong> Les +16,9 % de 2024-26 sont
+      positifs et battent la v2, mais sur cette fenêtre seule (19 excursions), on ne peut pas les
+      distinguer statistiquement d'un coup de chance. La confiance vient du faisceau complet
+      (in-sample + réplication ETH + robustesse), pas de l'OOS isolé. Le vrai test continue en ce
+      moment même, en temps réel.</li>
+      <li><strong>Elle perd des années entières.</strong> Réel, moteur : 2019 −7,9 %, 2023 −17,9 %,
+      2024 −9,8 %, 2025 −7,6 %. Son terrain, ce sont les marchés agités (2020 +36 %, 2022 +150 %,
+      2026 +40 % à date) ; son poison, les remontées lentes qui font des V à répétition. Si tu n'es
+      pas capable de tenir deux ans de baisse de ton stack BTC, tu la couperas au pire moment — et
+      c'est comme ça qu'on transforme une stratégie gagnante en perte réelle.</li>
+      <li><strong>Le pire creux historique est de −35,9 % en BTC.</strong> Il faut s'attendre à le
+      revoir, voire pire. Le duo avec btc-accumulator le ramène à −19,5 % sur l'in-sample — c'est la
+      configuration recommandée, pas une option.</li>
+      <li><strong>L'expression est calibrée pour le BTC.</strong> Le phénomène existe aussi sur ETH,
+      mais la stratégie y perd (drawdown −60 %). Autrement dit : la mécanique exacte dépend du
+      caractère actuel du BTC. Si ce caractère change durablement (maturation, volatilité
+      structurellement plus basse), l'edge peut s'éroder sans prévenir. Le contrôle de
+      non-régression et le suivi live sont là pour le détecter, pas pour l'empêcher.</li>
+      <li><strong>Ça reste une simulation du passé</strong> plus six mois de hors-échantillon.
+      Aucun backtest, aussi soigné soit-il, ne garantit le futur. Le chemin raisonnable :
+      bot démo d'abord, petit capital ensuite, duo toujours.</li>
+    </ol>
+  </div>
+  <div class="aside"><span class="t">En une phrase</span>
+    <p style="margin:6px 0 0">L'edge est <strong>réel au sens où tout ce qu'on sait mesurer dit
+    qu'il l'est</strong> — découvert proprement, répliqué, robuste, confirmé une fois hors
+    échantillon — mais il est <strong>cyclique</strong> (des années fastes, des années perdantes),
+    <strong>concentré</strong> (+18 %/an de rythme historique moyen, mais ~+7 %/an si on retire 2022 :
+    l'essentiel vient de quelques grandes années de crise),
+    et <strong>mortel si on le sur-dimensionne</strong>. C'est un second moteur à côté de
+    btc-accumulator, pas une martingale.</p>
+  </div>
+</section>
+
+<footer>
+  Basé sur la campagne accum3 (2026-07-11) — journal complet : <code>apps/backend/src/research/accum3/LOG.md</code> ·
+  validation détaillée : <code>docs/btc-vrx.html</code> · comparatif chiffré v2 vs VRX :
+  <code>docs/btc-acc-vs-vrx.html</code> · chiffres verrouillés par <code>accum2/baselinecheck.ts</code> (8/8 ✓).
+</footer>
+
+</div>
+</body>
+</html>

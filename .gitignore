@@ -16,3 +16,7 @@ build/
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# python (scripts de recherche)
+__pycache__/
+*.pyc

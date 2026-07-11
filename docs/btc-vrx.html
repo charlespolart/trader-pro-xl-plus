@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BTC VRX Accumulator — le second moteur</title>
+<style>
+  :root {
+    --bg: #0b0e14; --panel: #11151f; --panel2: #161b28; --edge: #232a3b;
+    --txt: #e4e7ee; --muted: #9aa3b5; --dim: #6b7488;
+    --up: #26a69a; --down: #ef5350; --accent: #3b82f6; --amber: #f0a92b; --orange: #ff9800;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: radial-gradient(1200px 700px at 70% -10%, #15203a 0%, var(--bg) 55%);
+    color: var(--txt); font: 16px/1.65 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 940px; margin: 0 auto; padding: 0 22px 90px; }
+  code, .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  header { padding: 70px 0 36px; border-bottom: 1px solid var(--edge); }
+  .kicker { display:inline-block; font-size:12px; letter-spacing:.18em; text-transform:uppercase;
+    color: var(--orange); background: rgba(255,152,0,.1); border:1px solid rgba(255,152,0,.25);
+    padding:4px 11px; border-radius:999px; margin-bottom:20px; }
+  h1 { font-size: 44px; line-height: 1.1; margin: 0 0 14px; letter-spacing: -.02em; }
+  h1 .btc { color: var(--orange); }
+  h1 .v { color: var(--accent); }
+  .lead { font-size: 19px; color: var(--muted); max-width: 720px; margin: 0; }
+  section { padding: 46px 0 0; }
+  h2 { font-size: 13px; letter-spacing:.16em; text-transform:uppercase; color: var(--dim);
+    margin: 0 0 18px; padding-bottom: 10px; border-bottom: 1px solid var(--edge); }
+  h3 { font-size: 21px; margin: 26px 0 8px; }
+  p { color: #cfd5e2; }
+  .muted { color: var(--muted); }
+  strong { color: #fff; }
+  .callout { background: linear-gradient(180deg, rgba(59,130,246,.10), rgba(59,130,246,.03));
+    border: 1px solid rgba(59,130,246,.3); border-left: 3px solid var(--accent);
+    border-radius: 12px; padding: 20px 24px; margin: 8px 0 4px; }
+  .callout .big { font-size: 20px; line-height: 1.5; color: #fff; }
+  .grid { display: grid; gap: 16px; }
+  .cols-2 { grid-template-columns: 1fr 1fr; }
+  @media (max-width: 720px) { .cols-2 { grid-template-columns: 1fr; } }
+  .card { background: var(--panel); border: 1px solid var(--edge); border-radius: 12px; padding: 20px 22px; }
+  .card h3 { margin-top: 0; }
+  .aside { background: rgba(38,166,154,.06); border:1px solid rgba(38,166,154,.25); border-left:3px solid var(--up);
+    border-radius:12px; padding:14px 18px; margin:14px 0; }
+  .aside .t { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--up); font-weight:700; }
+  .warn { background: rgba(239,83,80,.06); border:1px solid rgba(239,83,80,.3); border-left:3px solid var(--down);
+    border-radius:12px; padding:14px 18px; margin:14px 0; }
+  .warn .t { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--down); font-weight:700; }
+  table { width:100%; border-collapse: collapse; margin: 14px 0; font-size: 15px; }
+  th { text-align:left; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--dim);
+    padding: 8px 10px; border-bottom: 1px solid var(--edge); }
+  td { padding: 9px 10px; border-bottom: 1px solid rgba(35,42,59,.6); }
+  td.pos { color: var(--up); font-weight: 600; }
+  td.neg { color: var(--down); font-weight: 600; }
+  .overflow { overflow-x: auto; }
+  ul { color:#cfd5e2; }
+  .pill { display:inline-block; font-size:12px; padding:2px 10px; border-radius:999px; margin-right:6px;
+    border:1px solid var(--edge); color:var(--muted); }
+  footer { margin-top: 70px; padding-top: 20px; border-top: 1px solid var(--edge); color: var(--dim); font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <span class="kicker">Stratégie · dénomination BTC · campagne accum3 2026-07</span>
+  <h1><span class="btc">BTC</span> VRX <span class="v">Accumulator</span></h1>
+  <p class="lead">Le second moteur d'accumulation : vendre les <strong>bouffées directionnelles</strong>
+  (variance ratio 4h élevé) hors régime haussier, racheter quand le chemin se recomprime.
+  Complémentaire de BTC Accumulator — recouvrement des sorties&nbsp;: 27&nbsp;% seulement.</p>
+</header>
+
+<section>
+  <h2>La thèse</h2>
+  <div class="callout"><p class="big">
+    Quand le prix du BTC se déplace en <strong>bouffées</strong> — beaucoup de distance nette pour
+    peu de barres, variance des retours 5-barres ≫ 5× la variance des retours 1-barre — les
+    5 jours qui suivent sont <strong>faibles ou négatifs</strong>. Quand le chemin se
+    <strong>recomprime</strong>, ils sont franchement positifs. On vend la bouffée, on rachète
+    la compression, et on ne le fait <strong>jamais en bull</strong>.
+  </p></div>
+  <p>La mesure est le <strong>variance ratio</strong> vr(5,60) : var(retours log 5 barres) /
+  (5 × var(retours 1 barre)), estimé sur 60 barres de 4h (~10 jours). vr ≈ 1 : marche aléatoire.
+  vr &gt; 1 : le chemin a du momentum (bouffées). vr &lt; 1 : chemin compressé, mean-reverting.
+  Sur l'in-sample 2018-04→2024-01, les quintiles sont <strong>monotones</strong> et le mauvais
+  quintile est <em>vraiment</em> négatif — condition nécessaire pour payer les frais&nbsp;:</p>
+  <div class="overflow"><table>
+    <tr><th>Quintile vr(5,60)</th><th>BTC — 5 jours suivants</th><th>ETH (réplication)</th></tr>
+    <tr><td>Q1 (compression)</td><td class="pos">+2,43 %</td><td class="pos">+1,73 %</td></tr>
+    <tr><td>Q2</td><td>+0,42 %</td><td>+1,16 %</td></tr>
+    <tr><td>Q3</td><td>+0,25 %</td><td>+0,85 %</td></tr>
+    <tr><td>Q4</td><td>+0,15 %</td><td>−0,08 %</td></tr>
+    <tr><td>Q5 (bouffées)</td><td class="neg">−1,03 %</td><td class="neg">−1,53 %</td></tr>
+  </table></div>
+</section>
+
+<section>
+  <h2>D'où ça sort — l'usine à indicateurs</h2>
+  <p>La campagne accum3 a construit <strong>122 features</strong> (classiques, estimateurs de
+  volatilité, statistiques de chemin, order-flow, structure, et une dizaine d'inventées),
+  puis les a passées au crible sur <strong>10 008 cellules</strong> (feature × horizon × régime ×
+  {BTC, ETH} × {4h, 1d}), in-sample strictement. Le crible&nbsp;:</p>
+  <ul>
+    <li><strong>Causalité vérifiée mécaniquement</strong> — chaque feature recalculée sur préfixe
+      tronqué, valeur au point de coupe identique exigée (a attrapé 1 lookahead réel) ;</li>
+    <li><strong>Null par décalage circulaire</strong> (FFT sur rangs) — préserve l'autocorrélation
+      des deux séries ; recalibré par tranche compactée après que les <strong>contrôles
+      négatifs</strong> (bruit pur, index temporel, prix brut) ont démasqué le null naïf
+      (61 faux positifs → 0 après correctif) ;</li>
+    <li><strong>t non-chevauchant</strong> (sous-échantillonné par horizon), <strong>BH-FDR 10 %</strong>
+      sur toute la matrice, stabilité de signe sur les deux moitiés de l'IS,
+      <strong>réplication ETH</strong> même signe exigée.</li>
+  </ul>
+  <p><strong>4 cellules survivent</strong> — toutes la même famille : la micro-structure du chemin
+  (vr_5_60, hurst_spread) en 4h à horizon ~5 jours, plus une réversion 1-jour morte après coûts
+  (−0,11 %/j exploitable contre 0,30 % d'aller-retour). Une famille réelle sur 122 candidates :
+  c'est le taux de base honnête de la recherche d'edges.</p>
+</section>
+
+<section>
+  <h2>La mécanique</h2>
+  <div class="grid cols-2">
+    <div class="card">
+      <h3>Trois règles</h3>
+      <ul>
+        <li><strong>Défaut</strong> : détenir du BTC, ne rien faire.</li>
+        <li><strong>Vente</strong> : hors-bull ET vr(5,60) &gt; 1,15 → vendre tout le BTC.</li>
+        <li><strong>Rachat</strong> : vr &lt; 0,90 (recompression) OU retour du bull → racheter tout.
+          Cap de perte optionnel (défaut off).</li>
+      </ul>
+      <p class="muted">Bull = prix &gt; EMA200 journalière ET EMA montante sur 30 j — le même
+      garde-fou que la v2. Sans lui, le bull whipsaw : IS −11 % contre +244 %.</p>
+    </div>
+    <div class="card">
+      <h3>Pourquoi 4h, pourquoi ces seuils</h3>
+      <ul>
+        <li>Grain 1h : −62 % (mangé par les frais). Grain 1d : −39 % (trop lent).
+          <strong>4h est structurel</strong> — même carte de fréquences que la v2.</li>
+        <li>Plateau des seuils in ∈ [1,10–1,25] × out ∈ [0,85–0,95] : <strong>tout est positif</strong>
+          (+95 à +358 %), moitiés positives au centre. 1,15/0,90 = le centre, pas le pic.</li>
+        <li>Gate : EMA 150/200/250 × déclin 15/30/45 → 9/9 cellules entre +149 et +262 %.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Les chiffres</h2>
+  <p class="muted">BTCUSDT spot, dénomination base (benchmark = garder son BTC = 0 %),
+  frais OKX 0,10 % + slippage 0,05 %, parité moteur ↔ simulation de recherche exacte au dixième.</p>
+  <div class="overflow"><table>
+    <tr><th>Fenêtre</th><th>Net BTC</th><th>Max DD</th><th>Trades (AR)</th><th>Notes</th></tr>
+    <tr><td>IS 2018-04 → 2024-01</td><td class="pos">+243,7 %</td><td>−29,1 %</td><td>81</td>
+      <td>81 excursions, WR 51 %, payoff 2,1, pire −11 %</td></tr>
+    <tr><td><strong>OOS 2024-01 → 2026-07</strong> (une seule passe, tout figé avant)</td>
+      <td class="pos">+16,9 %</td><td>−19,7 %</td><td>19</td>
+      <td>vs v2 : +4,9 % / −25,3 % sur la même fenêtre</td></tr>
+    <tr><td>Full 2018-04 → 2026-07</td><td class="pos">+301,7 %</td><td>−35,9 %</td><td>100</td>
+      <td>vs v2 : +126,2 % / −32,5 %</td></tr>
+  </table></div>
+
+  <h3>La validation (tout avant l'unique regard OOS)</h3>
+  <ul>
+    <li><strong>Null timing-aléatoire</strong> (mêmes nombre et durées d'excursions, placées au
+      hasard <em>dans les mêmes périodes hors-bull</em>) : médiane −14,8 %, p95 +133,7 % →
+      le réel +243,7 % est au <strong>percentile 98,3</strong>. Être dehors au hasard PERD du BTC ;
+      c'est le timing vr qui fait le travail.</li>
+    <li><strong>Fenêtres annuelles</strong> params figés : 8/10 positives (2022 : +150 %) ;
+      les pertes sont des années de recovery en grind (2023 : −18 %).</li>
+    <li><strong>12/12 dates de départ mensuelles positives</strong> (min +205 %).</li>
+    <li><strong>Coûts ×2 : +62 %. ×3 : +19,5 %.</strong></li>
+    <li><strong>Réplication ETH</strong> : le mécanisme réplique (quintiles monotones), l'expression
+      stratégie est BTC-spécifique (ETH +22 %, DD −60 % → pas de eth-vrx, précédent X3).</li>
+  </ul>
+
+  <div class="warn"><span class="t">Les limites, sans fard</span>
+    <p>① L'OOS 2024-26 est positif et bat la v2, mais son percentile contre le null n'est que
+    <strong>64</strong> — 19 excursions sur une fenêtre sans bear soutenu, pas de quoi séparer
+    statistiquement. La preuve porte sur l'IS (98,3), la réplication et la robustesse.
+    ② Comme la v2, VRX <em>rend</em> du BTC dans les marchés qui montent en grind après une
+    correction (2023). ③ Bootstrap accum2 mémorable : dimensionner les attentes — c'est un
+    moteur de <em>régimes agités</em>, pas une martingale.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Le duo v2 + VRX</h2>
+  <p>Les deux moteurs vendent des baisses, mais pas <em>les mêmes</em> : la v2 attend un bear
+  confirmé 3d+1d et chevauche les jambes ; VRX tire sur toute bouffée hors-bull (corrections
+  violentes de marchés neutres comprises). Sorties jointes : 27 %. Corrélation des retours
+  actifs : ~0,43. Résultat moteur réel, moitié-moitié, sans rebalancement :</p>
+  <div class="overflow"><table>
+    <tr><th>Fenêtre</th><th>v2 seule</th><th>VRX seule</th><th><strong>Mix 50/50</strong></th></tr>
+    <tr><td>IS 2018-04 → 2024-01</td><td>+115,7 % / −32,5 %</td><td>+243,7 % / −29,1 %</td>
+      <td class="pos">+179,7 % / <strong>−19,5 %</strong></td></tr>
+    <tr><td>OOS 2024-01 → 2026-07</td><td>+4,8 % / −25,3 %</td><td>+16,9 % / −19,7 %</td>
+      <td class="pos">+10,9 % / −18,3 %</td></tr>
+    <tr><td>Full 2018-04 → 2026-07</td><td>+126,2 % / −32,5 %</td><td>+301,7 % / −35,9 %</td>
+      <td class="pos">+214,0 % / −31,5 %</td></tr>
+  </table></div>
+  <div class="aside"><span class="t">Recommandation produit</span>
+    <p>Déployer VRX en <strong>second bot spot</strong> à côté de btc-accumulator, moitié du capital
+    BTC chacun. Le mix garde l'essentiel du rendement de VRX et coupe le drawdown IS de −33 % à
+    −19,5 %. Les deux dorment en bull — aucun conflit d'inventaire, mais deux bots sur le même
+    solde spot : séparer les comptes/sous-comptes ou dimensionner les <code>quoteQty</code>.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Réfuté en chemin (campagne accum3)</h2>
+  <ul>
+    <li><strong>Vol-harvesting / Shannon</strong> (constant-mix BTC/USDT à bandes, gated) : le mode
+      « neutral » (+39 %) est à 100 % un effet d'allocation (pari de régime, moitiés +61/−14) ;
+      le mode « hors-bull » a +7 % d'alpha de rebalancement mais le null à timing aléatoire fait
+      MIEUX (+28,7 % médian) — racheter mécaniquement après les chutes = acheter la continuation
+      baissière. BTC est un actif momentum, Shannon y est anti-edge.</li>
+    <li><strong>Réversion 1 jour</strong> (roc_1, IC −0,07 répliqué ETH) : réelle mais 3× trop
+      petite pour les frais.</li>
+    <li><strong>Grains 1h / 1d pour VRX</strong> : −62 % / −39 %.</li>
+    <li><strong>hurst_spread comme déclencheur</strong> : même famille que vr (il en dérive) —
+      non retenu, vr est plus simple et déployable tel quel.</li>
+    <li><strong>Rotation cross-section alt/BTC</strong> (univers point-in-time des 489 paires
+      */BTC ayant jamais existé sur Binance, délistées comprises) : le rank momentum achète
+      les sommets de pumps → <strong>−100 % partout</strong>, pire que le null aléatoire ; le beta
+      alt/BTC 2018-24 est lui-même à −97,7 %. La variante donchian 15/5 sur top-10 majors
+      (params importés de X2, zéro fit) fait +21,4 % en OOS mais avec un DD de −47,9 % en BTC —
+      rendement/DD 0,45 contre 0,86 pour VRX → <strong>parquée</strong>, pas déployée.</li>
+    <li><strong>Breadth alts</strong> (fraction de l'univers au-dessus de sa MA50) comme signal de
+      régime BTC : signe cohérent (froth alt → BTC faible ensuite) mais p 0,13-0,25 — sous la
+      barre du null calibré.</li>
+    <li><strong>Hash ribbon</strong> (capitulation mineurs, données on-chain) : p 0,25-0,86,
+      moitiés instables — la porte on-chain fermée.</li>
+  </ul>
+  <p class="muted">Détail complet, ledger et scripts : <code>apps/backend/src/research/accum3/LOG.md</code>.</p>
+</section>
+
+<footer>
+  Campagne accum3 — 2026-07-11 · moteur event-driven multi-TF sans lookahead (audit accum2) ·
+  indicateur <code>varianceRatio</code> ajouté à @tpx/core · baselines verrouillées dans
+  <code>accum2/baselinecheck.ts</code> (8/8) · parité recherche ↔ moteur vérifiée au dixième.
+  <br>Voir aussi : <code>docs/btc-vrx-explique.html</code> (la stratégie expliquée simplement) ·
+  <code>docs/btc-acc-vs-vrx.html</code> (comparatif chiffré avec btc-accumulator).
+</footer>
+
+</div>
+</body>
+</html>

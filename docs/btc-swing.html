@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BTC Swing — la stratégie et sa validation</title>
+<style>
+  :root {
+    --bg: #0b0e14; --panel: #11151f; --panel2: #161b28; --edge: #232a3b;
+    --txt: #e4e7ee; --muted: #9aa3b5; --dim: #6b7488;
+    --up: #26a69a; --down: #ef5350; --accent: #3b82f6; --amber: #f0a92b; --orange: #ff9800;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: radial-gradient(1200px 700px at 70% -10%, #15203a 0%, var(--bg) 55%);
+    color: var(--txt); font: 16px/1.65 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 940px; margin: 0 auto; padding: 0 22px 90px; }
+  code, .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  header { padding: 70px 0 36px; border-bottom: 1px solid var(--edge); }
+  .kicker { display:inline-block; font-size:12px; letter-spacing:.18em; text-transform:uppercase;
+    color: var(--accent); background: rgba(59,130,246,.1); border:1px solid rgba(59,130,246,.25);
+    padding:4px 11px; border-radius:999px; margin-bottom:20px; }
+  h1 { font-size: 44px; line-height: 1.1; margin: 0 0 14px; letter-spacing: -.02em; }
+  h1 .btc { color: var(--orange); }
+  .lead { font-size: 19px; color: var(--muted); max-width: 720px; margin: 0; }
+  section { padding: 46px 0 0; }
+  h2 { font-size: 13px; letter-spacing:.16em; text-transform:uppercase; color: var(--dim);
+    margin: 0 0 18px; padding-bottom: 10px; border-bottom: 1px solid var(--edge); }
+  h3 { font-size: 21px; margin: 26px 0 8px; }
+  h4 { font-size: 16px; margin: 22px 0 6px; }
+  p { color: #cfd5e2; }
+  .muted { color: var(--muted); }
+  strong { color: #fff; }
+  .callout { background: linear-gradient(180deg, rgba(59,130,246,.10), rgba(59,130,246,.03));
+    border: 1px solid rgba(59,130,246,.3); border-left: 3px solid var(--accent);
+    border-radius: 12px; padding: 20px 24px; margin: 8px 0 4px; }
+  .callout .big { font-size: 20px; line-height: 1.5; color: #fff; }
+  .grid { display: grid; gap: 16px; }
+  .cols-2 { grid-template-columns: 1fr 1fr; }
+  .cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  @media (max-width: 720px) { .cols-2, .cols-3 { grid-template-columns: 1fr; } }
+  .card { background: var(--panel); border: 1px solid var(--edge); border-radius: 12px; padding: 20px 22px; }
+  .card h3, .card h4 { margin-top: 0; }
+  .aside { background: rgba(38,166,154,.06); border:1px solid rgba(38,166,154,.25); border-left:3px solid var(--up);
+    border-radius:12px; padding:14px 18px; margin:14px 0; }
+  .aside .t { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--up); font-weight:700; }
+  .flow { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:6px 0 8px;
+    font-family: ui-monospace, monospace; font-size:14px; }
+  .flow .b { background: var(--panel2); border:1px solid var(--edge); border-radius:8px; padding:6px 11px; }
+  .flow .arrow { color: var(--dim); }
+  .pos { color: var(--up); } .neg { color: var(--down); }
+  .ba { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:14px; }
+  @media (max-width:720px){ .ba { grid-template-columns:1fr; } }
+  .ba .col { border:1px solid var(--edge); border-radius:12px; padding:16px 18px; background:var(--panel); }
+  .ba .col.after { border-color: rgba(38,166,154,.4); background: rgba(38,166,154,.05); }
+  .ba .h { font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--dim); margin-bottom:8px; }
+  .ba .big { font-size:30px; font-weight:700; font-family: ui-monospace, monospace; }
+  .ba .sub { font-size:14px; color: var(--muted); margin-top:2px; }
+  .warn { background: rgba(240,169,43,.07); border:1px solid rgba(240,169,43,.3); border-left:3px solid var(--amber);
+    border-radius:12px; padding:18px 22px; margin-top:14px; }
+  .warn h3 { margin-top:0; color: var(--amber); }
+  .pill { display:inline-block; font-size:12px; padding:2px 9px; border-radius:999px; border:1px solid var(--edge);
+    background:var(--panel2); color:var(--muted); }
+  .pill.ok { color: var(--up); border-color: rgba(38,166,154,.4); background: rgba(38,166,154,.08); }
+  .pill.ko { color: var(--down); border-color: rgba(239,83,80,.4); background: rgba(239,83,80,.08); }
+  .pill.mid { color: var(--amber); border-color: rgba(240,169,43,.4); background: rgba(240,169,43,.08); }
+  .gloss { display:grid; gap:0; }
+  .gloss .row { display:grid; grid-template-columns:190px 1fr; gap:14px; padding:11px 0; border-bottom:1px solid rgba(35,42,59,.55); }
+  .gloss .row:last-child { border-bottom:0; }
+  .gloss .k { color: var(--accent); font-weight:600; font-family: ui-monospace, monospace; font-size:14px; }
+  .gloss .d { color: #cfd5e2; font-size:14.5px; }
+  @media (max-width:720px){ .gloss .row { grid-template-columns:1fr; gap:3px; } }
+  ul.clean { padding-left: 0; list-style: none; }
+  ul.clean li { padding: 6px 0 6px 26px; position: relative; color: #cfd5e2; }
+  ul.clean li::before { content: "▸"; position: absolute; left: 4px; color: var(--accent); }
+  /* tables */
+  .tbl { width:100%; border-collapse: collapse; margin: 12px 0 4px; font-size: 14.5px; }
+  .tbl th { text-align:left; font-size:11.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--dim);
+    padding: 8px 10px; border-bottom: 1px solid var(--edge); font-weight:600; }
+  .tbl td { padding: 8px 10px; border-bottom: 1px solid rgba(35,42,59,.5); color:#cfd5e2; }
+  .tbl tr:last-child td { border-bottom: 0; }
+  .tbl .mono { font-size: 13.5px; }
+  .tbl .r { text-align: right; font-family: ui-monospace, monospace; }
+  .tbl tr:hover td { background: rgba(59,130,246,.05); }
+  /* bar charts (CSS, statiques, valeurs directes + position = double encodage) */
+  .bars { margin: 14px 0 4px; }
+  .brow { display:grid; grid-template-columns: 150px 1fr 90px; gap: 10px; align-items:center; padding: 4px 0; }
+  .brow:hover .btrack { filter: brightness(1.18); }
+  .blab { font-size: 13.5px; color: var(--muted); text-align:right; }
+  .btrack { position: relative; height: 16px; background: var(--panel2); border-radius: 5px; overflow:hidden; }
+  .bzero { position:absolute; top:0; bottom:0; width:1px; background: var(--dim); opacity:.6; }
+  .bfill { position:absolute; top:2px; bottom:2px; border-radius: 4px; }
+  .bfill.pos { background: var(--up); }
+  .bfill.neg { background: var(--down); }
+  .bfill.acc { background: var(--accent); }
+  .bval { font-family: ui-monospace, monospace; font-size: 13.5px; text-align:left; }
+  .bnote { font-size: 12.5px; color: var(--dim); margin-top: 8px; }
+  footer { margin-top: 60px; padding-top: 24px; border-top: 1px solid var(--edge); color: var(--dim); font-size: 13px; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <span class="kicker">Stratégie · campagne day-swing 2026-07</span>
+    <h1><span class="btc">BTC</span> Swing</h1>
+    <p class="lead">Du dollar au Bitcoin et retour : une stratégie de <strong>swing 2-3 jours</strong> qui n'achète que lorsque le marché est en tendance haussière propre, laisse courir ses gagnants, coupe court ses perdants — et <strong>dort en dollars</strong> le reste du temps. Cette page présente la stratégie, la campagne de recherche dont elle est issue, et <strong>tous les tests</strong> qui la valident (et ceux qui ont réfuté le reste).</p>
+  </header>
+
+  <div class="aside">
+    <span class="t">Statut : validée — GO démo (pas encore déployée) · mise à jour vague 2 (11 juillet)</span>
+    <p style="margin:6px 0 0">Fichier produit : <code>strategies/btc-swing.ts</code>. Depuis la vague 2 de recherche, <strong>l'entrée par défaut est la cassure Donchian confirmée volume</strong> — la seule configuration de toute la campagne à franchir <strong>toutes</strong> les barres pré-enregistrées : walk-forward <strong>+390 % OOS composé (5/6)</strong>, <strong>null apparié au percentile 95,0</strong>, bear 2018 et holdout 2026 : <strong>0 trade</strong> quand le marché faisait -59 % et -33 % — dormante par construction hors régime haussier. L'ancienne entrée (ER+flux, +294 % WF, p91) reste disponible via <code>entryMode='ema'</code>. Journal : <code>apps/backend/src/research/dayswing/LOG.md</code> (ledger D1-D21).</p>
+  </div>
+
+  <!-- 1. RESUME -->
+  <section>
+    <h2>En deux phrases : que fait la stratégie ?</h2>
+    <div class="callout">
+      <p class="big" style="margin:0">On part de <strong>dollars (USDT)</strong>. Quand Bitcoin est en <strong>tendance haussière confirmée</strong> — régime de fond haussier, mouvement « propre » (pas du bruit), acheteurs agressifs présents — on <strong>achète</strong>. On revend au premier signe de retournement court, ou au stop. Le reste du temps — corrections, ranges, bears — <strong>on ne fait rien : on est en dollars</strong>.</p>
+    </div>
+    <p class="muted" style="margin-top:14px">C'est l'inverse structurel de l'accumulateur (qui détient du BTC et ne vend qu'en bear). Ici le score se mesure <strong>en dollars</strong> ; le régime de fond décide si on a le <em>droit</em> de trader, les signaux 4 h décident <em>quand</em>. Profil : ~12 trades/an (1 à 2 par semaine quand le régime est actif), holding de quelques jours à plusieurs semaines, win rate ~35 % avec un payoff élevé — c'est une stratégie de tendance : beaucoup de petites pertes coupées vite, quelques gros gagnants qui paient tout.</p>
+  </section>
+
+  <!-- 2. LE SIGNAL -->
+  <section>
+    <h2>Le signal, pièce par pièce</h2>
+
+    <h4>Entrée par défaut : la cassure Donchian confirmée volume (les 3 conditions à la clôture d'une bougie 4 h)</h4>
+    <div class="flow">
+      <span class="b">régime 1d : close &gt; EMA200</span><span class="arrow">→</span>
+      <span class="b">close &gt; plus-haut des 55 barres</span><span class="arrow">→</span>
+      <span class="b">volume &gt; 1,5 × SMA20(vol)</span><span class="arrow">→</span>
+      <span class="b pos">ACHAT (~98 % de l'équité)</span>
+    </div>
+    <ul class="clean">
+      <li><strong>Régime 1d</strong> — le prix au-dessus de sa moyenne 200 jours : on ne trade que dans un marché haussier de fond. C'est le garde-fou n°1 (bear 2018 et holdout 2026 : zéro trade).</li>
+      <li><strong>Cassure du plus-haut de 55 barres (~9 jours)</strong> — un nouveau plus-haut local : la seule classe d'événements que TOUTES les recherches de la campagne désignent (BTC est un actif de continuation — la force appelle la force, les fades perdent).</li>
+      <li><strong>Volume &gt; 1,5× sa moyenne</strong> — la cassure doit être <em>achetée pour de vrai</em> ; ce filtre vient du récap utilisateur (breakout + volume) et sa valeur marginale a été mesurée (t 1,1 → 2,1).</li>
+    </ul>
+    <p class="muted" style="margin-top:8px">Variante <code>entryMode='ema'</code> (l'entrée historique validée en phase 1) : ER(20) ≥ 0,35 + takerFlow(10) &gt; 0,5 + close &gt; EMA50 — conservée en paramètre, chiffres D15-D16.</p>
+
+    <h4>Sorties (deux, toujours armées)</h4>
+    <div class="flow">
+      <span class="b">close 4h &lt; EMA50</span><span class="arrow">→</span>
+      <span class="b neg">VENTE (re-croisement)</span>
+      <span style="width:18px"></span>
+      <span class="b">stop = entrée − min(2,5 × ATR, 4 %)</span><span class="arrow">→</span>
+      <span class="b neg">STOP (perte max cappée)</span>
+    </div>
+    <p>Le re-croisement fait le travail au quotidien : il coupe les perdants en ~2-4 jours et laisse les gagnants courir des semaines. Le stop est un filet : ATR×2,5, mais <strong>jamais plus de 4 %</strong> — le cap de perte hérité de l'accumulateur (c'est lui qui avait transformé ses résultats, pas les paramètres).</p>
+
+    <h4>Paramètres (défauts figés par la validation)</h4>
+    <div class="gloss">
+      <div class="row"><span class="k">interval = 4h</span><span class="d">l'unité de temps des signaux — le seul « sweet spot » de fréquence trouvé sur BTC (tout le reste est mangé par les frais ou le bruit, voir la campagne).</span></div>
+      <div class="row"><span class="k">entryMode = donchian</span><span class="d">le déclencheur d'entrée (vague 2). 'donchian' = cassure + volume (défaut, p95 au null) ; 'ema' = ER + flux + EMA50 (historique, p91) ; 'union' = l'un ou l'autre.</span></div>
+      <div class="row"><span class="k">donchLen 55 · volMult 1,5</span><span class="d">canal Donchian et seuil volume. Plateau engine 3×3 (40-70 × 1,2-2,0) : 9/9 cellules positives, PF 1,75-2,19 — le défaut est un point intérieur, pas le pic.</span></div>
+      <div class="row"><span class="k">erLen 20 · erMin 0,35 · flowLen 10</span><span class="d">l'entrée 'ema' historique (plateau 0,30-0,40 ; seuil de flux 0,5 = un <em>signe</em>, pas un réglage).</span></div>
+      <div class="row"><span class="k">emaLen 50</span><span class="d">EMA locale : la <strong>sortie</strong> au re-croisement pour tous les modes (et l'entrée du mode 'ema').</span></div>
+      <div class="row"><span class="k">atrMult 2,5 · maxLossPct 4</span><span class="d">stop ATR cappé à −4 % du prix d'entrée.</span></div>
+      <div class="row"><span class="k">equityPct 98</span><span class="d">part de l'équité par trade. À 98 % : DD max −40,6 %. <strong>À 60 % : DD −28,6 %</strong> pour +222,6 % (PF 1,99) — le cadran de risque, à décider avant la démo.</span></div>
+      <div class="row"><span class="k">useMakerEntry OFF</span><span class="d">entrée limite sous le signal — <strong>réfutée pour cette stratégie</strong> (voir « le retournement des greffes »), conservée en paramètre.</span></div>
+      <div class="row"><span class="k">blockWeekendEntries OFF · nyWindowOnly OFF</span><span class="d">idem : testées, réfutées in-engine, disponibles pour expérimentation.</span></div>
+    </div>
+  </section>
+
+  <!-- 3. LA CAMPAGNE -->
+  <section>
+    <h2>D'où elle vient — la campagne day-swing (juillet 2026)</h2>
+    <p>La question de départ : <em>« trouver un edge de trading classique USD→BTC→USD, ~1 trade/jour, win rate élevé »</em>. La campagne a suivi un protocole <strong>pré-enregistré</strong> avant tout test — pour que les résultats ne puissent pas être arrangés après coup :</p>
+    <div class="grid cols-3" style="margin-top:10px">
+      <div class="card"><h4>Découpage temporel</h4><p class="muted" style="font-size:14px">IS (conception) 2019→2025-01 · OOS 2025 (un test par famille) · <strong>holdout 2026-01→07 : intouchable, dépensé une seule fois</strong> à la toute fin · bear 2018 en stress structurel.</p></div>
+      <div class="card"><h4>Barres de succès</h4><p class="muted" style="font-size:14px">WF composé &gt; 0 avec ≥ 60 % de fenêtres positives · percentile ≥ 95 vs un null apparié · stress coûts ×2/×3 · plateau de paramètres (jamais un pic) · miroirs et transfert ETH.</p></div>
+      <div class="card"><h4>Discipline</h4><p class="muted" style="font-size:14px">Event studies <em>avant</em> tout backtest · valeur marginale de chaque filtre mesurée · <strong>ledger de TOUT ce qui est testé</strong> (21 entrées, D1-D21) pour garder le multiple-testing en tête.</p></div>
+    </div>
+    <p style="margin-top:16px">En parallèle, une <strong>recherche web profonde</strong> (103 agents, chaque affirmation vérifiée par 3 votes adversariaux contre les sources primaires — BIS, Journal of Financial Markets, Quantpedia, Kaiko) a balayé la littérature 2019-2026 : 21 claims confirmés, 4 réfutés. Ses conclusions et les nôtres convergent point par point.</p>
+    <p><strong>Vague 2 (11 juillet)</strong> : à la demande de l'utilisateur, un second balayage de ~120 cellules (MACD, Stochastique, variantes RSI, pullbacks EMA, Supertrend, ADX, divergences prix/oscillateur, flags, pennants, combos Fibonacci et Elliott, inverse H&S — sur 1h/4h/1d, BTC et ETH, avec un contrôle négatif intégré pour garantir l'honnêteté du harnais). <strong>Une seule famille a survécu</strong> : la cassure Donchian confirmée volume. Elle a ensuite passé un à un tous les tests de validation (plateau, walk-forward engine, null apparié, stress, transfert ETH) — et elle est devenue l'entrée par défaut. Tout le reste a rejoint le cimetière, avec les chiffres au ledger.</p>
+  </section>
+
+  <!-- 4. CE QU'ON A REFUTE -->
+  <section>
+    <h2>Ce que la campagne a réfuté — pourquoi ce n'est PAS du day trading</h2>
+    <p>Le résultat le plus important de la campagne est un <strong>négatif solide</strong> : <em>aucune fréquence intraday ne survit aux coûts spot</em> (0,30 % l'aller-retour taker chez OKX). Trois études indépendantes, trois grains différents, même verdict :</p>
+
+    <table class="tbl">
+      <tr><th>Test</th><th>Méthode</th><th class="r">Résultat</th><th>Verdict</th></tr>
+      <tr><td><strong>Exits sur impulsion 1h</strong> (D10)</td><td>40 combinaisons TP × stop × time-stop, trades séquentiels, coûts réels</td><td class="r neg">−17 à −21 bps/trade, t = −17,7</td><td><span class="pill ko">mort</span></td></tr>
+      <tr><td><strong>Breakout de compression 1h</strong> (D11)</td><td>stop structurel = bas du range 24 h, TP en multiples du range</td><td class="r neg">meilleure cellule +38 bps (t = 1,1) à 15 tr/an</td><td><span class="pill ko">non significatif</span></td></tr>
+      <tr><td><strong>Compression 15m, stops serrés</strong> (D12)</td><td>ranges 8 h/24 h, stops 95-210 bps, TP 1-2R</td><td class="r neg">24 cellules sur 24 négatives (jusqu'à t = −5,7)</td><td><span class="pill ko">mort</span></td></tr>
+    </table>
+
+    <div class="warn">
+      <h3>Le piège du win rate élevé — chiffré</h3>
+      <p style="margin:0">La cellule « TP +40 bps / stop −300 » gagne <strong>84 % du temps</strong>… et perd <strong>−16,5 bps par trade</strong> : 84 % de gains de +17 nets contre 16 % de pertes de −330. Le mécanisme est arithmétique : à ces horizons le bruit fait <strong>~8× l'edge</strong> (±250-360 bps de fluctuation pour +30-65 bps de dérive conditionnelle) — tout take-profit serré « sélectionne contre soi ». Un win rate élevé s'achète toujours au prix de l'espérance quand l'edge sous-jacent est mince. C'est pour ça que BTC Swing assume un WR de 34 % avec un payoff de 3,4.</p>
+    </div>
+
+    <h4>Les autres hypothèses testées et fermées</h4>
+    <table class="tbl">
+      <tr><th>Hypothèse</th><th>Ce qu'on a trouvé</th><th></th></tr>
+      <tr><td>Sweep &amp; reclaim de swing low (« stop hunts »)</td><td>fwd ≈ baseline partout, instable en résolution, le miroir n'a pas de direction — le folklore ne survit pas à la mesure (un moteur de pivots no-lookahead a été construit et testé pour ça, il reste dans <code>packages/core</code>)</td><td><span class="pill ko">D8</span></td></tr>
+      <tr><td>Sessions « heures US » naïves</td><td>en 2024 les heures cash US sont <em>négatives</em> (−2,3 bps/j) ; la dérive vit le soir et la nuit</td><td><span class="pill ko">D7</span></td></tr>
+      <tr><td>Jour de la semaine, cycle funding 8 h</td><td>rien de stable ; pic-creux funding ~2,5 bps contre ~20 bps de coûts (confirmé par la littérature)</td><td><span class="pill ko">D2-D3</span></td></tr>
+      <tr><td>Basis perp-spot, carry, flux taker seul (littérature vérifiée)</td><td>basis Binance = quelques bps d'amplitude ; carry comprimé de −36 % à −97 % post-ETF (BIS) ; le flux taker brut ne prédit rien sur BTC seul</td><td><span class="pill ko">D14</span></td></tr>
+      <tr><td>Saisonnalité 17-18 h New York</td><td><strong>réelle</strong> (+7,4 bps/h, t = 5,0, stable 2019-2024) mais ~10 bps pour 2 h de détention &lt; 16 bps de coûts : inexploitable seule</td><td><span class="pill mid">D1</span></td></tr>
+      <tr><td>Continuation 24-48 h en régime haussier</td><td><strong>réelle et forte</strong> (t = 5 à 9,5, transfert ETH ✓)… et <em>inversée en bear</em> (−16,3 bps/24 h : les rallyes de bear échouent) → le gate de régime est obligatoire</td><td><span class="pill ok">D5</span></td></tr>
+    </table>
+    <p class="muted" style="margin-top:10px">Deux découvertes positives de ce tableau — la continuation bull-gatée et l'obligation du gate — sont exactement ce que BTC Swing exploite. Le reste a été fermé proprement et consigné pour ne jamais être retesté sans angle neuf.</p>
+  </section>
+
+  <!-- 5. LES GREFFES -->
+  <section>
+    <h2>Le retournement des greffes — pourquoi la version « nue » a gagné</h2>
+    <p>Trois améliorations d'exécution, toutes validées en <em>event study</em>, ont été greffées puis testées en <strong>ablation 2×2 dans le vrai moteur</strong> (frais maker/taker réels, fills réalistes). Résultat : <strong>elles nuisent toutes</strong>.</p>
+
+    <div class="bars" aria-label="Ablation des greffes, net % sur 2019→2025">
+      <div class="brow"><span class="blab">nue <span class="pill ok" style="font-size:10px">défaut retenu</span></span><div class="btrack" title="maker OFF, weekend OFF — net +444,2 %, PF 1,78"><div class="bfill acc" style="left:0;width:98.7%"></div></div><span class="bval">+444,2 %</span></div>
+      <div class="brow"><span class="blab">weekend bloqué</span><div class="btrack" title="maker OFF, weekend ON — net +368,9 %"><div class="bfill acc" style="left:0;width:82.0%"></div></div><span class="bval">+368,9 %</span></div>
+      <div class="brow"><span class="blab">entrée maker</span><div class="btrack" title="maker ON, weekend OFF — net +320,2 %"><div class="bfill acc" style="left:0;width:71.2%"></div></div><span class="bval">+320,2 %</span></div>
+      <div class="brow"><span class="blab">maker + weekend</span><div class="btrack" title="maker ON, weekend ON — net +247,9 %"><div class="bfill acc" style="left:0;width:55.1%"></div></div><span class="bval">+247,9 %</span></div>
+      <div class="brow"><span class="blab">fenêtre NY 21→9</span><div class="btrack" title="nyWindowOnly ON — net +156,0 %"><div class="bfill acc" style="left:0;width:34.7%"></div></div><span class="bval">+156,0 %</span></div>
+    </div>
+    <p class="bnote">Net % engine, BTCUSDT spot 2019-01→2025-01, coûts réels OKX (maker 0,08 % / taker 0,10 % + slippage 0,05 %). Année par année, la version nue gagne 4/6 et reste <em>positive</em> en 2021 (+4,3 vs −14,1) et 2024 (+6,9 vs −5,1).</p>
+
+    <div class="grid cols-2" style="margin-top:14px">
+      <div class="card">
+        <h4>Pourquoi l'entrée maker s'inverse</h4>
+        <p class="muted" style="font-size:14.5px;margin:0">En event study à horizon <em>fixe</em> 48 h, la limite à −30 bps gagnait +27 bps/trade. Mais dans la stratégie réelle, les gagnants courent ~130 h : <strong>l'économie de frais est fixe (~25 bps), le coût des trains ratés croît avec le holding</strong> — les signaux non remplis partaient en moyenne à +250-277 bps. Rater un runner coûte dix fois l'économie. Mesuré, compris, consigné (D13→D15).</p>
+      </div>
+      <div class="card">
+        <h4>La leçon de méthode</h4>
+        <p class="muted" style="font-size:14.5px;margin:0">Un edge d'exécution mesuré dans un cadre (horizon fixe) ne se transpose pas automatiquement à un autre (exit adaptatif). <strong>Chaque greffe doit re-prouver sa valeur marginale dans le moteur final</strong> — c'est exactement ce que l'ablation 2×2 fait, et c'est pour ça que les trois options restent des paramètres (OFF) plutôt que des convictions.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. VALIDATION -->
+  <section>
+    <h2>La validation — tous les chiffres</h2>
+    <p class="muted">Tout ce qui suit est calculé par le moteur de backtest du produit (le même code qui exécute en live), coûts réels OKX spot + slippage, défauts figés. Scripts reproductibles : <code>dayswing/runswing.ts</code>, <code>wfswing.ts</code>, <code>holdout.ts</code>.</p>
+
+    <h3>1 · Le socle : 2019 → 2026-01</h3>
+    <div class="ba">
+      <div class="col"><div class="h">BTC Swing (98 % d'équité/trade)</div><div class="big pos">+474,3 %</div><div class="sub">PF 1,85 · WR 36 % · 86 trades (~12/an) · DD −40,6 %</div></div>
+      <div class="col"><div class="h">Version prudente (60 % d'équité/trade)</div><div class="big pos">+222,6 %</div><div class="sub">PF 1,99 · <strong>DD −28,6 %</strong> — le cadran de risque, au choix</div></div>
+    </div>
+
+    <h4>Année par année (défauts)</h4>
+    <div class="bars" aria-label="Rendement net par année">
+      <div class="brow"><span class="blab">2019</span><div class="btrack" title="+27,8 % · PF 1,72 · 11 trades"><div class="bzero" style="left:9.1%"></div><div class="bfill pos" style="left:9.1%;width:25.3%"></div></div><span class="bval pos">+27,8 %</span></div>
+      <div class="brow"><span class="blab">2020</span><div class="btrack" title="+99,4 % · PF 2,29 · 15 trades"><div class="bzero" style="left:9.1%"></div><div class="bfill pos" style="left:9.1%;width:90.4%"></div></div><span class="bval pos">+99,4 %</span></div>
+      <div class="brow"><span class="blab">2021</span><div class="btrack" title="+1,1 % · PF 1,03 · 17 trades"><div class="bzero" style="left:9.1%"></div><div class="bfill pos" style="left:9.1%;width:1.0%"></div></div><span class="bval pos">+1,1 %</span></div>
+      <div class="brow"><span class="blab">2022 (bear)</span><div class="btrack" title="−3,3 % · 1 seul trade : le gate de régime a tenu tout le bear"><div class="bzero" style="left:9.1%"></div><div class="bfill neg" style="left:6.1%;width:3.0%"></div></div><span class="bval neg">−3,3 %</span></div>
+      <div class="brow"><span class="blab">2023</span><div class="btrack" title="+30,0 % · PF 2,47 · 12 trades"><div class="bzero" style="left:9.1%"></div><div class="bfill pos" style="left:9.1%;width:27.3%"></div></div><span class="bval pos">+30,0 %</span></div>
+      <div class="brow"><span class="blab">2024</span><div class="btrack" title="+34,8 % · PF 1,98 · 18 trades — l'entrée donchian tient le chop ETF (l'entrée ema faisait +6,9 %)"><div class="bzero" style="left:9.1%"></div><div class="bfill pos" style="left:9.1%;width:31.6%"></div></div><span class="bval pos">+34,8 %</span></div>
+      <div class="brow"><span class="blab">2025</span><div class="btrack" title="−7,0 % · 14 trades — année de chop puis retournement"><div class="bzero" style="left:9.1%"></div><div class="bfill neg" style="left:2.7%;width:6.4%"></div></div><span class="bval neg">−7,0 %</span></div>
+    </div>
+    <p class="bnote">Le profil assumé d'une stratégie de tendance : elle imprime dans les années directionnelles (2020, 2023, 2024), fait du surplace dans le chop (2021), et <strong>ne joue pas</strong> en bear (2022 : un seul trade ; 2018 et 2026-S1 : zéro). Deux années rouges sur neuf testées, toutes deux petites (−3,3 %, −7,0 %).</p>
+
+    <h3>2 · Le juge de paix : walk-forward 6 fenêtres roulantes</h3>
+    <p>On découpe 2019→2026 en 6 fenêtres glissantes : à chaque fois la stratégie est évaluée sur une période <strong>hors échantillon</strong> qui suit sa période de conception. Le chiffre qui compte est le composé des 6 segments OOS mis bout à bout.</p>
+    <div class="bars" aria-label="Fenêtres walk-forward, net % OOS">
+      <div class="brow"><span class="blab mono">05/20 → 05/21</span><div class="btrack" title="+177,4 % · 17 trades"><div class="bzero" style="left:5.3%"></div><div class="bfill pos" style="left:5.3%;width:93.4%"></div></div><span class="bval pos">+177,4 %</span></div>
+      <div class="brow"><span class="blab mono">05/21 → 04/22</span><div class="btrack" title="+13,0 % · 7 trades"><div class="bzero" style="left:5.3%"></div><div class="bfill pos" style="left:5.3%;width:6.8%"></div></div><span class="bval pos">+13,0 %</span></div>
+      <div class="brow"><span class="blab mono">04/22 → 03/23</span><div class="btrack" title="−0,2 % · 2 trades (cœur du bear : quasi inactif)"><div class="bzero" style="left:5.3%"></div><div class="bfill neg" style="left:5.1%;width:0.2%"></div></div><span class="bval neg">−0,2 %</span></div>
+      <div class="brow"><span class="blab mono">03/23 → 02/24</span><div class="btrack" title="+29,2 % · 12 trades"><div class="bzero" style="left:5.3%"></div><div class="bfill pos" style="left:5.3%;width:15.4%"></div></div><span class="bval pos">+29,2 %</span></div>
+      <div class="brow"><span class="blab mono">02/24 → 01/25</span><div class="btrack" title="+18,6 % · 17 trades"><div class="bzero" style="left:5.3%"></div><div class="bfill pos" style="left:5.3%;width:9.8%"></div></div><span class="bval pos">+18,6 %</span></div>
+      <div class="brow"><span class="blab mono">01/25 → 01/26</span><div class="btrack" title="+2,2 % · 11 trades"><div class="bzero" style="left:5.3%"></div><div class="bfill pos" style="left:5.3%;width:1.2%"></div></div><span class="bval pos">+2,2 %</span></div>
+    </div>
+    <div class="callout" style="margin-top:14px">
+      <p class="big" style="margin:0">OOS composé <strong>+390,0 %</strong> · <strong>5 fenêtres sur 6 positives</strong> (la seule négative : −0,2 %, deux trades au cœur du bear). L'entrée 'ema' historique faisait +294,4 % sur les mêmes fenêtres. La sensibilité engine (donchLen 40-70 × volume 1,2-2,0) donne 9 cellules sur 9 positives, médiane +474 %, PF 1,75-2,19 — l'edge est un plateau, pas un pic.</p>
+    </div>
+
+    <h3>3 · Les contre-épreuves</h3>
+    <table class="tbl">
+      <tr><th>Épreuve</th><th>Question posée</th><th class="r">Résultat</th><th></th></tr>
+      <tr><td>Coûts ×2</td><td>et si les frais doublaient ?</td><td class="r pos">+346,4 % (PF 1,65)</td><td><span class="pill ok">passe</span></td></tr>
+      <tr><td>Coûts ×3</td><td>et s'ils triplaient ?</td><td class="r pos">+246,9 % (PF 1,49)</td><td><span class="pill ok">passe</span></td></tr>
+      <tr><td>Intrabar pessimiste</td><td>et si le stop touchait toujours en premier dans la bougie ?</td><td class="r">identique (pas de TP → ambiguïté rare)</td><td><span class="pill ok">passe</span></td></tr>
+      <tr><td>Transfert ETH</td><td>la mécanique marche-t-elle ailleurs ? (même signe attendu)</td><td class="r pos">+277,7 % (PF 1,62, 76 tr)</td><td><span class="pill ok">passe</span></td></tr>
+      <tr><td><strong>Bear 2018</strong> (jamais vu en conception)</td><td>saigne-t-elle dans un vrai krach ?</td><td class="r"><strong>0 trade, 0,0 %</strong> quand le B&amp;H fait <span class="neg">−58,6 %</span></td><td><span class="pill ok">passe</span></td></tr>
+      <tr><td><strong>Null timing-aveugle apparié</strong></td><td>bat-elle 200 tirages d'entrées au hasard dans les mêmes régimes, avec les mêmes durées ?</td><td class="r">percentile <strong>95,0</strong> (médiane du hasard +75 %, réel +390 %)</td><td><span class="pill ok">passe — la barre</span></td></tr>
+    </table>
+
+    <h3>4 · Le holdout — la dépense unique</h3>
+    <p>Six mois (2026-01→07) mis sous scellés <em>avant</em> le premier test de la campagne, ouverts une seule fois, stratégie figée, sans droit de retouche après lecture :</p>
+    <div class="ba">
+      <div class="col"><div class="h">Buy &amp; hold BTC sur la période</div><div class="big neg">−33,3 %</div><div class="sub">le marché était en bear sous l'EMA200 1d</div></div>
+      <div class="col after"><div class="h">BTC Swing</div><div class="big">0,0 %</div><div class="sub"><strong>0 trade</strong> — six mois en USDT. Le gate de régime a fait exactement son travail sur des données jamais vues.</div></div>
+    </div>
+    <p class="muted" style="margin-top:12px">Lecture honnête : ce holdout <strong>valide le modèle de risque</strong> (aucun saignement hors régime) mais <strong>ne peut pas valider l'espérance de gain</strong> (zéro trade = zéro évidence nouvelle sur les entrées). L'espérance repose sur le walk-forward 2019-2026.</p>
+
+    <h3>5 · Le comparatif à ne pas esquiver : et si on avait juste acheté ?</h3>
+    <p>Quatre façons d'engager le même budget de 10 k$, mêmes périodes, mêmes coûts (0,15 % par côté) : <strong>buy &amp; hold</strong> pur ; <strong>« régime »</strong> = acheter au-dessus de la moyenne 200 jours, tout revendre dessous ; <strong>DCA hebdomadaire</strong> = le budget réparti en achats égaux chaque semaine sur toute la période, jamais revendu (la stratégie de l'épargnant) ; et <strong>BTC Swing</strong>. Script reproductible : <code>dayswing/benchmarks.ts</code>.</p>
+
+    <h4>2019 → 2026-01 : en rendement brut, ne rien faire gagne — largement</h4>
+    <div class="bars" aria-label="Comparatif net % 2019-2026">
+      <div class="brow"><span class="blab">Buy &amp; hold</span><div class="btrack" title="+2261 % · DD max −77 % · 100 % du temps investi · ~+57 %/an"><div class="bfill acc" style="left:0;width:98.3%"></div></div><span class="bval">+2261 %</span></div>
+      <div class="brow"><span class="blab">Régime EMA200 1d</span><div class="btrack" title="+1105 % · DD max −56 % · 80 bascules · 65 % du temps investi · ~+43 %/an"><div class="bfill acc" style="left:0;width:48.0%"></div></div><span class="bval">+1105 %</span></div>
+      <div class="brow"><span class="blab">BTC Swing</span><div class="btrack" title="+474,3 % · DD max −41 % · ~20 % du temps investi · ~+28 %/an"><div class="bfill acc" style="left:0;width:20.6%"></div></div><span class="bval">+474,3 %</span></div>
+      <div class="brow"><span class="blab">DCA hebdomadaire</span><div class="btrack" title="+382,7 % · DD max −65 % · exposition moyenne 65 % · ~+25 %/an sur budget"><div class="bfill acc" style="left:0;width:16.6%"></div></div><span class="bval">+382,7 %</span></div>
+    </div>
+    <table class="tbl">
+      <tr><th></th><th class="r">Net 2019→2026</th><th class="r">~ %/an</th><th class="r">Pire chute (DD)</th><th class="r">Temps investi</th><th class="r">Bear 2018</th><th class="r">Bear 2022</th><th class="r">Holdout 2026</th></tr>
+      <tr><td>Buy &amp; hold</td><td class="r pos">+2261 %</td><td class="r">+57 %</td><td class="r neg">−77 %</td><td class="r">100 %</td><td class="r neg">−60,1 %</td><td class="r neg">−64,3 %</td><td class="r neg">−33,3 %</td></tr>
+      <tr><td>Régime EMA200 1d</td><td class="r pos">+1105 %</td><td class="r">+43 %</td><td class="r neg">−56 %</td><td class="r">65 %</td><td class="r neg">−19,1 %</td><td class="r neg">−8,1 %</td><td class="r">−0,9 %</td></tr>
+      <tr><td>DCA hebdomadaire</td><td class="r pos">+382,7 %</td><td class="r">+25 %</td><td class="r neg">−65 %</td><td class="r">65 %</td><td class="r neg">−39,8 %</td><td class="r neg">−34,5 %</td><td class="r neg">−21,4 %</td></tr>
+      <tr><td><strong>BTC Swing</strong></td><td class="r pos">+474,3 %</td><td class="r">+28 %</td><td class="r"><strong>−41 %</strong></td><td class="r"><strong>~20 %</strong></td><td class="r"><strong>0,0 %</strong></td><td class="r"><strong>−3,3 %</strong></td><td class="r"><strong>0,0 %</strong></td></tr>
+    </table>
+    <p class="bnote">DCA : rendement calculé sur le budget total engagé (le rendement « pondéré par l'argent » réellement déployé est un peu plus flatteur — le capital entre progressivement) ; le drawdown est celui du portefeuille complet, cash non déployé compris. Nuance de mandat : un DCA finit <em>en BTC</em> — son vrai concurrent est l'<a href="btc-accumulator-v2.html">accumulateur</a>, pas une stratégie qui revient en dollars.</p>
+
+    <h4>Fenêtre par fenêtre : qui gagne quand ?</h4>
+    <table class="tbl">
+      <tr><th>Fenêtre WF (hors échantillon)</th><th class="r">B&amp;H</th><th class="r">Régime 1d</th><th class="r">BTC Swing</th><th>Marché</th></tr>
+      <tr><td class="mono">05/20 → 05/21</td><td class="r pos"><strong>+538,0 %</strong></td><td class="r pos">+538,0 %</td><td class="r pos">+177,4 %</td><td><span class="pill">bull franc</span></td></tr>
+      <tr><td class="mono">05/21 → 04/22</td><td class="r neg">−25,5 %</td><td class="r neg">−49,8 %</td><td class="r pos"><strong>+13,0 %</strong></td><td><span class="pill">retournement</span></td></tr>
+      <tr><td class="mono">04/22 → 03/23</td><td class="r neg">−42,7 %</td><td class="r pos"><strong>+10,0 %</strong></td><td class="r neg">−0,2 %</td><td><span class="pill">bear</span></td></tr>
+      <tr><td class="mono">03/23 → 02/24</td><td class="r pos"><strong>+112,6 %</strong></td><td class="r pos">+82,2 %</td><td class="r pos">+29,2 %</td><td><span class="pill">reprise</span></td></tr>
+      <tr><td class="mono">02/24 → 01/25</td><td class="r pos"><strong>+101,7 %</strong></td><td class="r pos">+56,2 %</td><td class="r pos">+18,6 %</td><td><span class="pill">bull ETF</span></td></tr>
+      <tr><td class="mono">01/25 → 01/26</td><td class="r neg">−16,6 %</td><td class="r neg">−18,7 %</td><td class="r pos"><strong>+2,2 %</strong></td><td><span class="pill">chop/baisse</span></td></tr>
+      <tr><td><strong>Composé</strong></td><td class="r pos">+873,7 %</td><td class="r pos">+715,2 %</td><td class="r pos">+390,0 %</td><td></td></tr>
+    </table>
+    <p class="bnote">En gras : le gagnant de chaque fenêtre. Le motif est parfaitement net — et c'est le contrat du produit.</p>
+
+    <div class="warn">
+      <h3>Ce que ce comparatif dit vraiment</h3>
+      <p style="margin:0 0 10px">Sur 2019-2026, période dominée par un méga-bull (BTC ×23), <strong>rien ne bat le buy &amp; hold en rendement brut</strong> — pas même en rendement/DD sur cette fenêtre. Si l'objectif est « maximiser la valeur en misant tout sur la hausse longue de BTC », la bonne réponse est de détenir du BTC (et c'est le travail de l'<a href="btc-accumulator-v2.html">accumulateur</a>, qui en gagne <em>plus</em> pendant les bears).</p>
+      <p style="margin:0 0 10px">Face au <strong>DCA de l'épargnant</strong>, en revanche, la stratégie domine sur les deux axes à la fois : <strong>plus de rendement</strong> (+474 % vs +383 % sur le même budget) et <strong>un drawdown presque divisé par deux</strong> (−41 % vs −65 %) — parce que le DCA achète mécaniquement toutes les chutes (bear 2018 : −39,8 % ; 2022 : −34,5 % ; holdout : −21,4 % — là où le gate de régime reste à zéro). Ce que le DCA garde pour lui : zéro suivi, zéro exécution, zéro infrastructure.</p>
+      <p style="margin:0 0 10px">BTC Swing répond à un <strong>mandat différent</strong> : partir de dollars et y revenir, sans jamais traverser un −56 %/−77 %. Ce qu'il achète avec ses ~29 points de rendement annuel en moins : <strong>pire chute quasi divisée par 2</strong> (−41 % vs −77 %, et −28,6 % à 60 % de sizing), <strong>les périodes rouges neutralisées</strong> (+13,0 % et +2,2 % dans les fenêtres de retournement, ~0 % dans le bear, zéro trade en 2018 et au holdout), et <strong>~80 % du temps en cash</strong> — un capital disponible, pas exposé.</p>
+      <p style="margin:0">À noter : le « régime 1d » seul semble un bon milieu (+1105 %)… mais regardez 05/21→04/22 : <span class="neg">−49,8 %</span>, <em>pire que le buy &amp; hold</em> — la moyenne 200 jours whipsawe violemment dans les retournements. C'est exactement là que la couche 4h de BTC Swing (cassure sélective + volume + stops) prouve sa valeur : <span class="pos">+13,0 %</span> sur la même fenêtre. La couche 4h coûte du rendement dans les bulls propres et sauve le portefeuille dans les transitions.</p>
+    </div>
+  </section>
+
+  <!-- 7. RESERVES -->
+  <section>
+    <h2>Les réserves — ce que cette page ne cache pas</h2>
+    <div class="warn">
+      <h3>Cinq choses à savoir avant de l'aimer</h3>
+      <ul class="clean" style="margin:0">
+        <li><strong>Elle ne bat pas le buy &amp; hold en rendement brut</strong> sur 2019-2026 (+474 % vs +2261 %) — voir le comparatif ci-dessus. Elle vend de la protection et de la disponibilité du capital, pas de la surperformance de bull.</li>
+        <li><strong>Le drawdown est LE réglage à décider</strong> : −40,6 % à pleine taille, −28,6 % à 60 % d'équité par trade — au-dessus de la barre interne de −20 %. C'est un dial de sizing, pas un défaut caché ; à fixer avant la démo.</li>
+        <li><strong>La barre du null (p95) est atteinte</strong> par l'entrée donchian par défaut — l'entrée ema historique plafonnait à p91. Honnêteté due : la vague 2 a scanné ~120 configurations avant de trouver celle-ci ; ce qui la sauve du soupçon de data-mining, ce sont les épreuves <em>indépendantes</em> passées ensuite (moteur réel, transfert ETH, coûts ×3, plateau 9/9) et le fait qu'elle réplique un résultat de juin 2026 obtenu sur d'autres données.</li>
+        <li><strong>Win rate ~35 %, ~12 trades/an.</strong> Le brief initial rêvait d'un WR élevé à 1 trade/jour ; les données ont réfuté les deux (le WR élevé s'achète au prix de l'espérance ; aucune fréquence intraday ne survit aux coûts). Il faut être à l'aise avec des séries de petites pertes de ~2-4 % entre deux gros gagnants, et des mois entiers sans un seul trade.</li>
+        <li><strong>2025 reste une année rouge en calendaire</strong> (−7,0 %) même si la fenêtre WF correspondante est positive (+2,2 %) — le chop-retournement est et restera le régime le plus dur pour une stratégie de tendance. Elle y perd peu ; elle n'y gagne pas.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 8. SUITE -->
+  <section>
+    <h2>Et maintenant ?</h2>
+    <ul class="clean">
+      <li><strong>Étape suivante : bot démo OKX</strong> (validation passive, même process que le go-live des accumulateurs). Attente réaliste : tant que BTC reste sous son EMA200 journalière, le bot ne fera <em>rien</em> — c'est le comportement validé.</li>
+      <li><strong>Sizing au choix</strong> : <code>equityPct 98</code> (rendement max, DD −40,6 %) ou <code>60</code> (DD −28,6 %, PF 1,99). C'est le seul réglage à décider avant la démo.</li>
+      <li><strong>Re-fit trimestriel optionnel</strong> via le RefitService, borné au plateau validé du mode donchian (donchLen 40-70 × volMult 1,2-2,0 — 9/9 positives) ; l'ancienne grille ER/EMA/ATR reste valable pour le mode 'ema'.</li>
+      <li><strong>Ne pas réactiver</strong> maker/weekend/NY sans re-passer l'ablation : ils sont OFF pour des raisons mesurées, pas par oubli.</li>
+    </ul>
+  </section>
+
+  <footer>
+    <p><strong>BTC Swing</strong> — <code>strategies/btc-swing.ts</code> · campagne day-swing 2026-07, ledger complet D1-D21 : <code>apps/backend/src/research/dayswing/LOG.md</code> · scripts de validation : <code>runswing / wfswing / holdout / benchmarks</code> + vague 2 : <code>wide1-2 / donch / donchwf / exitiso / sensitdonch / defaultscheck</code> · moteur de pivots livré : <code>packages/core/src/indicators/pivots.ts</code>.</p>
+    <p>Coûts modélisés partout : OKX spot maker 0,08 % / taker 0,10 % + slippage 0,05 % par côté. Données Binance spot 2017-2026 (candles PostgreSQL, série 1h/4h/1d complètes, trous ≤ 0,38 %/an vérifiés). Page générée le 9 juillet 2026, mise à jour le 11 juillet (vague 2 : entrée Donchian par défaut) — les chiffres sont ceux du ledger, reproductibles à la commande près.</p>
+    <p>Pages sœurs : <a href="btc-swing-vs-dca.html">BTC Swing vs DCA à 500 €/mois</a> (courbes interactives, 4 dates de départ) · <a href="btc-accumulator-v2.html">BTC Accumulator</a> (la stratégie en production, mesurée en BTC) — les deux sont complémentaires : l'accumulateur travaille les bears, BTC Swing travaille les bulls.</p>
+  </footer>
+
+</div>
+</body>
+</html>

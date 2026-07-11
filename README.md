@@ -38,7 +38,7 @@ make web                # UI dev sur :5173 (proxy vers :3001)
 | `packages/data` | Client Binance market-data (REST/WS publics, Vision), client OKX d'exécution (compte, ordres, fills, WS privé), stores de données |
 | `apps/backend` | API Hono + WS, gestionnaire de bots, moteurs live, runner de backtests (workers Bun) |
 | `apps/web` | UI React 19 + Tailwind 4 + Lightweight Charts v5 |
-| `strategies/` | Les stratégies produit (`btc-accumulator`, `eth-accumulator`) — ajoutez les vôtres |
+| `strategies/` | Les stratégies produit (`btc-accumulator`, `btc-vrx`, `btc-swing`, `eth-accumulator`) — ajoutez les vôtres |
 
 ## Notes importantes
 
