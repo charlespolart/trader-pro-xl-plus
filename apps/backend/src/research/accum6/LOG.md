@@ -102,6 +102,50 @@ notre acquis Coinalyze :
       BitMEX intraday profond (4h→2023, 1h→2024, venue peu active). L'entretien
       = relancer l'outil ≥ 1×/mois (le 1h ne couvre que ~2,5 mois glissants).
 
+## Phase intraday (2026-07-12, ouverte sur GO Mario après le NO-GO daily)
+
+**Correction du deep search** (constat direct, listing S3 du 2026-07-12) : le
+dataset `liquidationSnapshot` a été RETIRÉ de data.binance.vision (le forum
+signalait des pannes en 2025 ; en 2026 il n'existe plus — um daily/monthly : rien).
+Tardis « 1er du mois gratuit » : 404 sans auth sur les motifs connus → abandonné.
+**L'historique intraday de liquidations gratuit n'existe plus.** Ce qui reste :
+
+- **`metrics` (data.binance.vision, um daily)** : snapshots **5 minutes** —
+  sum_open_interest (coin + USD), toptrader long/short ratio (comptes et
+  volume), global long/short ratio, taker buy/sell vol ratio. **BTC dès
+  2020-09-01, ETH dès 2021-12-01, frais (2026-07-08 vérifié)**. ~12-15 KB/j.
+- Insight méthodo consigné : **la chute d'OI à 5 min est l'empreinte EXHAUSTIVE
+  du deleveraging** (comptabilité de l'exchange), non affectée par
+  l'échantillonnage forceOrder de 2021 — substitut plus propre que les
+  liquidations elles-mêmes pour mesurer les cascades intraday.
+
+### Protocole intraday PRÉ-ENREGISTRÉ (écrit AVANT le téléchargement des données)
+
+- Décision au close de chaque barre **1h** ; features construites du 5-min
+  agrégé (dernier snapshot < close de l'heure = causal). Cibles : fwd
+  log-returns spot (candles PG) à h ∈ {1, 4, 24, 72, 168} heures.
+- **IS BTC : 2020-09 → 2024-01** (3,3 ans) ; moitiés coupure **2022-05** ;
+  réplication **ETH 2021-12 → 2024-01** (moitiés 2023-01). Une seule venue
+  (Binance) — la réplication cross-venue du daily est impossible ici ;
+  compensation : ETH + moitiés + BH-FDR + barre stricte.
+- **OOS 2024-01 → 2026-07 : UNE passe**, uniquement si survie IS, critères
+  chiffrés pré-enregistrés au LOG avant la passe.
+- Familles testées (pré-enregistrées) :
+  - **F1 ΔOI multi-échelles** : doi 1h/4h/24h/72h (%, coin) → fwd. Prior :
+    purge → rebond, build-up → faiblesse (sens oi_z daily).
+  - **F2 événements purge/build-up** : doi_24h ≤ q05 / ≥ q95 roulants (180 j)
+    × contexte prix (roc 30 j <0 / >0) — deleveraging capitulatif vs euphorie.
+  - **F3 vitesse de purge intra-heure** : min des ΔOI 5-min dans l'heure
+    (z 180 j) = footprint cascade ; z ≤ -3 = événement cascade.
+  - **F4 ratios de positionnement** : z toptrader (volume), z global (comptes),
+    taker ratio lissé 24h (z). Prior SCEPTIQUE (famille sentiment 0/5 en daily).
+- Stats maison : IC Spearman + null décalage circulaire (min_shift ≥ 30 j en
+  barres), t non-chevauchant par phases, quintiles, event studies (n, moitiés),
+  BH-FDR 10 %. **Barre de survie : p<0,01 ET moitiés même signe ET |t|≥2 ET
+  ETH même signe.**
+- Sanity obligatoire avant lecture des tests : corr OI metrics ré-échantillonné
+  daily vs Coinalyze BTC_oi_binance_daily (≈1 attendu), trous de l'archive.
+
 ## Ledger des essais
 
 Setup commun : daily Coinalyze 4 venues USD-normalisées (linéaires ×prix, BitMEX
@@ -121,6 +165,18 @@ conservé post-rupture 2021-05.
 | 5 | ΔOI 1 j / 7 j | liq_study.py | mort : IC ~0 partout ; events purge/build-up q10/q90 p 0,94/0,73, moitiés incohérentes |
 | 6 | oi_z (niveau OI Binance, z log 180 j) → fwd 20 j | liq_study.py + 2 | **SOUS-SEUIL, à surveiller** : IC -0,235 h20, quintiles monotones (Q1 +5,0 % → Q4 -2,1 %), signe 3/4 années, sens = prior « build-up de levier → faiblesse » ; mais p 0,13, 2022 = 0, dominé par 2023 → retester avec 2-3 ans de données sync en plus, critères à pré-enregistrer AVANT |
 | 7 | funding_z (référence, famille déjà 0/5) | liq_study.py | confirmé mort (IC -0,04, p>0,2) |
+| 8 | F1 ΔOI intraday 1h/4h/24h/72h → fwd 1-168 h | oi_intraday_study.py | mort : IC ±0,015, p>0,10 partout, quintiles plats |
+| 9 | F2 events purge/build-up OI (rank 180 j) × contexte prix | oi_intraday_study.py | mort : p24 0,57-0,69, moitiés incohérentes (« purge en tendance » fwd168 +3,0 % mais p 0,68) |
+| 10 | F3 vitesse de purge 5-min (footprint cascade exhaustif, z≤-3) | oi_intraday_study.py | mort : n=481, fwd ≈ base, légère continuation en baisse (cohérent avec le daily : la cascade ne se rachète pas) ; 502+208 snapshots OI=0 nettoyés (artefacts archive) |
+| 11 | F4 tt_z (top traders L/S, volume) | oi_intraday_study.py | direction cohérente (crowding → faiblesse, IC -0,135 h168) mais p 0,36, ETH incohérent |
+| 12 | F4 tk_z (taker buy/sell lissé 24 h) | oi_intraday_study.py | bruit (IC et t de signes contradictoires, ETH moitiés ±) |
+| 13 | F4 **ls_z (ratio L/S global des comptes)** | oi_intraday_study.py + ls_check.py | **SURVIE TECHNIQUE à h1** (p 0,0029, t -3,44, moitiés -0,02/-0,02, ETH même signe) et info INDÉPENDANTE du prix : résiduel roc7d intact (-0,020 h1 / -0,052 h24), double-tri monotone — à chute 7 j égale, dip-sans-foule-long +1,07 %/24 h vs dip-avec-foule-long -0,28 %. MAIS : h1 inexploitable (IC 0,02 ≪ frais), h24 p 0,147 avec **flip 2022** (+0,080 en bear vs -0,074/-0,061 en 21/23), ETH résiduel ≈ 0 (corr roc7d -0,67, 18 mois seulement), BH-FDR 0/40. **Décision : PAS de passe OOS** — le look 2024→2026 reste VIERGE ; on ne le dépense pas pour un signal non tradable. Revisite quand l'historique metrics s'allonge (fetch_metrics.py relançable, gratuit). |
+
+**Verdict intraday : la mécanique OI/cascades est morte aussi au grain 1 h**
+(même message qu'en daily — le label « forcé »/deleveraging n'apporte rien
+au-delà du prix). Le POSITIONNEMENT (ls_z contrarian) laisse une trace réelle,
+price-indépendante et économiquement lisible, mais trop petite/instable pour
+un produit aujourd'hui. OOS jamais regardé, ni en daily ni en intraday.
 
 **Verdict famille : NO-GO au grain daily.** Les liquidations daily n'apportent
 rien au-delà du contexte prix (|ret| corr +0,50, régime) ; la seule piste
@@ -143,3 +199,15 @@ intraday une fois l'historique sync accumulé).
   shorts est un marqueur de rallye déjà couvert ; oi_z seul sous-seuil cohérent
   (à retester plus tard, critères à pré-enregistrer). Reste du chantier : outil
   de synchro (plan 4) pour étendre daily + construire l'intraday vers l'avant.
+- 2026-07-12 (nuit) : phase intraday exécutée sur GO Mario. liquidationSnapshot
+  retiré de l'archive Binance (constat S3) → pivot sur `metrics` 5-min
+  (fetch_metrics.py : 1,10 M snapshots, 0 jour manquant, 0 erreur ; sanity
+  corr OI vs Coinalyze = +1,0000). oi_intraday_study.py (+ re-run après
+  nettoyage des snapshots OI=0) + ls_check.py (look n°2 : redondance).
+  **Verdict : NO-GO intraday également, OOS toujours vierge** — essais 8-13 au
+  ledger ; seule trace réelle = ls_z (positionnement contrarian, indépendant du
+  prix) mais inexploitable (h1 ≪ frais, flip 2022 au h24, ETH vide).
+  Incident : disque plein en cours de route (PG down) — espace libéré par
+  Mario, Docker/PG relancés, données intactes (comptes exacts revalidés).
+  Entretien données : sync_coinalyze.py ET fetch_metrics.py à relancer
+  ≥ 1×/mois (tous deux incrémentaux, gratuits).
