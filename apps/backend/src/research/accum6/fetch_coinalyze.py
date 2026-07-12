@@ -16,7 +16,7 @@ from lib import SCRATCH  # noqa: E402
 KEY = os.environ.get('COINALYZE_API_KEY', '')
 BASE = 'https://api.coinalyze.net/v1'
 FROM = 1577836800  # 2020-01-01
-TO = 1783300000    # ~2026-07-12
+TO = int(time.time())  # → aujourd'hui
 
 # (étiquette, symbole Coinalyze) — .A Binance, .3 OKX, .6 Bybit, .0 BitMEX
 VENUES_BTC = [('binance', 'BTCUSDT_PERP.A'), ('okx', 'BTCUSDT_PERP.3'),
