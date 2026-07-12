@@ -87,9 +87,23 @@ plomberie.
 - Risques hors modèle : venue (gel/faillite), dépeg du collatéral, marge en
   comptes non-portfolio (liquidation de jambe), exécution des bascules.
 
+## Addendum R3 — spread multi-venue (2026-07-12, venues_check.py)
+
+Funding annualisé par venue (Coinalyze daily, linéaires USDT ; BitMEX EXCLU du
+comparatif : contrat inverse, non comparable) :
+
+- BTC : Bybit meilleure venue 4 années/7, Binance juste derrière, **OKX
+  systématiquement en retrait de ~1-3 pts/an** (2023 : Bybit +9,2 vs OKX +6,1).
+- ETH : même hiérarchie (Bybit/Binance > OKX).
+- Implication : poser le short sur Bybit/Binance plutôt qu'OKX vaudrait ~1-3
+  pts/an — réel mais modeste ; à peser contre le coût opérationnel d'une
+  seconde venue (comptes, transferts, marge). Pas prioritaire avant R1/R2.
+
 ## Journal
 
 - 2026-07-12 : campagne ouverte, hypothèses figées avant tout chiffre.
 - 2026-07-12 (suite) : fetch + étude exécutés. Barre passée en hold → GO
   plomberie (démo). Découverte au passage : fapi.binance.com géobloqué (451)
   depuis la France — toujours passer par data.binance.vision pour l'historique.
+- 2026-07-12 (nuit) : addendum R3 multi-venue ci-dessus. R1 (alts) → campagne
+  carry2 ouverte avec protocole pré-enregistré.
