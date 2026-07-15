@@ -15,13 +15,13 @@ export function toInstId(base: string, quote: string, market: MarketType): strin
  * instead, while market DATA stays on the original USDT Binance symbol (price
  * tracks 1:1). Other regions / other quotes pass through unchanged.
  *
- * DEMO trading est exempté : la restriction MiCA ne vise que le réel, et sur le
- * bac à sable EEA les paires *-USDC sont des carnets morts (vol24h ~0, last
- * figé — un trigger n'y est jamais évalué) alors que les *-USDT y répliquent le
- * marché réel (constaté le 2026-07-15 pendant le smoke de l'incident).
+ * S'applique AUSSI au démo (vérifié 2026-07-15 : ordre BTC-USDT démo rejeté
+ * 51155 « local compliance restrictions » — les données USDT y sont répliquées
+ * du réel mais le TRADING y est interdit ; et les carnets *-USDC du bac à
+ * sable EEA sont morts + STP bloque l'auto-liquidité → un déclenchement de
+ * trigger n'est PAS reproductible sur le démo EEA, cf. ops/incidents).
  */
-export function execQuoteAsset(quoteAsset: string, demo = false): string {
-  if (demo) return quoteAsset
+export function execQuoteAsset(quoteAsset: string, _demo = false): string {
   if ((process.env.OKX_REGION ?? 'global').toLowerCase() === 'eea' && quoteAsset === 'USDT') return 'USDC'
   return quoteAsset
 }
