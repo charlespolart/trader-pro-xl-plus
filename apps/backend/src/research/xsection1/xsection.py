@@ -58,7 +58,7 @@ def signals(P, fam, prm):
         for t in range(30, n):
             S[t] = -np.nanstd(r[t - 30:t], axis=0, ddof=1)
     elif fam == 'CARRY':
-        S = prm['carry']  # pré-calculé (funding cumulé 7 j, signe contrarien)
+        S = prm['carry']
     return S
 
 
@@ -124,7 +124,39 @@ def eval_config(P, S, K, seg, kind, nperm=1000, seed=7):
 
 GRID = ([('MOM', dict(J=J, S=s), K) for J in (7, 14, 30, 90) for s in (0, 2) for K in (2, 7)]
         + [('REV', dict(J=J), K) for J in (1, 3) for K in (1, 2)]
-        + [('LOWVOL', dict(), K) for K in (7, 30)])
+        + [('LOWVOL', dict(), K) for K in (7, 30)]
+        + [('CARRY', dict(), K) for K in (2, 7)])
+
+
+def carry_signal(ts):
+    """signal CARRY contrarien : −funding cumulé 7 j (funding haut = longs
+    surpeuplés). Événements 8 h, causal : t_evt ≤ close du jour."""
+    import os
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'funding20.csv')
+    if not os.path.exists(path):
+        return None
+    by = {s: ([], []) for s in ALTS}
+    with open(path) as f:
+        for line in f:
+            s, t, r = line.strip().split(',')
+            if s in by:
+                by[s][0].append(int(t))
+                by[s][1].append(float(r))
+    S = np.full((len(ts), len(ALTS)), np.nan)
+    day_close = ts + 86_400_000 - 1
+    for a, s in enumerate(ALTS):
+        tt = np.array(by[s][0], dtype=np.int64)
+        rr = np.array(by[s][1])
+        if len(tt) < 30:
+            continue
+        cum = np.concatenate([[0.0], np.cumsum(rr)])
+        hi = np.searchsorted(tt, day_close, side='right')
+        lo = np.searchsorted(tt, day_close - 7 * 86_400_000, side='right')
+        vals = cum[hi] - cum[lo]
+        vals[hi <= lo] = np.nan
+        vals[hi < 21] = np.nan          # ≥ 21 événements vus (7 j pleins)
+        S[:, a] = -vals
+    return S
 
 
 def bh_flags(ps, q=0.10):
@@ -150,7 +182,12 @@ def seg_of(ts, a, b):
 
 def sweep(ts, P, seg, nperm, label):
     rows = []
+    carry = carry_signal(ts)
     for fam, prm, K in GRID:
+        if fam == 'CARRY':
+            if carry is None:
+                continue
+            prm = dict(carry=carry)
         S = signals(P, fam, prm)
         for kind in ('LS', 'LO'):
             m = eval_config(P, S, K, seg, kind, nperm=nperm)
@@ -164,7 +201,7 @@ def sweep(ts, P, seg, nperm, label):
             r_['bh'] = bool(f)
         for r_ in sub:
             tag = ' ← BH' if r_['bh'] and r_['sharpe'] > 0 else ''
-            pl = ','.join(f'{k}{v}' for k, v in r_['prm'].items())
+            pl = ','.join(f'{k}{v}' for k, v in r_['prm'].items() if not hasattr(v, 'shape'))
             print(f"{fam:6s} {pl:8s} K{r_['K']} {r_['kind']:2s} | Sharpe {r_['sharpe']:+5.2f} "
                   f"CAGR {r_['cagr']:+7.1f}% DD {r_['dd']:5.1f}% p={r_['p']:.4f}{tag}")
     return rows
