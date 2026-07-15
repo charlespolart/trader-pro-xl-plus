@@ -281,6 +281,29 @@ Après déploiement du fix, avec feu vert explicite :
 5. realizedNet -455.18 vérifié arithmétiquement : 12 951,42 (0.20151586 ×
    posEntry 64 270) − 12 496,24 (produit net) = 455,18 ✓ — cohérent, garder.
 
+## CORRECTIF APPLIQUÉ (2026-07-15) — commits `7496193` + `8a98e43`
+
+Bots live SUPPRIMÉS au préalable sur instruction Mario (archive `28e00b5`,
+historique orders/fills conservé en DB ; fonds intacts sur OKX, plus revendiqués
+par personne). Correctif livré, **170/170 tests + typecheck 0 erreur** :
+
+- **A** double clé `algoClOrdId`/`clOrdId` (routeur + handler + réindexation) ;
+- **B** cancel d'un trigger → lecture état final + backfill si `effective` ;
+- **C** dérive : reconcile REFUSE le départ au-delà de 2 %/10u (fini le clamp
+  silencieux), sur-revendication = REFUS, sonde horaire → gel + Telegram ;
+- **D** garde PRÉ-TRADE : soldes réels vérifiés avant CHAQUE ordre spot (dérive
+  → refus ; vente clampée au pas sur poussière ; BUY quote borné au réel ;
+  soldes invérifiables = ordre refusé) — exigences Mario du 2026-07-15 ;
+- **E** stratégies accumulateur ×2 : rachat ×0,995 + garde anti-double-rachat ;
+- **F** Telegram par TRANSACTION (FILLED → qty/prix moyen/frais réels ;
+  REJECTED → alerte) ;
+- `strategies/fill-smoke.ts` : smoke démo 1m reproduisant le chemin de
+  l'incident en minutes (validation §14 temps réel enfin réalisable).
+
+Frais : le 0,35 % taker mesuré = barème OFFICIEL OKX EEA sans compte dérivés.
+**Ouvrir X-Perps ramène le spot à 0,08/0,10 %** (barème des backtests) — à
+faire avec la plomberie carry. Reste : déploiement VPS + bot démo fill-smoke.
+
 ## Empreinte de l'investigation (traçabilité)
 
 - Accès : `ssh root@45.32.123.66` (lecture) ; `docker exec` psql (SELECT only) ;
