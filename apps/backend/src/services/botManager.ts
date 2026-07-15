@@ -52,6 +52,19 @@ import type { SettingsService } from './settings'
 const ADAPTER_STATE_KEY = '__adapter'
 const RING = 500
 
+/** Format FR pour Telegram : 12 345,67 (espace fine, virgule décimale). */
+function nf(x: number, d = 2): string {
+  const neg = x < 0
+  const [i, f] = Math.abs(x).toFixed(d).split('.')
+  const g = i!.replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
+  return (neg ? '−' : '') + g + (f ? ',' + f : '')
+}
+
+/** Quantité base : 8 décimales, zéros de fin retirés. */
+function nq(x: number): string {
+  return nf(x, 8).replace(/0+$/, '').replace(/,$/, '')
+}
+
 /** blocks position-increasing orders when a risk rule is violated */
 /** Un blocage d'ordre. `hard` = JAMAIS contournable (statut du bot, kill switch)
  *  — même un ordre protecteur reduceOnly est refusé. `hard:false` = plafond de
@@ -530,6 +543,9 @@ class BotRunner {
     this.status = 'running'
     this.publishInfo()
     this.pushLog({ time: Date.now(), level: 'info', message: `Bot démarré (${config.mode}) sur ${config.symbol}` })
+    sendTelegram(
+      `▶️ DÉMARRÉ — <b>${config.name || config.strategyId}</b>\nÉquité ${nf(equityNow)}\n<code>${config.mode} · ${config.symbol}</code>`,
+    )
   }
 
   // ------------------------------------------------------------ event flow
@@ -665,8 +681,9 @@ class BotRunner {
     if (order.status === 'FILLED' && prevStatus !== 'FILLED') void this.notifyTransaction(order)
     if (order.status === 'REJECTED' && prevStatus !== 'REJECTED') {
       sendTelegram(
-        `⚠️ <b>${config.name || config.strategyId}</b> [${config.mode}] ordre REJETÉ : ` +
-          `${order.side} ${order.type} ${order.symbol}${order.reason ? ` — ${order.reason}` : ''}`,
+        `⚠️ ORDRE REJETÉ — <b>${config.name || config.strategyId}</b>\n` +
+          `${order.side} ${order.type}${order.reason ? `\n<i>${order.reason}</i>` : ''}\n` +
+          `<code>${config.mode} · ${config.symbol}</code>`,
       )
     }
     try {
@@ -805,7 +822,9 @@ class BotRunner {
     this.status = 'paused_risk'
     this.statusReason = reason
     this.pushLog({ time: Date.now(), level: 'warn', message: `Bot mis en pause (risk): ${reason}` })
-    sendTelegram(`⏸️ <b>${this.deps.config.name}</b> en pause (risk): ${reason}`)
+    sendTelegram(
+      `⏸️ EN PAUSE (risque) — <b>${this.deps.config.name || this.deps.config.strategyId}</b>\n<i>${reason}</i>\n<code>${this.deps.config.mode} · ${this.deps.config.symbol}</code>`,
+    )
     this.enqueue(async () => {
       for (const o of [...this.rawExec.openOrders()]) await this.rawExec.cancel(o.id).catch(() => {})
       this.publishInfo()
@@ -818,6 +837,9 @@ class BotRunner {
     this.statusReason = undefined
     this.counters.cooldownUntil = 0
     this.pushLog({ time: Date.now(), level: 'info', message: 'Bot relancé manuellement' })
+    sendTelegram(
+      `▶️ RELANCÉ — <b>${this.deps.config.name || this.deps.config.strategyId}</b> (pause risque levée)\n<code>${this.deps.config.mode} · ${this.deps.config.symbol}</code>`,
+    )
     this.publishInfo()
   }
 
@@ -834,7 +856,9 @@ class BotRunner {
       this.status = 'error'
       this.statusReason = msg
       this.pushLog({ time: Date.now(), level: 'error', message: `Dérive de solde détectée — bot gelé: ${msg}` })
-      sendTelegram(`🛑 <b>${this.deps.config.name || this.deps.config.strategyId}</b> ${msg} — bot gelé (fill perdu probable)`)
+      sendTelegram(
+        `🛑 GELÉ — <b>${this.deps.config.name || this.deps.config.strategyId}</b>\nDérive de solde : livre ${nf(d.ledger)} vs réel ${nf(d.real)} (fill perdu probable)\n<code>${this.deps.config.mode} · ${this.deps.config.symbol}</code>`,
+      )
       this.publishInfo()
     } catch {
       // sonde best-effort : nouvelle tentative dans une heure
@@ -853,12 +877,13 @@ class BotRunner {
       const fee = fs.reduce((s, f) => s + f.fee, 0)
       const avg = qty > 0 && quote > 0 ? quote / qty : (order.price ?? 0)
       const si = this.symbolInfoV
-      const head = order.side === 'BUY' ? '🟢 ACHAT' : '🔴 VENTE'
+      const head = order.side === 'BUY' ? '🟩 ACHAT' : '🟥 VENTE'
       sendTelegram(
-        `${head} <b>${config.name || config.strategyId}</b> [${config.mode}] ` +
-          `${qty.toFixed(8)} ${si.baseAsset} @ ${avg.toFixed(2)} (${quote.toFixed(2)} ${si.quoteAsset}` +
-          `${fee ? `, frais ${fee.toFixed(4)} ${si.quoteAsset}` : ''})` +
-          (order.reason ? `\n${order.reason}` : ''),
+        `${head} — <b>${config.name || config.strategyId}</b>\n` +
+          `<b>${nq(qty)} ${si.baseAsset}</b> @ ${nf(avg, 1)}\n` +
+          `Total ${nf(quote)} ${si.quoteAsset}${fee ? ` · Frais ${nf(fee, 4)}` : ''}\n` +
+          (order.reason ? `<i>${order.reason}</i>\n` : '') +
+          `<code>${config.mode} · ${config.symbol}</code>`,
       )
     } catch {
       // notification best-effort : ne bloque jamais le flux d'événements
@@ -870,7 +895,9 @@ class BotRunner {
     this.status = 'error'
     this.statusReason = msg
     this.pushLog({ time: Date.now(), level: 'error', message: `Erreur de stratégie — bot en pause: ${msg}` })
-    sendTelegram(`🛑 <b>${this.deps.config.name}</b> erreur de stratégie: ${msg}`)
+    sendTelegram(
+      `🛑 GELÉ — <b>${this.deps.config.name || this.deps.config.strategyId}</b>\nErreur de stratégie : <i>${msg}</i>\n<code>${this.deps.config.mode} · ${this.deps.config.symbol}</code>`,
+    )
     this.publishInfo()
   }
 
@@ -909,6 +936,11 @@ class BotRunner {
     if (!booted) {
       this.status = opts.killed ? 'killed' : 'stopped'
       this.statusReason = opts.reason
+      if (!opts.killed) {
+        sendTelegram(
+          `⏹️ ARRÊTÉ — <b>${this.deps.config.name || this.deps.config.strategyId}</b>${opts.reason ? `\n<i>${opts.reason}</i>` : ''}\n<code>${this.deps.config.mode} · ${this.deps.config.symbol}</code>`,
+        )
+      }
       this.publishInfo()
       this.pushLog({ time: Date.now(), level: 'info', message: `Bot arrêté avant la fin du démarrage${opts.reason ? ` (${opts.reason})` : ''}` })
       return
@@ -949,6 +981,11 @@ class BotRunner {
       }
       this.status = opts.killed ? 'killed' : 'stopped'
       this.statusReason = opts.reason
+      if (!opts.killed) {
+        sendTelegram(
+          `⏹️ ARRÊTÉ — <b>${this.deps.config.name || this.deps.config.strategyId}</b>${opts.reason ? `\n<i>${opts.reason}</i>` : ''}\n<code>${this.deps.config.mode} · ${this.deps.config.symbol}</code>`,
+        )
+      }
       this.publishInfo()
       this.pushLog({ time: Date.now(), level: 'info', message: `Bot arrêté${opts.reason ? ` (${opts.reason})` : ''}` })
     }
@@ -1343,8 +1380,9 @@ export class BotManager {
     this.killSwitchActive = active
     this.globalRisk = { ...this.globalRisk, killSwitchActive: active }
     await this.settings.setGlobalRisk(this.globalRisk)
+    if (!active) sendTelegram('✅ <b>Kill switch désactivé</b> — démarrages de bots autorisés')
     if (active) {
-      sendTelegram('🛑 <b>KILL SWITCH</b> activé — arrêt de tous les bots')
+      sendTelegram('🚨 <b>KILL SWITCH ACTIVÉ</b> — gel de tous les bots (aucune transaction)')
       for (const id of [...this.runners.keys()]) {
         // kill = gel immédiat : aucune transaction (pas de hook onStop, pas de
         // fermeture). Les positions restent telles quelles, corrections à la main.
