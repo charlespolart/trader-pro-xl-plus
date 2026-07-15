@@ -91,25 +91,35 @@ export default defineStrategy({
         })
         return
       }
-      // marché trop calme/monotone : ré-armer en ALTERNANT le côté du trigger
-      // (OKX déclenche au TOUCHER du triggerPx, par le haut comme par le bas —
-      // vérifié en réel) → déclenchement quasi certain dans la fenêtre suivante.
-      // Le cancel exerce backfillIfTriggered à chaque cycle (fix incident).
+      // Le marché DÉMO est un bac à sable quasi mort (constaté : vol24h ~1,6 BTC,
+      // last figé) et ses prix n'ont RIEN à voir avec les bougies publiques
+      // réelles que consomme le bot → un trigger placé depuis les candles ne
+      // partira jamais. On crée donc NOUS-MÊMES le tick déclencheur : trigger
+      // juste sous notre propre prix de fill (seul prix démo fiable connu),
+      // puis mini-vente au marché — son print au bid passe sous le seuil.
       const armedAtMs = ctx.state['armedAtMs'] as number | undefined
       if (armedAtMs !== undefined && candle.openTime - armedAtMs >= ctx.params.rearmBars * 60_000) {
         await ctx.order.cancelAll()
         if (ctx.position.qty <= dust) return // déclenché pendant l'annulation → backfillé
-        const n = (((ctx.state['rearmN'] as number | undefined) ?? 0) + 1)
-        ctx.state['rearmN'] = n
-        const above = n % 2 === 1
-        const trigger = ctx.roundPrice(candle.close * (above ? 1 + ctx.params.offsetPct / 250 : 1 - ctx.params.offsetPct / 250))
+        const fillPx = (ctx.state['fillPx'] as number | undefined) ?? candle.close
+        const tiny = ctx.roundQty(Math.max(ctx.symbolInfo?.minQty ?? 1e-5, ctx.position.qty * 0.06))
+        const rest = ctx.roundQty(ctx.position.qty - tiny)
+        if (rest <= dust) return
+        const trigger = ctx.roundPrice(fillPx * 0.999)
         ctx.state['armedAtMs'] = candle.openTime
         await ctx.order.stopMarket({
           side: 'SELL',
-          qty: ctx.roundQty(ctx.position.qty),
+          qty: rest,
           stopPrice: trigger,
-          reason: `SMOKE 2/4 : ré-armement ${above ? 'AU-DESSUS' : 'en dessous'} du prix (${trigger})`,
+          reason: `SMOKE 2/4 : trigger armé à ${trigger} (sous le fill ${fillPx})`,
           tag: 'trig1',
+        })
+        // le poke : ce print au bid (< trigger) déclenche l'algo ci-dessus
+        await ctx.order.market({
+          side: 'SELL',
+          qty: tiny,
+          reason: 'SMOKE 2/4 : mini-vente « poke » — crée le tick qui déclenche le trigger',
+          tag: 'poke',
         })
       }
       return
@@ -136,6 +146,7 @@ export default defineStrategy({
     if (order.tag === 'entry' && ctx.position.qty > dust && ctx.state['armed'] !== true) {
       ctx.state['armed'] = true
       ctx.state['armedAtMs'] = ctx.time
+      ctx.state['fillPx'] = fill.price
       const trigger = ctx.roundPrice(fill.price * (1 - ctx.params.offsetPct / 100))
       await ctx.order.stopMarket({
         side: 'SELL',
