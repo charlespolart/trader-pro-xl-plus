@@ -12,7 +12,7 @@ triangles, divergences, triples)."""
 import numpy as np
 
 from lib import atr as atr_series
-from lib import dedup, trend_amp, trend_ok
+from lib import dedup, dedup_episodes, trend_amp, trend_ok
 
 
 # ------------------------------------------------------------- sous-scores
@@ -109,6 +109,15 @@ def detect_hs(px, alt, k, tol, prom, gate, inverse=False):
             continue
         slope = (n2 - n1) / (i4 - i2)      # neckline INCLINÉE par les 2 creux
         head_amp = abs(hd - (n1 + slope * (i3 - i2)))
+        # v2 (audit visuel 2026-07-15) : une neckline plus pentue que la moitié
+        # de la hauteur de tête sur la largeur n'est pas une neckline (cartes
+        # 2023-11/2023-06 : aucun chartiste ne trace un H&S là) ; et des
+        # épaules à >3× d'écart temporel de la tête ne sont pas des épaules.
+        if abs(slope) * (i5 - i1) > 0.5 * head_amp:
+            continue
+        dl, dr = i3 - i1, i5 - i3
+        if max(dl, dr) > 3 * max(min(dl, dr), 1):
+            continue
         for b in range(cf5, min(n, cf5 + 40)):
             neck_b = n1 + slope * (b - i2)
             if (direction < 0 and c[b] < neck_b) or (direction > 0 and c[b] > neck_b):
@@ -279,7 +288,7 @@ def detect_cup(px, alt, k, dmin, gate, tol=0.03, inverse=False):
                                               brk=(sig, max(rA, rB) if not inverse else min(rA, rB)),
                                               handle=hl),
                          q, stop=hl, target=tgt))
-    return dedup(ev)
+    return dedup_episodes(dedup(ev), 'rimA')
 
 
 # ------------------------------------------------ 4. rounding top/bottom
@@ -348,7 +357,7 @@ def detect_rounding(px, alt, k, r2min, gate, tol=0.04, top=False):
             ev.append(mk(sig, direction, dict(rimA=(iA, rA), rimB=(iB, rB), ext=(im, ext),
                                               brk=(sig, lvl)),
                          q, stop=ext, target=lvl + direction * (rim - ext if not top else ext - rim)))
-    return dedup(ev)
+    return dedup_episodes(dedup(ev), 'rimA')
 
 
 # ---------------------------------------------------------- 5. wedges
@@ -400,7 +409,10 @@ def detect_wedge(px, alt, k, gate, rising=True):
         conf = max(cfH, L3[-1][3])
         if gate and not trend_ok(c, min(H3[0][0], L3[0][0]), -direction):
             continue
-        for b in range(conf, min(n, conf + 40)):
+        # v2 (audit visuel) : la cassure doit arriver AVANT l'apex — au-delà,
+        # les droites sont croisées et « casser la ligne » n'a plus de sens
+        b_max = min(n, conf + 40, int(x_apex))
+        for b in range(conf, b_max):
             if not np.isfinite(A[b]):
                 continue
             line = (ml * b + bl) if rising else (mh * b + bh)
@@ -518,9 +530,13 @@ def detect_triangle(px, alt, k, gate, kind='asc'):
             continue
         hv = [p[2] for p in H3]
         rel_flat = (max(hv) - min(hv)) / np.mean(hv)
-        ml, bl, rl = _ols_line([(p[0], p[2]) for p in L2 + ([L_in[-3]] if len(L_in) >= 3 else [])])
+        Lpts = L_in[-3:] if len(L_in) >= 3 else L2   # v2 : mêmes points pour la DÉCISION et les ANCRES
+        ml, bl, rl = _ols_line([(p[0], p[2]) for p in Lpts])
         mh, bh, rh = _ols_line([(p[0], p[2]) for p in H3])
         conf = max(cfH, L2[-1][3])
+        # v2 (audit visuel) : apex devant, et cassure AVANT l'apex uniquement
+        denom_a = ml - mh
+        x_apex = (bh - bl) / denom_a if abs(denom_a) > 1e-12 else np.inf
         if kind == 'asc':
             if rel_flat > tol_flat or ml <= 0:
                 continue
@@ -543,7 +559,10 @@ def detect_triangle(px, alt, k, gate, kind='asc'):
             continue
         base = abs((mh * H3[0][0] + bh) - (ml * H3[0][0] + bl)) if kind == 'sym' else \
             abs(level - (stop if stop is not None else level))
-        for b in range(conf, min(n, conf + 40)):
+        b_max = min(n, conf + 40, int(x_apex) if np.isfinite(x_apex) else n)
+        if b_max <= conf:
+            continue
+        for b in range(conf, b_max):
             if kind == 'sym':
                 up_line = mh * b + bh
                 dn_line = ml * b + bl
@@ -564,7 +583,7 @@ def detect_triangle(px, alt, k, gate, kind='asc'):
                      q_vol=q_vol_score(v, H3[0][0], iH, b),
                      q_geom=q_range_score(span, 15, 200))
             ev.append(mk(b, direction, dict(h=[(p[0], p[2]) for p in H3],
-                                            l=[(p[0], p[2]) for p in L2],
+                                            l=[(p[0], p[2]) for p in Lpts],
                                             brk=(b, level)),
                          q, stop=stop, target=level + direction * base))
             break

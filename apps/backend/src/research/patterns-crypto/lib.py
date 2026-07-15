@@ -98,6 +98,29 @@ def dedup(ev: list) -> list:
     return out
 
 
+def dedup_episodes(ev: list, start_key: str) -> list:
+    """v2 (audit visuel 2026-07-15) : un même épisode (top/base) ne compte
+    qu'UNE fois — supprime tout événement dont la fenêtre de formation
+    [début, signal] chevauche >50 % celle d'un événement déjà retenu (le
+    n de ROUND top comptait le même sommet 2-3 fois via des paires de rims
+    différentes)."""
+    kept = []
+    for e in sorted(ev, key=lambda e: e['sig']):
+        a2 = e['anchors'][start_key][0]
+        s2 = e['sig']
+        clash = False
+        for kpt in kept:
+            a1 = kpt['anchors'][start_key][0]
+            s1 = kpt['sig']
+            ov = max(0, min(s1, s2) - max(a1, a2))
+            if ov > 0.5 * max(s2 - a2, 1):
+                clash = True
+                break
+        if not clash:
+            kept.append(e)
+    return kept
+
+
 def fwd_logret(c: np.ndarray, h: int) -> np.ndarray:
     out = np.full(len(c), np.nan)
     out[:-h] = np.log(c[h:] / c[:-h])

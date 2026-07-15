@@ -303,3 +303,50 @@ restent au protocole : FLAG/PENN desserrés + re-placebo, volet 2
 indicateurs/confluence (synergie par permutation), et — si Mario le veut —
 réplication alts USDT. Les leçons acquises (dose-réponse comme juge de paix,
 pooling de puissance, robustes anti-crash) sont dans lib/pass2 réutilisables.
+
+## PASSE 3 (2026-07-15) — AUTO-AUDIT VISUEL (captures d'écran) → v2 des détecteurs
+
+Demande de Mario : vérifier MOI-MÊME visuellement chaque graphe (captures
+Chrome headless par famille, bougies OHLC ajoutées au rendu — les pivots
+s'ancrent sur les mèches, il faut les voir). `screenshots.py` + `shots/*.png`.
+
+**Défauts trouvés en REGARDANT (aucun n'était visible dans les chiffres) :**
+1. **TRI/WEDGE : fuite d'apex** — signaux tirés APRÈS le croisement des
+   droites (3 cartes), où « casser la ligne » n'a plus de sens. La contrainte
+   b < x_apex retire **~55 % des événements TRI** (84→38 sur BTC).
+2. **TRI : affichage ≠ décision** — la droite basse était ajustée sur 3
+   pivots mais les ancres n'en stockaient que 2. Corrigé (mêmes points).
+3. **HS : necklines verticales** — des « H&S » à neckline plus pentue que la
+   hauteur de tête (2023-11, 2023-06, HAUT score !) qu'aucun chartiste ne
+   tracerait ; et épaules à >3× d'écart temporel. v2 : plafond
+   |pente|×largeur ≤ 0,5×hauteur_tête + symétrie temporelle ≤3×. Effet :
+   n 40→21 poolé, signal +365→+566 bps (p=0,011) — la fidélité paie, mais
+   toujours sous BH. Le score classait MAL cette famille (les vrais H&S
+   d'août 2022/juin 2022 étaient en BAS score — sous-score volume trop dur).
+4. **CUP/ROUND : multiplicité d'épisodes** — le même sommet/base compté 2-3
+   fois via des paires de rims différentes (cartes 1-2 de ROUND top = le même
+   top de juillet-août 2023). v2 : dédup par chevauchement de fenêtres >50 %
+   (ROUND top n 41→29).
+5. Wedge déc-2017 détecté avec des lignes lâches (touch=0,16) mais score haut
+   (dilution des poids égaux) — consigné, poids inchangés (figés).
+6. CUP/ROUND : constructions LÉGITIMES à l'œil (vraies soucoupes en haut
+   score, V-junk correctement déclassé) — lecture : ce sont des cassures de
+   base (l'edge breakout déguisé), pas de bug.
+
+**Re-validation v2 (mêmes barres, rien ne bouge) :** placebo **0/319 = 0,0 %**
+✓ ; IS 4h poolé re-balayé : 17 BH (composition changée), robustes **11/17**
+(CUP médianes renforcées +348/+410/+498 ; TRI sym k3,g1 TOMBE, trim p=0,057 —
+l'évidence v1 vivait dans la moitié post-apex) ; **dose-réponse v2 : AUCUNE
+famille ✓** — TRI perd son unique ✓ (T3 +143, p=0,110), ROUND s'INVERSE
+(T1 +302 > T3 +86), CUP plat (+364/+344/+338).
+
+**VERDICT GÉOMÉTRIQUE (quasi définitif, 3 passes + auto-audit visuel) :**
+constructions fidèles, durcies par l'œil, placebo propre, contrôle positif
+poolé ✓ — et AUCUNE famille ne franchit la chaîne complète. L'hypothèse H-A
+(« mal placé ») est réfutée par construction (les placements sont maintenant
+vérifiés à l'œil) ; H-B (dose-réponse) est réfutée partout — le seul ✓ v1
+était un artefact de construction. Ce qui reste de réel : des cassures de
+base/plus-hauts à médianes fortes (CUP/ROUND bottom) = l'edge breakout maison
+sous un déguisement chartiste, sans que la « qualité » du tracé n'y ajoute
+rien. Galerie v2 republiée (bougies OHLC, artifact 📐 e023f25c).
+Restent au protocole : FLAG/PENN desserrés + volet indicateurs/confluence.

@@ -19,15 +19,15 @@ PL, PR, PT, PB = 10, 58, 30, 30
 
 FAMS = [
     ('TRI', 'sym', 'k3,g1', 'Triangle symétrique (gate tendance)',
-     'oos-echec', 'Seule famille à franchir les critères 1-4 (BH 4h p=0,013 ; robuste ; DOSE-RÉPONSE ✓ p=0,023 — unique ; trades +148,6 bps/tr t=2,1 ; répliquée BH sur 1d +1 373 bps p=0,006) — puis ÉCHEC OOS : flip de signe (−25,5 bps vs +199,3 IS). La signature du bruit, tranchée par la passe unique.'),
+     'oos-echec', 'v1 : seule famille à franchir les critères 1-4, puis ÉCHEC OOS (flip de signe). v2 (audit visuel) : la contrainte d\'apex retire ~55 %% des événements (signaux post-apex = artefacts) et la config-phare sym k3,g1 tombe aux stats robustes (trim p=0,057). Le « contenu » v1 était pour moitié un artefact de construction.'),
     ('CUP', 'bull', 'k5,d0.06,g0', 'Cup & handle',
      'critere3', 'Médianes IS robustes (+347 à +473 bps, p_méd 0,004-0,038 — pas un artefact de crash) et trades ETH spectaculaires (+622 bps/tr, t=3,7) MAIS pas de dose-réponse (p=0,053, les deux terciles positifs) : l\'effet ne vient pas de la qualité chartiste. Mort au critère 3 ; OOS non consommé.'),
     ('ROUND', 'bottom', 'k5,r0.5,g0', 'Rounding bottom (soucoupe)',
      'critere3', 'Médianes IS +296/+362 (robuste), trades ETH +558 bps/tr — mais dose-réponse PLATE (T1 +234 / T3 +209) : la « qualité » n\'ajoute rien. Mort au critère 3.'),
     ('ROUND', 'top', 'k5,r0.7,g0', 'Rounding top',
-     'fragile', 'Retenu aux robustes par la moyenne tronquée (p=0,020) mais médiane +52 seulement : porté par les queues grasses des bears (le COVID pèse ~165 bps de la moyenne à lui seul). Fragile, mort au critère 3.'),
+     'fragile', 'v2 : dédup par épisode (le même sommet comptait 2-3 fois via des paires de rims différentes — n 41→29). Retenu aux robustes par la moyenne tronquée (p=0,008) mais médiane +153 (p=0,086) : porté par les queues grasses des bears. Fragile.'),
     ('HS', 'bear', 'k5,tol0.03,prom0.005,g1', 'Tête-épaules (neckline inclinée, gate)',
-     'refute', 'Best p=0,007 mais sous le seuil BH de sa grille (24 cfg) ; famille non retenue. Avec tendance exigée la figure reste rare (n=40 poolé).'),
+     'refute', 'v2 (audit visuel) : plafond de pente de neckline + symétrie temporelle des épaules — les faux H&S à neckline verticale disparaissent, n tombe à 21 poolé et le signal MONTE (+566 bps, p=0,011)… toujours sous le seuil BH de sa grille. Figure rare et non certifiée, mais la fidélité de construction paie.'),
     ('DT', 'bear', 'k5,tol0.015,d0.02,g1', 'Double sommet',
      'refute', '0 BH sur 24 configs (méd −12 bps). Vendre un double sommet ne paie pas non plus en crypto.'),
     ('TT', 'bear', 'k5,tol0.03,g0', 'Triple sommet',
@@ -94,11 +94,17 @@ def svg_event(px, fam, e):
         return datetime.datetime.fromtimestamp(t[int(i)] / 1000, datetime.UTC).strftime('%Y-%m-%d')
 
     parts = [f'<svg viewBox="0 0 {W} {H_}" role="img" aria-label="{fam} BTC 4h, signal {dstr(sig)}">']
-    band = ' '.join(f'{X(i):.1f},{Y(h[i]):.1f}' for i in xs) + ' ' + \
-           ' '.join(f'{X(i):.1f},{Y(l[i]):.1f}' for i in xs[::-1])
-    parts.append(f'<polygon points="{band}" fill="var(--ink)" opacity="0.07"/>')
-    line = ' '.join(f'{X(i):.1f},{Y(c[i]):.1f}' for i in xs)
-    parts.append(f'<polyline points="{line}" fill="none" stroke="var(--ink2)" stroke-width="1.6"/>')
+    # bougies OHLC (les pivots s'ancrent sur les mèches : il faut les VOIR)
+    bw = max(1.2, min(4.5, (W - PL - PR) / max(hi - lo, 1) * 0.62))
+    for i in xs:
+        cx = X(i)
+        parts.append(f'<line x1="{cx:.1f}" y1="{Y(h[i]):.1f}" x2="{cx:.1f}" y2="{Y(l[i]):.1f}" '
+                     f'stroke="var(--ink3)" stroke-width="0.8"/>')
+        top, bot = max(o[i], c[i]), min(o[i], c[i])
+        fill = 'var(--surface)' if c[i] >= o[i] else 'var(--ink2)'
+        parts.append(f'<rect x="{cx - bw / 2:.1f}" y="{Y(top):.1f}" width="{bw:.1f}" '
+                     f'height="{max(0.8, Y(bot) - Y(top)):.1f}" fill="{fill}" '
+                     f'stroke="var(--ink2)" stroke-width="0.7"/>')
 
     def hline(v, x_from, x_to, color, dash='', label=None):
         parts.append(f'<line x1="{X(x_from):.1f}" y1="{Y(v):.1f}" x2="{X(x_to):.1f}" y2="{Y(v):.1f}" '
