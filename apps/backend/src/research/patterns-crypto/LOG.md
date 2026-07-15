@@ -350,3 +350,53 @@ base/plus-hauts à médianes fortes (CUP/ROUND bottom) = l'edge breakout maison
 sous un déguisement chartiste, sans que la « qualité » du tracé n'y ajoute
 rien. Galerie v2 republiée (bougies OHLC, artifact 📐 e023f25c).
 Restent au protocole : FLAG/PENN desserrés + volet indicateurs/confluence.
+
+## PASSE 4 (2026-07-15) — flags/pennants v2, confluence, VERDICT DE CAMPAGNE
+
+**Flags/pennants v2** (réécriture fidèle : mât = jambe de momentum en prix,
+jambe directe ≥70 %, consolidation retenue bar-à-bar, réfractaire ; la v1
+exigeait un mât pivot-adjacent ≥6×ATR ≤15 barres = quasi inexistant) :
+placebo re-passé 0/333 ✓ ; IS 4h poolé : FLAG 0 BH (best p=0,060) ; **PENN
+4 BH — en réalité 2 configs uniques (k est muet dans ce détecteur, doublons
+consignés)** — bull +419,5 bps p=0,009 n=46, bear +283,4 p=0,029, robustes
+par la MÉDIANE des deux côtés (+395/+231), trades canoniques +376,5 bps/tr
+t=+2,0. PUIS critère 3 : **ANTI-dose-réponse massive — T1 +663 → T3 −112**
+(FLAG pareil : +237→+21). Plus le pennant est « canonique », pire c'est.
+Mort au critère 3 ; OOS jamais consommé pour cette famille.
+
+**Volet 2 — confluence par synergie de permutation** (42 combos : 2 entrées
+vivantes {Donchian×vol bull, cassures de base CUP+ROUND} × 6 facteurs
+canoniques en 1-2) : **0 survivant à la barre jointe** (BH(p_rot) ∧
+p_syn<0,05 ∧ Δ>0). Textures : atr_calm concentre (+53 à +130 bps, p_syn
+0,09-0,17 — jamais significatif) ; **rsi_mom DÉGRADE les cassures de base de
+−115 bps** ; rien ne bat son entrée seule. Réplique exactement confluence1
+actions : la confluence concentre, ne crée pas.
+
+## VERDICT DE CAMPAGNE (géométrique + confluence) — RÉFUTÉ, définitif
+
+Après 4 passes, un auto-audit visuel par captures (4 défauts corrigés), 3
+placebos propres (0,3 %/0,0 %/0,0 %), un contrôle positif retrouvé (VRX poolé
+p=0,044), ~230 configs × {1h,4h,1d} × {BTC,ETH}, robustes anti-crash et
+dédup d'épisodes :
+
+1. **AUCUNE famille chartiste ne franchit la chaîne complète.** Le seul
+   dose-réponse ✓ (triangles v1) était un artefact de construction (fuite
+   d'apex) démasqué à l'œil. Six familles sont ANTI-dose-réponse (TB, TL,
+   iHS, ROUND, FLAG, PENN) : la « qualité » du manuel fait PIRE que le
+   tout-venant — H-A (« mal placé ») et H-B (dose-réponse) sont réfutées sur
+   placements VÉRIFIÉS visuellement.
+2. **Ce qui est réel** : des cassures de momentum/base à médianes fortes
+   (CUP +348..+498, ROUND bottom +337/+455, PENN +395/+231, TT trim +125,
+   SR sup_break trim +87/+202) — toutes la MÊME chose : la continuation de
+   cassure, l'edge breakout déjà au produit (btc-swing Donchian×volume,
+   WF percentile 95). Le folklore chartiste le déguise et son « esthétique »
+   le dégrade. Pas un 4ᵉ moteur : un déguisement du 3ᵉ.
+3. **Confluence d'indicateurs : 0/42** — pas de résurrection par combinaison.
+4. Non fait (assumé, sans enjeu après ce verdict) : réplication alts du
+   géométrique ; OOS des familles mortes avant le critère 5 (préservé —
+   CUP/ROUND/PENN rejugables un jour sur données VIERGES futures uniquement).
+
+**La question de Mario (« mal placé vs sans valeur ») a sa réponse chiffrée
+et visuelle : bien placé, vérifié à l'œil, durci — et toujours sans valeur
+au-delà de l'edge breakout que la maison exploite déjà.** Prochain horizon
+de la ROADMAP : H1 (cross-section alts USDT).

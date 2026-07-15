@@ -433,75 +433,81 @@ def detect_wedge(px, alt, k, gate, rising=True):
     return dedup(ev)
 
 
-# ---------------------------------------------- 6. flags & pennants
+# ---------------------------------------------- 6. flags & pennants (v2)
 def detect_flag(px, alt, k, mast_atr, gate, bull=True, pennant=False):
-    """mât = jambe pivot→pivot ≥ mast_atr×ATR20 en ≤15 barres ; consolidation
-    3-15 barres retenue dans la moitié haute (resp. basse) du mât ; flag =
-    canal contre-pente, pennant = contraction ; cassure de l'extrême du mât."""
+    """v2 (passe 3 — la v1 exigeait un mât pivot→pivot ADJACENT ≥6×ATR en ≤15
+    barres : quasi inexistant, 0-26 évts). Fidèle au manuel et testable :
+    mât = jambe de momentum mesurée en PRIX (plus-bas→plus-haut de ≤20 barres,
+    amplitude ≥ mast_atr×ATR20, mouvement net ≥70 % de l'amplitude = jambe
+    directe) ; consolidation 3-20 barres retenue au-dessus de la mi-jambe
+    (resp. sous), pente contre-tendance (flag) ou contraction (pennant) ;
+    signal = 1er close au-delà de l'extrême du mât. Causal : le sommet du mât
+    est un plus-extrême LOCAL constaté, la cassure arrive après ≥3 barres."""
     h, l, c, v = px['h'], px['l'], px['c'], px['v']
     A = atr_series(px, 20)
     n = len(c)
     ev = []
-    for j in range(len(alt) - 1):
-        p0, p1 = alt[j], alt[j + 1]
-        if bull and not (p0[1] == 'L' and p1[1] == 'H'):
-            continue
-        if not bull and not (p0[1] == 'H' and p1[1] == 'L'):
-            continue
-        i0, _, v0, _ = p0
-        i1, _, v1, cf1 = p1
-        bars = i1 - i0
-        if not (2 <= bars <= 15):
-            continue
+    last_sig = -10**9
+    for i1 in range(25, n):
         if not np.isfinite(A[i1]) or A[i1] <= 0:
             continue
-        amp = abs(v1 - v0)
-        if amp < mast_atr * A[i1]:
+        # sommet (resp. creux) de mât : extrême des 6 dernières barres
+        if bull:
+            if h[i1] < h[max(0, i1 - 6):i1 + 1].max():
+                continue
+            v1 = h[i1]
+            w = l[max(0, i1 - 20):i1 + 1]
+            i0 = max(0, i1 - 20) + int(np.argmin(w))
+            v0 = l[i0]
+            amp = v1 - v0
+        else:
+            if l[i1] > l[max(0, i1 - 6):i1 + 1].min():
+                continue
+            v1 = l[i1]
+            w = h[max(0, i1 - 20):i1 + 1]
+            i0 = max(0, i1 - 20) + int(np.argmax(w))
+            v0 = h[i0]
+            amp = v0 - v1
+        bars = i1 - i0
+        if not (3 <= bars <= 20) or amp < mast_atr * A[i1]:
             continue
-        mid = v0 + (v1 - v0) * 0.5
-        # consolidation : fenêtre après confirmation du sommet de mât
-        for dur in range(3, 16):
-            e = cf1 + dur
-            if e >= n:
+        net = abs(c[i1] - c[i0])
+        if net < 0.7 * amp:                                # jambe directe, pas un range
+            continue
+        mid = v0 + (v1 - v0) * 0.5 if bull else v0 - (v0 - v1) * 0.5
+        # consolidation puis cassure (scan borné, la retenue se vérifie bar à bar)
+        for e in range(i1 + 3, min(n, i1 + 21)):
+            win_l = l[i1 + 1:e + 1]
+            win_h = h[i1 + 1:e + 1]
+            if bull and (win_l.min() < mid or win_h.max() > v1 * (1 + 0.25 * amp / v1)):
                 break
-            win_l = l[cf1:e + 1]
-            win_h = h[cf1:e + 1]
-            if bull:
-                if win_l.min() < mid:                      # sort de la moitié haute
+            if not bull and (win_h.max() > mid or win_l.min() < v1 * (1 - 0.25 * amp / v1)):
+                break
+            if (bull and c[e] > v1) or (not bull and c[e] < v1):
+                if len(win_l) >= 4:
+                    rng_seg = win_h - win_l
+                    half = max(2, len(rng_seg) // 2)
+                    contracting = rng_seg[half:].mean() < rng_seg[:half].mean() * 0.8
+                    slope = np.polyfit(np.arange(len(win_l)), (win_h + win_l) / 2, 1)[0]
+                    shape_ok = contracting if pennant else (slope < 0 if bull else slope > 0)
+                else:
+                    shape_ok = False
+                if not shape_ok or e < last_sig + 10:
                     break
-                if win_h.max() > v1 * 1.002:               # cassure déjà faite ? (attendre le close)
-                    pass
-                contracting = (win_h - win_l)[-3:].mean() < (win_h - win_l)[:3].mean() * 0.7
-                slope = np.polyfit(np.arange(len(win_l)), (win_h + win_l) / 2, 1)[0]
-                shape_ok = contracting if pennant else slope < 0
-                if not shape_ok:
-                    continue
-                if c[e] > v1:                              # cassure au close
-                    q = dict(q_trend=q_cont_trend_score(c, i0, +1, T=20),
-                             q_sym=float(np.clip(amp / (mast_atr * 2 * A[i1]), 0, 1)),
-                             q_vol=q_vol_score(v, cf1, e - 1, e),
-                             q_geom=float(np.clip((win_l.min() - mid) / (v1 - mid + 1e-12), 0, 1)))
-                    ev.append(mk(e, +1, dict(m0=(i0, v0), m1=(i1, v1), cons=(cf1, e),
-                                             brk=(e, v1)),
-                                 q, stop=float(win_l.min()), target=v1 + amp))
+                if gate and not trend_ok(c, i0, +1 if bull else -1, T=40, g=0.03):
                     break
-            else:
-                if win_h.max() > mid:
-                    break
-                contracting = (win_h - win_l)[-3:].mean() < (win_h - win_l)[:3].mean() * 0.7
-                slope = np.polyfit(np.arange(len(win_l)), (win_h + win_l) / 2, 1)[0]
-                shape_ok = contracting if pennant else slope > 0
-                if not shape_ok:
-                    continue
-                if c[e] < v1:
-                    q = dict(q_trend=q_cont_trend_score(c, i0, -1, T=20),
-                             q_sym=float(np.clip(amp / (mast_atr * 2 * A[i1]), 0, 1)),
-                             q_vol=q_vol_score(v, cf1, e - 1, e),
-                             q_geom=float(np.clip((mid - win_h.max()) / (mid - v1 + 1e-12), 0, 1)))
-                    ev.append(mk(e, -1, dict(m0=(i0, v0), m1=(i1, v1), cons=(cf1, e),
-                                             brk=(e, v1)),
-                                 q, stop=float(win_h.max()), target=v1 - amp))
-                    break
+                d = +1 if bull else -1
+                q = dict(q_trend=q_cont_trend_score(c, i0, d, T=20),
+                         q_sym=float(np.clip(amp / (mast_atr * 2 * A[i1]), 0, 1)),
+                         q_vol=q_vol_score(v, i1 + 1, e - 1, e),
+                         q_geom=float(np.clip((win_l.min() - mid) / (v1 - mid + 1e-12), 0, 1)) if bull
+                         else float(np.clip((mid - win_h.max()) / (mid - v1 + 1e-12), 0, 1)))
+                stop = float(win_l.min()) if bull else float(win_h.max())
+                ev.append(mk(e, d, dict(m0=(int(i0), float(v0)), m1=(int(i1), float(v1)),
+                                        cons=(int(i1 + 1), int(e)), brk=(int(e), float(v1))),
+                             q, stop=stop, target=v1 + d * amp))
+                last_sig = e
+                break
     return dedup(ev)
 
 
