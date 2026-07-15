@@ -350,6 +350,31 @@ durcie en mémoire : tout mouvement de fonds = feu vert explicite). BTC/ETH
 encore en Funding — à rapatrier (par Mario ou sur son go) AVANT de recréer
 les bots réels.
 
+## REMISE EN SERVICE ET CLÔTURE DÉFINITIVE (2026-07-15)
+
+Séquence exécutée sur GO explicites de Mario, dans l'ordre :
+1. **Transferts Funding→Trading** (l'activation X-Perps par Mario avait migré
+   le compte en acctLv 2 et déplacé TOUS les fonds vers Funding) : USDC puis
+   BTC 0.395368187835 + ETH 3.99664896.
+2. Bots de test supprimés ; **reliquat 62,41 USDC converti en BTC**
+   (+0.00096757 @ 64 491, frais 97 sats) sur instruction.
+3. 2 bots BTC recréés proprement puis **ÉGALISÉS moitié-moitié** sur
+   instruction (nouvelle ligne de départ, total inchangé, zéro ordre OKX) :
+   **btc-accumulator `24387eb3` = 0.19816740 BTC, btc-vrx `a61779ed` =
+   0.19816739 BTC** (somme = solde réel au satoshi), eth-accumulator
+   `8c7b7a0f` adopt-all. Tous RUNNING, kill switch OFF.
+4. **Notifications Telegram refondues** (commit `cdb91f5`, déployé) :
+   transactions 🟩/🟥 structurées (qty/prix moyen/total/frais réels/raison,
+   format FR), cycle de vie ▶️ démarré · ⏹️ arrêté · ⏸️ pause risque ·
+   ▶️ relancé · 🛑 gelé · ⚠️ rejet · 🚨/✅ kill switch.
+
+Frais réels post-X-Perps vérifiés par l'API : 0,08 % maker / 0,10 % taker
+(= hypothèses des backtests ; le dossier « re-chiffrer à 0,35 % » est clos).
+Bilan économique de l'incident : −0,0077 BTC (whipsaw, risque de stratégie)
++ 0,14 USDC (micro-test de validation). Le bug, lui, n'a rien coûté d'autre —
+et ne peut plus se reproduire silencieusement : toute désynchronisation gèle
+le bot AVANT l'ordre, avec alerte.
+
 ## Empreinte de l'investigation (traçabilité)
 
 - Accès : `ssh root@45.32.123.66` (lecture) ; `docker exec` psql (SELECT only) ;
