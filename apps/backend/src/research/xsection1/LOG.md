@@ -118,3 +118,28 @@ ledger complet, BH-FDR 10 % PAR FAMILLE sur la stat primaire.
    puissance. Le null par réétiquetage est « contaminé » par construction
    (les tirages détiennent le panel drifté au hasard) : le test mesure la
    SÉLECTION au-delà de la composition du panel — c'est la bonne question.
+
+## IS PILOTE (2026-07-15) — verdict : 0 survivant complet, une texture réelle sous-dimensionnée
+
+48 stats, 1000 permutations de réétiquetage, net 30 bps/côté. Benchmark
+EW-20 (sans frais) : Sharpe +0,29, CAGR +29,9 %, DD 85,0 %.
+
+- **MOM : 1 seul BH — J30,S0,K2 L/S : Sharpe +0,44, CAGR +29,5 %, DD 51,4 %,
+  p=0,005** → **échoue au critère 2** (Sharpe < 0,8 ; Calmar 0,57 < 1). La
+  barre ne bouge pas : pas d'OOS. Texture cohérente autour (rangée J30 toute
+  positive, S0>S2, K2>K7, J14-K7 positif) — pile dans la zone « sous le
+  radar » pré-annoncée par la courbe de puissance.
+- LO : jamais BH (best p=0,086) ; les CAGR +30-54 % ≈ le bêta EW-20 (+29,9 %)
+  — pas de sélection démontrée.
+- **REV : massacré par les frais** (−45 à −96 % CAGR, turnover quotidien ×
+  30 bps) — réfuté sans ambiguïté au grain 1d.
+- LOWVOL : rien (p ≥ 0,32).
+- CARRY (funding contrarien) : K2 L/S p=0,026 vs seuil BH intra-famille
+  0,025 — LOUPÉ d'un cheveu, Sharpe 0,12 seulement ; cohérent avec carry1
+  (« persistance réelle mais petite »).
+
+**Suite pré-inscrite (barre inchangée)** : réplication sur l'UNIVERS COMPLET
+USDT (délistées incluses) = le vrai test — la largeur (60-100+ noms
+simultanés) multiplie la puissance ET tue le survivorship. Si MOM-30 L/S y
+franchit p<0,01 BH + Sharpe ≥ 0,8 + quintiles + plateau + coûts ×2, ALORS
+l'OOS 2024→26 sera dépensé. Sinon : H1 rejoint les angles réfutés.
