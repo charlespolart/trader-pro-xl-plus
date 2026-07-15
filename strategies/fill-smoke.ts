@@ -45,7 +45,7 @@ export default defineStrategy({
       description: 'Assez près pour se déclencher sur le bruit du 1m, assez loin pour ne pas partir au même tick.',
       group: 'Général',
     }),
-    rearmBars: p.int({ default: 15, min: 3, max: 120, label: 'Ré-armement si pas déclenché (barres)', group: 'Général' }),
+    rearmBars: p.int({ default: 4, min: 2, max: 120, label: 'Ré-armement si pas déclenché (barres)', group: 'Général' }),
   },
 
   data: (params) => ({ main: { interval: params.interval } }),
@@ -91,20 +91,24 @@ export default defineStrategy({
         })
         return
       }
-      // marché trop calme : resserrer le trigger (cancel → si déclenché entre
-      // temps, le backfill du cancel restaure la position à ~0 → succès au
-      // prochain candle ; sinon ré-armement plus près)
+      // marché trop calme/monotone : ré-armer en ALTERNANT le côté du trigger
+      // (OKX déclenche au TOUCHER du triggerPx, par le haut comme par le bas —
+      // vérifié en réel) → déclenchement quasi certain dans la fenêtre suivante.
+      // Le cancel exerce backfillIfTriggered à chaque cycle (fix incident).
       const armedAtMs = ctx.state['armedAtMs'] as number | undefined
       if (armedAtMs !== undefined && candle.openTime - armedAtMs >= ctx.params.rearmBars * 60_000) {
         await ctx.order.cancelAll()
         if (ctx.position.qty <= dust) return // déclenché pendant l'annulation → backfillé
-        const tighter = ctx.roundPrice(candle.close * (1 - ctx.params.offsetPct / 300))
+        const n = (((ctx.state['rearmN'] as number | undefined) ?? 0) + 1)
+        ctx.state['rearmN'] = n
+        const above = n % 2 === 1
+        const trigger = ctx.roundPrice(candle.close * (above ? 1 + ctx.params.offsetPct / 250 : 1 - ctx.params.offsetPct / 250))
         ctx.state['armedAtMs'] = candle.openTime
         await ctx.order.stopMarket({
           side: 'SELL',
           qty: ctx.roundQty(ctx.position.qty),
-          stopPrice: tighter,
-          reason: `SMOKE 2/4 : ré-armement plus près (${tighter})`,
+          stopPrice: trigger,
+          reason: `SMOKE 2/4 : ré-armement ${above ? 'AU-DESSUS' : 'en dessous'} du prix (${trigger})`,
           tag: 'trig1',
         })
       }
