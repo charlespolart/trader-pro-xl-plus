@@ -284,3 +284,22 @@ indicateurs/confluence. Les caveats déjà actés : OOS 2024→26 sans bear
 soutenu ; CUP/ROUND ont des médianes IS robustes et des trades ETH forts mais
 pas de dose-réponse — s'il faut les rejuger un jour, ce sera sur données
 VIERGES futures, pas en repassant le même OOS.
+
+## PASSE 2 (fin) — 1h, galerie
+
+**Balayage 1h (grille light)** : 14 candidats BH mais la COHÉRENCE multi-TF
+des familles fortes du 4h est absente : CUP sur 1h = ANTI-dose-réponse
+(T1 +114 → T3 −6) ; le TRI qui ressort au 1h est la variante desc (p=0,001,
+n=275) — celle-là même que les médianes ont tuée sur 4h ; TT 1h dose plate.
+Une famille réelle garderait sa forme à travers les grains — encore la
+signature du bruit. Ledger complet dans les sorties de run.
+
+**Galerie SVG publiée** (artifact 📐 e023f25c) : 13 familles, ancres exactes,
+3 HAUT + 3 BAS score chacune, verdicts en chips — l'audit visuel de Mario
+peut commencer. `gallery.py` committé (régénérable).
+
+**Bilan chantier à ce point** : 0 survivant complet après 2 passes ;
+restent au protocole : FLAG/PENN desserrés + re-placebo, volet 2
+indicateurs/confluence (synergie par permutation), et — si Mario le veut —
+réplication alts USDT. Les leçons acquises (dose-réponse comme juge de paix,
+pooling de puissance, robustes anti-crash) sont dans lib/pass2 réutilisables.

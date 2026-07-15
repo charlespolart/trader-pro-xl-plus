@@ -60,6 +60,10 @@ def detect_one(px, spines, fam, kind, cfg):
         return tl_events(px, spines[k], k, int(parts['g']))[kind]
     if fam == 'OB':
         return ob_events(px, spines[5], 5, int(parts['m']))[kind]
+    if fam == 'DIV':
+        hidden = kind.startswith('hid')
+        bull = kind.endswith('bull')
+        return detect_div(px, spines[k], k, hidden, bull)
     raise KeyError(fam)
 
 
