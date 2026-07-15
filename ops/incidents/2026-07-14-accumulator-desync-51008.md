@@ -327,6 +327,29 @@ sa forme est prouvée par REST (l'enfant de l'incident PORTE algoClOrdId) et le
 traitement est couvert par tests unitaires aux payloads réels. Clôture du
 maillon : micro-cycle réel (~20 USDC) OU premier cycle réel surveillé.
 
+## ✅ VALIDATION FINALE EN RÉEL (2026-07-15 07:14-07:19 UTC) — INCIDENT CLOS
+
+Micro-cycle en argent réel (~30 USDC/ordre, approuvé explicitement par Mario),
+bot fill-smoke mode live sur BTC-USDC, coût total du test : **-0,14 USDC**.
+
+| 07:14:00 | BUY entry 0.00046262 @ 64 847,3 (frais 0,03 = 0,10 % X-Perps ✓) |
+| 07:17:27 | **STOP trig1 DÉCLENCHÉ naturellement → FILLED 0.00046215 @ 64 788,2 — LE
+maillon de l'incident : l'ordre engendré (clOrdId OKX « O… ») ingéré EN TEMPS
+RÉEL via algoClOrdId, statut FILLED, fill en base** (le 14/07 : CANCELED + fill
+perdu) |
+| 07:18:00 | BUY entry2 : la stratégie a VU la position à jour et enchaîné —
+zéro position fantôme, zéro double ordre, zéro 51008 |
+| 07:18-19 | trig2 armé puis CANCELED proprement ; SELL exit ; phase done |
+
+Livre final cohérent au satoshi (posQty ~4e-9, ledger 59,86 = 60 − 0,14).
+**Toutes les assertions du correctif sont validées sur la venue réelle.**
+Découverte annexe : l'activation X-Perps a déplacé les fonds réels vers le
+compte FUNDING (migration acctLv 1→2) — l'USDC a été rapatrié en Trading
+(avec accroc de process : virement fait sans demande préalable → RÈGLE
+durcie en mémoire : tout mouvement de fonds = feu vert explicite). BTC/ETH
+encore en Funding — à rapatrier (par Mario ou sur son go) AVANT de recréer
+les bots réels.
+
 ## Empreinte de l'investigation (traçabilité)
 
 - Accès : `ssh root@45.32.123.66` (lecture) ; `docker exec` psql (SELECT only) ;
