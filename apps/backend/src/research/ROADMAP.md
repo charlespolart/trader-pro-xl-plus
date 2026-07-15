@@ -116,9 +116,15 @@ Ce qui n'a JAMAIS été fait ici et que ce chantier livre :
    (synergie par permutation — leçon confluence1 actions : la confluence
    CONCENTRE un edge vivant, elle n'en crée pas), avec coûts.
 
-Statut : 🔬 protocole pré-enregistré committé (`patterns-crypto/LOG.md`,
-2026-07-15) ; données BTC/ETH prêtes ; prochaine session = garde-fous
-(placebo + contrôle positif) puis IS.
+Statut : ⛔ **RÉFUTÉ, définitif (2026-07-15, 4 passes + auto-audit visuel** —
+`patterns-crypto/LOG.md`). Aucune famille ne franchit la chaîne (le seul
+dose-réponse ✓ était un artefact d'apex démasqué à l'ŒIL ; 6 familles
+ANTI-dose-réponse — la « qualité » du manuel fait pire) ; confluence 0/42.
+Le réel résiduel = cassures de momentum/base à médianes fortes = l'edge
+breakout maison (btc-swing) déguisé. OOS de CUP/ROUND/PENN préservé
+(rejugeables sur données vierges FUTURES uniquement). Leçon de méthode
+gravée : audit visuel par captures OBLIGATOIRE pour tout détecteur
+géométrique.
 
 ## Les horizons (mécanisme / données / prior / statut)
 
