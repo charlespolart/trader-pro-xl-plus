@@ -168,6 +168,119 @@ Whipsaw normal de la stratégie (pas le bug) : vendu 0.20151586 @ 62 229, rachet
 est remonté après la vente ; la stratégie a été prise à contre-pied. Rien d'autre
 n'est perdu — tous les fonds sont sur le compte.
 
+## VÉRIFICATION À FROID (Fable 5, 2026-07-15) — contre-enquête indépendante
+
+Re-vérification complète depuis les sources primaires (code + DB VPS + API OKX,
+lecture seule). **Verdict : le diagnostic est CONFIRMÉ sur le fond, avec 3
+corrections de mécanisme et 2 découvertes nouvelles (dont une majeure).**
+
+### Preuves directes obtenues (qui manquaient hier — c'était inféré)
+
+1. **L'algo parent `…u2` interrogé par `algoId` chez OKX** :
+   `state: "effective"` (déclenché ET exécuté), `ordId: 3742376053849333760`
+   (= l'ordre enfant), `actualSz: 12433.6998` (en QUOTE), `actualPx: 63914.2`,
+   `triggerPx: 63909.1`. **La filiation stop→rachat est prouvée par OKX
+   lui-même**, plus par déduction de quantités.
+2. **L'ordre enfant porte les DEUX identifiants** : `clOrdId: "O3742…"`
+   (généré par OKX, NON vide) **ET `algoClOrdId: "tpx7f8b10camrgg3s3u2"`**
+   (notre préfixe !), `source: "6"` (marqueur OKX « engendré par trigger »).
+   → Réponse définitive à la question de la spec §14.
+3. Soldes re-confirmés au satoshi : 0.395368187835 BTC / 3.99664896 ETH /
+   62.5605 USDC. Réconciliation : vrx 0.20151586 + enfant net 0.19385232
+   (0.19453319 − 0.00068087 de frais BTC) = 0.39536818 ✓ (1 sat de poussière).
+4. Chronologie DB à la milliseconde : `…u2` updated **16:00:00.590** (=
+   cancelAll du chemin rachat-EMA), `…u3` créé 16:00:00.590 → REJECTED
+   16:00:00.935. Déclenchement réel : 12:58:17.653. Fenêtre de désync : 3 h 02.
+5. **Aucun ordre ni algo en attente sur tout le compte** (vérifié OKX) — pas
+   d'exposition résiduelle, le bracket ETH n'est PAS armé.
+6. **Kill switch vérifié en DB** (`settings.globalRisk.killSwitchActive: true`)
+   **ET `desired_running = false` sur les 3 bots** (le kill switch les a
+   basculés). Croisé avec le code (`init()` ligne 1036 : démarre seulement si
+   `desiredRunning && !killSwitchActive` ; `start()` ligne 1207 : refuse si
+   actif) → **un redémarrage backend/VPS ne relance RIEN. Double verrou.**
+
+### Corrections au diagnostic d'hier (3)
+
+1. **« Le code ne peut pas rattacher le fill »** — surestimé. Le routeur
+   (ligne 792) lit DÉJÀ `algoClOrdId` en fallback… mais derrière un `||` :
+   il ne joue que si `clOrdId` est VIDE. Or OKX remplit `clOrdId` avec son
+   `O…` → fallback jamais activé. ET second verrou : `handleOrderEvent`
+   (ligne 482) ne consulte la map que par `ev.clOrdId`. Le fix doit matcher
+   les DEUX champs aux DEUX niveaux (routeur + handler) — la donnée est déjà
+   dans le payload (passthrough WS), il manque le typage + la double clé.
+2. **Le piège du redémarrage nu** (pire qu'estimé hier) : la liste « resting »
+   du reconcile ne sélectionne que `NEW/TRIGGER_PENDING/PARTIALLY_FILLED`
+   (botManager ~415) — `…u2` étant CANCELED, le backfill §14 ne le
+   regarderait PAS même après restart. Le clamp réduirait silencieusement le
+   ledger à 62,56 USDC et les 0,194 BTC seraient **orphelins silencieux**
+   (seule la SUR-revendication est gardée, pas la sous-revendication).
+   → Un restart sans resync manuel n'est PAS une récupération : c'est une
+   perte silencieuse déguisée en reprise.
+3. **« Le garde-fou a évité un double achat »** — à nuancer : c'est le compte
+   VIDE (51008) qui a bloqué le doublon ; le gel n'a fait qu'empêcher la
+   suite. Si la désync avait été PARTIELLE, le 2ᵉ rachat passait SANS BRUIT.
+   La détection de dérive (fix C) est donc essentielle, pas cosmétique.
+
+### Découvertes nouvelles (2)
+
+1. **⚠ MAJEURE — frais taker réels = 0,35 %**, pas 0,10 % : vente 43.8905
+   USDC sur 12 540,13 = 0,3500 % ; achats 0.000680866 BTC sur 0.19453319 =
+   0,3500 %. Or TOUT (backtests, barres de validation, DEFAULT_FEES.spot
+   taker 0,001, carry1) modélise 0,10 %. **Écart ×3,5** — l'aller-retour du
+   whipsaw a coûté ~87 USDC de frais à lui seul (~18 % de la perte). À
+   vérifier : palier de frais du compte OKX EEA / réduction OKB ; puis
+   RE-CHIFFRER la viabilité live des stratégies au taux réel.
+2. Contexte : les ordres du 2026-07-11 (préfixe `tpxee3fef09`) proviennent
+   d'un bot supprimé (semis initial des moitiés) — hors incident. Et les
+   heures de l'app mobile OKX sont en UTC+8 (« 8:58 PM » = 12:58 UTC).
+
+### Éléments non re-vérifiables (assumés, sans impact sur le verdict)
+
+- Le contenu exact du push WS de 12:58:17 (non journalisé). Le REST prouve que
+  les champs `algoClOrdId`/`algoId` existent sur l'objet ordre ; et même reçu
+  parfaitement, l'event était structurellement inrouteable (double verrou
+  d'identifiants). Le sCode exact du cancel-algos de 16:00 n'est pas journalisé
+  non plus — toléré par `isAlreadyGone` (regex 5140x/does not exist/already…),
+  ce que prouve l'enchaînement CANCELED→`…u3` en DB.
+- À valider en démo lors du fix (test §14 enfin réalisé) : la présence
+  d'`algoClOrdId` dans le push WS temps réel.
+
+### Plan de correctif VALIDÉ (raffiné par la contre-enquête)
+
+- **A (cœur)** : typer `algoClOrdId`/`algoId` sur `OkxOrderEvent` ; routeur :
+  matcher préfixe sur `clOrdId` PUIS `algoClOrdId` ; `handleOrderEvent` :
+  lookup map sur les deux clés + réindexer l'enfant (`O…` → même Order).
+- **B** : dans `cancel()` d'un algo : lire l'état final (`getAlgoOrder`) ;
+  si `effective` → backfiller via l'ordre enfant (la machinerie EXISTE déjà
+  dans reconcile lignes 209-221, à factoriser) AVANT tout marquage CANCELED.
+- **C** : détection de dérive ledger↔réel (au reconcile + périodique) :
+  au-delà d'un seuil → gel + Telegram au lieu du clamp silencieux ; ajouter
+  la garde de SOUS-revendication base.
+- **D** : stratégies : marge de frais `×0,995` sur le rachat market
+  (btc-accumulator.ts:259 ET eth-accumulator.ts idem — les DEUX ont le
+  défaut ; btc-swing l'avait déjà corrigé avec commentaire) ; par sécurité,
+  ne pas tirer le rachat-EMA si l'état du bracket n'est pas confirmé.
+- **E** : tests unitaires avec les payloads RÉELS ci-dessus (enfant `O…` +
+  `algoClOrdId tpx…`) + test cancel-après-déclenchement + test dérive ;
+  validation démo du push WS (§14 pour de vrai).
+
+### Récupération VALIDÉE (mécanique vérifiée dans restore()/seed)
+
+Après déploiement du fix, avec feu vert explicite :
+1. Éditer `bot_state.state` de btc-accumulator :
+   `__adapter: {seq: 3, posQty: 0.19385232, posEntry: 63915.57,
+   quoteLedger: 62.56, realizedNet: -455.18432684179}` ; retirer `bracket`/
+   `stop`/`soldPrice` (l'état stratégie repart « en position »).
+2. `UPDATE bots SET initial_base_qty = 0.19385232` (hygiène : un start sans
+   état ne doit plus semer 0.20151586 — la garde anti-sur-revendication ne
+   fait que LOGGER, elle ne bloque pas).
+3. Cosmétique honnête (optionnel) : marquer `…u2` FILLED/0.19453319 en DB et
+   insérer le fill manquant pour que l'historique comptable soit vrai.
+4. Lever le kill switch, démarrer btc-accumulator SEUL, vérifier les notes de
+   reconcile + équité UI ≈ 0,194×prix + 62,56 ; puis vrx, puis eth.
+5. realizedNet -455.18 vérifié arithmétiquement : 12 951,42 (0.20151586 ×
+   posEntry 64 270) − 12 496,24 (produit net) = 455,18 ✓ — cohérent, garder.
+
 ## Empreinte de l'investigation (traçabilité)
 
 - Accès : `ssh root@45.32.123.66` (lecture) ; `docker exec` psql (SELECT only) ;
