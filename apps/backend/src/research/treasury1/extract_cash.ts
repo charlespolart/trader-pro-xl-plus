@@ -20,9 +20,9 @@ const provider = new PgDataProvider(db, { dataDir: resolve(import.meta.dir, '../
 const START = Date.parse('2020-08-01T00:00:00Z')
 const END = Date.parse('2026-06-01T00:00:00Z')
 
-function cfg(def: StrategyDefinition, symbol: string): BacktestConfig {
+function cfg(strategyId: string, symbol: string): BacktestConfig {
   return {
-    strategyId: def.id,
+    strategyId,
     params: {},          // défauts produit — mêmes que les bots live
     market: 'spot',
     symbol,
@@ -50,7 +50,7 @@ const bots: Array<{ label: string; def: StrategyDefinition; symbol: string; coin
 
 const out: Record<string, unknown> = { start: START, end: END }
 for (const b of bots) {
-  const res = await runBacktest({ config: cfg(b.def, b.symbol), def: b.def, provider })
+  const res = await runBacktest({ config: cfg(b.label, b.symbol), def: b.def, provider })
   const trades = res.trades.map((t) => ({
     entryTime: t.entryTime,
     exitTime: t.exitTime,

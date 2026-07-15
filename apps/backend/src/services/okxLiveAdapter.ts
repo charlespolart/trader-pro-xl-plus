@@ -1,4 +1,5 @@
 import {
+  floorToStep,
   isTriggerOrder,
   type Balance,
   type Fill,
@@ -252,13 +253,25 @@ export class OKXLiveAdapter implements ExecutionAdapter {
       return notes
     }
 
-    // ---- SPOT : clamp anti-dérive — la tranche du bot ne peut pas excéder le
-    // solde libre réel du compte (retrait utilisateur, fills non attribués…).
+    // ---- SPOT : anti-dérive quote. Petit écart (poussière de frais/arrondis) :
+    // clamp + note. Au-delà de la tolérance : REFUS DE DÉMARRER — un livre
+    // gonflé qui démarre trade sur des soldes imaginaires (incident 2026-07-14 :
+    // livre 12 496 USDC vs réel 62 après un fill perdu → rachat en double).
+    let bals: readonly Balance[] | null = null
     await guard('balances', async () => {
-      const bals = await this.o.account.balances('spot')
-      const real = bals.find((b) => b.asset === this.o.symbolInfo.quoteAsset)
+      bals = await this.o.account.balances('spot')
+    })
+    if (bals) {
+      const real = (bals as readonly Balance[]).find((b) => b.asset === this.o.symbolInfo.quoteAsset)
       if (real && real.free < this.quoteLedger) {
         const drift = this.quoteLedger - real.free
+        if (drift > driftTolerance(this.quoteLedger)) {
+          throw new Error(
+            `dérive de solde ${this.o.symbolInfo.quoteAsset} : livre ${this.quoteLedger.toFixed(2)} ` +
+              `vs réel ${real.free.toFixed(2)} — départ refusé, resynchroniser l'état du bot ` +
+              `(fill probablement perdu, cf. ops/incidents/2026-07-14)`,
+          )
+        }
         if (this.quoteLedger > 0 && drift / this.quoteLedger > 0.01) {
           notes.push(
             `quoteLedger ${this.quoteLedger.toFixed(2)} > solde réel ${real.free.toFixed(2)} ` +
@@ -270,23 +283,22 @@ export class OKXLiveAdapter implements ExecutionAdapter {
       // ---- garde anti-SUR-REVENDICATION du solde base : la somme des tranches
       // (ce bot + les autres bots spot de la même paire/mode) ne doit jamais
       // excéder le solde réel du compte. Un semis double (adopt-all fantôme,
-      // bots jumeaux, retrait manuel) se détecte ICI, à chaque (re)démarrage —
-      // sinon le premier bot qui vend emporte les coins des autres.
-      const base = bals.find((b) => b.asset === this.o.symbolInfo.baseAsset)
+      // bots jumeaux, retrait manuel) BLOQUE le départ — sinon le premier bot
+      // qui vend emporte les coins des autres.
+      const base = (bals as readonly Balance[]).find((b) => b.asset === this.o.symbolInfo.baseAsset)
       if (base && this.posQty > 0 && this.o.siblingBaseClaims) {
-        const siblings = await this.o.siblingBaseClaims()
+        const siblings = await this.o.siblingBaseClaims().catch(() => 0)
         const realTotal = base.free + base.locked
         const eps = Math.max(this.lotSz, realTotal * 1e-6)
         if (this.posQty + siblings > realTotal + eps) {
-          notes.push(
-            `⚠ SUR-REVENDICATION ${this.o.symbolInfo.baseAsset} : ce bot ${this.posQty.toFixed(8)} ` +
+          throw new Error(
+            `SUR-REVENDICATION ${this.o.symbolInfo.baseAsset} : ce bot ${this.posQty.toFixed(8)} ` +
               `+ autres bots ${siblings.toFixed(8)} = ${(this.posQty + siblings).toFixed(8)} ` +
-              `> solde réel ${realTotal.toFixed(8)} — corriger les positions initiales ` +
-              `(le premier bot qui vend emportera les coins des autres)`,
+              `> solde réel ${realTotal.toFixed(8)} — corriger les positions initiales avant de démarrer`,
           )
         }
       }
-    })
+    }
     return notes
   }
 
@@ -305,6 +317,11 @@ export class OKXLiveAdapter implements ExecutionAdapter {
   }
 
   async submit(req: OrderRequest): Promise<Order> {
+    // GARDE PRÉ-TRADE (spot) : les SOLDES RÉELS du compte sont vérifiés juste
+    // avant CHAQUE envoi — jamais d'ordre dimensionné sur un livre fantôme, et
+    // jamais d'échec « au satoshi près » (exigences post-incident 2026-07-14).
+    // Impossibilité de vérifier = ordre refusé (on ne trade pas à l'aveugle).
+    if (this.market === 'spot') req = await this.preTradeGate(req)
     const clOrdId = makeClOrdId(this.prefix, ++this.seq, this.bootMs)
     const { algo } = mapOrdType(req.type, this.market)
     const args = {
@@ -402,6 +419,11 @@ export class OKXLiveAdapter implements ExecutionAdapter {
     if (!order) return null
     if (isTriggerOrder(order.type)) {
       await this.o.account.cancelAlgoOrder(this.instId, { algoClOrdId: order.clientId })
+      // Un algo DÉJÀ DÉCLENCHÉ n'est pas annulable : cancel-algos répond « déjà
+      // parti » (toléré par isAlreadyGone) alors que son ordre engendré a rempli.
+      // Vérifier l'état final AVANT de conclure, sinon un stop exécuté est
+      // marqué CANCELED et son fill est perdu (incident 2026-07-14).
+      await this.backfillIfTriggered(order)
     } else {
       await this.o.account.cancelOrder(this.instId, { clOrdId: order.clientId })
     }
@@ -417,6 +439,82 @@ export class OKXLiveAdapter implements ExecutionAdapter {
       this.o.events.onOrderUpdate(order)
     }
     return order
+  }
+
+  /** Garde pré-trade spot : dérive du livre vs soldes RÉELS → refus explicite
+   *  (le botManager gèle le bot) ; poussière d'arrondi sur une vente → clamp
+   *  au pas ; achat en budget quote → borné au solde réel. Retourne la requête
+   *  éventuellement ajustée. */
+  private async preTradeGate(req: OrderRequest): Promise<OrderRequest> {
+    let bals: readonly Balance[]
+    try {
+      bals = await this.o.account.balances('spot')
+    } catch (e) {
+      throw new Error(
+        `soldes réels invérifiables — ordre refusé (${e instanceof Error ? e.message : String(e)})`,
+      )
+    }
+    const si = this.o.symbolInfo
+    const realQuote = bals.find((b) => b.asset === si.quoteAsset)?.free ?? 0
+    const baseBal = bals.find((b) => b.asset === si.baseAsset)
+    const realBase = (baseBal?.free ?? 0) + (baseBal?.locked ?? 0)
+    // le livre quote de CE bot ne peut jamais excéder le solde réel du compte
+    if (this.quoteLedger - realQuote > driftTolerance(this.quoteLedger)) {
+      throw new Error(
+        `dérive de solde ${si.quoteAsset} détectée avant ordre : livre ${this.quoteLedger.toFixed(2)} ` +
+          `vs réel ${realQuote.toFixed(2)} — ordre refusé, resynchroniser l'état du bot`,
+      )
+    }
+    if (req.side === 'SELL' && req.qty !== undefined) {
+      const siblings = this.o.siblingBaseClaims ? await this.o.siblingBaseClaims().catch(() => 0) : 0
+      const sellable = realBase - siblings
+      const eps = Math.max(this.lotSz, realBase * 1e-6)
+      if (req.qty > sellable + eps) {
+        throw new Error(
+          `vente refusée : ${req.qty.toFixed(8)} ${si.baseAsset} demandés, réel ${realBase.toFixed(8)} ` +
+            `dont ${siblings.toFixed(8)} revendiqués par d'autres bots — dérive/sur-revendication`,
+        )
+      }
+      // poussière d'arrondi (écart ≤ eps) : vendre ce qui existe vraiment
+      if (req.qty > sellable) return { ...req, qty: floorToStep(sellable, this.lotSz) }
+    } else if (req.side === 'BUY' && req.quoteQty !== undefined && !isTriggerOrder(req.type)) {
+      // budget quote borné au solde réel — un BUY à 100 % d'un livre optimiste
+      // part en 51008 (la marge de frais reste la responsabilité de la stratégie)
+      if (req.quoteQty > realQuote) return { ...req, quoteQty: Math.max(0, realQuote) }
+    }
+    return req
+  }
+
+  /** Dérive entre le grand-livre quote du bot et le solde réel du compte.
+   *  `critical` au-delà de la tolérance — un livre gonflé par un fill perdu a
+   *  attendu 3 h avant le rachat en double (incident 2026-07-14) ; la sonde
+   *  horaire du botManager gèle le bot bien avant. */
+  async quoteDrift(): Promise<{ ledger: number; real: number; deficit: number; critical: boolean } | null> {
+    if (this.market !== 'spot') return null
+    const bals = await this.o.account.balances('spot')
+    const real = bals.find((b) => b.asset === this.o.symbolInfo.quoteAsset)
+    if (!real) return null
+    const deficit = this.quoteLedger - real.free
+    return { ledger: this.quoteLedger, real: real.free, deficit, critical: deficit > driftTolerance(this.quoteLedger) }
+  }
+
+  /** Si un algo « annulé » s'était en fait DÉCLENCHÉ, rejoue son exécution
+   *  manquée (lecture de l'ordre engendré : unités base sûres) — l'ordre
+   *  ressort FILLED, jamais CANCELED silencieux. Best-effort : une erreur de
+   *  lecture laisse l'ordre en l'état (reconcile §14 / sonde de dérive en
+   *  rattrapage) et ne bloque jamais l'appelant. */
+  private async backfillIfTriggered(order: Order): Promise<void> {
+    try {
+      let raw = await this.o.account.getAlgoOrder({ algoClOrdId: order.clientId })
+      if (!raw || !/effective/.test(raw.state)) return
+      if (raw.ordId) {
+        const spawned = await this.o.account.getOrder(this.instId, { ordId: raw.ordId }).catch(() => null)
+        if (spawned) raw = spawned
+      }
+      this.syncFromRest(order, raw)
+    } catch {
+      // best-effort : le reconcile ou la sonde de dérive rattraperont
+    }
   }
 
   openOrders(): readonly Order[] {
@@ -471,15 +569,20 @@ export class OKXLiveAdapter implements ExecutionAdapter {
   /**
    * private `orders` channel push (one per fill or state change).
    *
-   * RESIDUAL RISK (confirm in demo — spec §14): when an algo (stop/TP) order
-   * TRIGGERS, OKX places a NEW regular order to do the actual fill. We rely on
-   * that regular order carrying our `clOrdId` prefix on the `orders` channel so
-   * the fill is attributed here. If OKX instead assigns a fresh clOrdId without
-   * our prefix, a triggered-stop fill would early-return below and be dropped —
-   * the reconcile backfill (getAlgoOrder → actualSz) is the safety net.
+   * Un algo (stop/TP) déclenché ENGENDRE un ordre régulier dont le clOrdId est
+   * GÉNÉRÉ PAR OKX (« O… ») — seul son algoClOrdId porte notre préfixe.
+   * Confirmé en réel (incident 2026-07-14) : fill de rachat perdu → livre
+   * désynchronisé → rachat en double rejeté 51008. Le fill de l'enfant est
+   * donc rattaché à l'ordre stop d'origine via algoClOrdId, et son clOrdId
+   * OKX est réindexé pour les pushes suivants. Filets complémentaires :
+   * backfillIfTriggered au cancel, backfill §14 du reconcile, sonde quoteDrift.
    */
   handleOrderEvent(ev: OkxOrderEvent): void {
-    const order = this.orders.get(ev.clOrdId)
+    let order = this.orders.get(ev.clOrdId)
+    if (!order && ev.algoClOrdId) {
+      order = this.orders.get(ev.algoClOrdId)
+      if (order && ev.clOrdId) this.orders.set(ev.clOrdId, order)
+    }
     if (!order) return
     const prevExecuted = order.executedQty
     order.status = mapOkxState(ev.state, order.type, prevExecuted)
@@ -752,6 +855,13 @@ function mapRestOrdType(r: OkxRestOrder): OrderType {
   }
 }
 
+/** Tolérance de dérive quote livre↔réel : 2 % du livre, plancher 10 unités
+ *  quote (poussières de frais / arrondis de fills). Au-delà : état incohérent,
+ *  on refuse de trader/démarrer (incident 2026-07-14). */
+function driftTolerance(ledger: number): number {
+  return Math.max(0.02 * ledger, 10)
+}
+
 /**
  * Fans out a single OKX private socket to the live adapters of one account.
  * One router per account (OKX unified account carries spot + swap), so every
@@ -789,8 +899,9 @@ export class OkxUserStreamRouter {
     if (ev.channel !== 'orders' && ev.channel !== 'orders-algo') return
     try {
       for (const o of ev.data) {
-        const cid = o.clOrdId || (o as { algoClOrdId?: string }).algoClOrdId || ''
-        const adapter = this.find(cid)
+        // enfant d'un algo déclenché : clOrdId est un id OKX (« O… ») — seul
+        // algoClOrdId porte notre préfixe (incident 2026-07-14). Essayer les deux.
+        const adapter = this.find(o.clOrdId || '') ?? this.find(o.algoClOrdId || '')
         adapter?.handleOrderEvent(o)
       }
     } catch (err) {

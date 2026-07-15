@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import type { Balance, Order, SymbolInfo } from '@tpx/shared'
 import { OkxApiError } from '@tpx/data'
-import { OKXLiveAdapter, type RestingOrderRef } from '../src/services/okxLiveAdapter'
+import { OKXLiveAdapter, OkxUserStreamRouter, type RestingOrderRef } from '../src/services/okxLiveAdapter'
 
 const SWAP_SI: SymbolInfo = {
   market: 'futures', symbol: 'BTCUSDT', baseAsset: 'BTC', quoteAsset: 'USDT',
@@ -19,10 +19,18 @@ interface FakeAccountHooks {
   algoOrders?: Record<string, unknown>[]
   openOrders?: Record<string, unknown>[]
   balances?: Balance[]
+  balancesImpl?: () => Promise<Balance[]>
   placeOrder?: (body: Record<string, unknown>) => Promise<Record<string, unknown>>
   getOrder?: () => Promise<Record<string, unknown> | null>
   getAlgoOrder?: () => Promise<Record<string, unknown> | null>
 }
+
+/** soldes réels « riches » par défaut : la garde pré-trade passe sans bruit
+ *  dans les tests qui ne s'intéressent pas à la dérive */
+const RICH_BALANCES: Balance[] = [
+  { asset: 'USDT', free: 1_000_000_000, locked: 0 },
+  { asset: 'BTC', free: 1_000_000_000, locked: 0 },
+]
 
 function fakeAccount(h: FakeAccountHooks = {}) {
   return {
@@ -41,7 +49,7 @@ function fakeAccount(h: FakeAccountHooks = {}) {
     openOrders: async () => h.openOrders ?? [],
     openAlgoOrders: async () => h.algoOrders ?? [],
     positions: async () => [],
-    balances: async () => h.balances ?? [],
+    balances: h.balancesImpl ?? (async () => h.balances ?? RICH_BALANCES),
     getOrder: h.getOrder ?? (async () => null),
     getAlgoOrder: h.getAlgoOrder ?? (async () => null),
     instrument: async () => ({ instId: 'BTC-USDT-SWAP', tickSize: 0.1, stepSize: 1, minQty: 1, contractSize: 0.01, maxLeverage: 125 }),
@@ -362,11 +370,16 @@ describe('OKXLiveAdapter reconcile (P0-2c backfill, spec §14)', () => {
     expect(adapter.openOrders().some((o) => o.clientId === cid && o.status === 'PARTIALLY_FILLED')).toBe(true)
   })
 
-  it('clamps the quote ledger to the real account balance (anti-drift)', async () => {
-    const { adapter } = mkAdapter({ balances: [{ asset: 'USDT', free: 500, locked: 0 }] }, SPOT_SI, 10_000)
+  it('petite dérive (poussière de frais) : clamp du ledger sur le solde réel + note', async () => {
+    const { adapter } = mkAdapter({ balances: [{ asset: 'USDT', free: 9_850, locked: 0 }] }, SPOT_SI, 10_000)
     const notes = await adapter.reconcile([])
     expect(notes.some((n) => n.includes('clampé'))).toBe(true)
-    expect(adapter.balances().find((b) => b.asset === 'USDT')?.free).toBe(500)
+    expect(adapter.balances().find((b) => b.asset === 'USDT')?.free).toBe(9_850)
+  })
+
+  it('dérive MASSIVE (fill perdu) : le reconcile REFUSE le départ (incident 2026-07-14)', async () => {
+    const { adapter } = mkAdapter({ balances: [{ asset: 'USDT', free: 62.56, locked: 0 }] }, SPOT_SI, 12_496)
+    await expect(adapter.reconcile([])).rejects.toThrow(/dérive de solde/)
   })
 
   it('an API error in one reconcile step becomes a note and does not block the rest', async () => {
@@ -374,12 +387,127 @@ describe('OKXLiveAdapter reconcile (P0-2c backfill, spec §14)', () => {
       getOrder: async () => {
         throw new Error('OKX 500')
       },
-      balances: [{ asset: 'USDT', free: 500, locked: 0 }],
+      balances: [{ asset: 'USDT', free: 9_850, locked: 0 }],
     }, SPOT_SI, 10_000)
     const resting: RestingOrderRef[] = [{ clientId: cid, side: 'BUY', type: 'MARKET', executedQty: 0, cumQuote: 0 }]
     const notes = await adapter.reconcile(resting)
     expect(notes.some((n) => n.includes('en erreur'))).toBe(true)
     // le clamp balance a quand même tourné
-    expect(adapter.balances().find((b) => b.asset === 'USDT')?.free).toBe(500)
+    expect(adapter.balances().find((b) => b.asset === 'USDT')?.free).toBe(9_850)
+  })
+})
+
+describe("Fill d'algo déclenché en TEMPS RÉEL (incident 2026-07-14)", () => {
+  it("rattache le fill du market engendré (clOrdId OKX « O… ») à l'ordre stop via algoClOrdId, puis réindexe", async () => {
+    const { adapter, fills, updates } = mkAdapter({ captured: [] }, SPOT_SI)
+    adapter.restore({ posQty: 0, posEntry: 0, realizedNet: 0, seq: 0, quoteLedger: 12_496.24 })
+    const stop = await adapter.submit({ side: 'BUY', type: 'STOP_MARKET', qty: 0.1945538, stopPrice: 63_909.1 })
+    // payload RÉEL de l'incident : l'enfant porte un clOrdId généré par OKX
+    adapter.handleOrderEvent({
+      instId: 'BTC-USDT', clOrdId: 'O3742376051209254912', algoClOrdId: stop.clientId,
+      ordId: '3742376053849333760', state: 'filled', side: 'buy',
+      fillSz: '0.19453319', fillPx: '63915.57', fillFee: '-0.00068087', fillFeeCcy: 'BTC',
+      fillTime: '1784033897653', accFillSz: '0.19453319', tradeId: '3963951',
+    })
+    expect(fills.length).toBe(1)
+    // fee facturé en BASE : la position créditée est nette du fee
+    expect(adapter.position().qty).toBeCloseTo(0.19453319 - 0.00068087, 8)
+    expect(updates.filter((u) => u.clientId === stop.clientId).at(-1)?.status).toBe('FILLED')
+    // pushes suivants au clOrdId OKX : réindexé, et idempotent (accFillSz connu)
+    adapter.handleOrderEvent({
+      instId: 'BTC-USDT', clOrdId: 'O3742376051209254912', ordId: '3742376053849333760',
+      state: 'filled', side: 'buy', accFillSz: '0.19453319',
+    })
+    expect(fills.length).toBe(1)
+  })
+
+  it("cancel d'un trigger déjà 'effective' → exécution rejouée, FILLED (jamais CANCELED silencieux)", async () => {
+    const { adapter, fills } = mkAdapter({
+      getAlgoOrder: async () => ({
+        instId: 'BTC-USDT', algoId: 'a1', ordId: 'child1', ordType: 'trigger', side: 'buy',
+        sz: '12433.75', triggerPx: '63909.1', state: 'effective', actualSz: '12433.70', actualPx: '63914.2',
+      }),
+      getOrder: async () => ({
+        instId: 'BTC-USDT', ordId: 'child1', clOrdId: 'Ochild', ordType: 'market', side: 'buy',
+        sz: '12433.7', state: 'filled', accFillSz: '0.19453319', avgPx: '63915.57', fee: '-0.00068087', feeCcy: 'BTC',
+      }),
+    }, SPOT_SI)
+    adapter.restore({ posQty: 0, posEntry: 0, realizedNet: 0, seq: 0, quoteLedger: 12_496.24 })
+    const stop = await adapter.submit({ side: 'BUY', type: 'STOP_MARKET', qty: 0.1945538, stopPrice: 63_909.1 })
+    const out = await adapter.cancel(stop.id)
+    expect(out?.status).toBe('FILLED')
+    expect(fills.length).toBe(1)
+    expect(adapter.position().qty).toBeCloseTo(0.19453319 - 0.00068087, 8)
+  })
+
+  it("le routeur route l'event d'un enfant d'algo par algoClOrdId quand clOrdId ne matche pas", async () => {
+    const { adapter, fills } = mkAdapter({ captured: [] }, SPOT_SI)
+    adapter.restore({ posQty: 0, posEntry: 0, realizedNet: 0, seq: 0, quoteLedger: 12_496.24 })
+    const stop = await adapter.submit({ side: 'BUY', type: 'STOP_MARKET', qty: 0.1945538, stopPrice: 63_909.1 })
+    const router = new OkxUserStreamRouter(null, () => {})
+    router.register(adapter)
+    router.dispatch({
+      channel: 'orders',
+      data: [{
+        instId: 'BTC-USDT', clOrdId: 'O999', algoClOrdId: stop.clientId, ordId: 'c9',
+        state: 'filled', side: 'buy', fillSz: '0.19453319', fillPx: '63915.57',
+        fillFee: '-0.00068087', fillFeeCcy: 'BTC', fillTime: '1784033897653', accFillSz: '0.19453319',
+      }],
+    })
+    expect(fills.length).toBe(1)
+  })
+})
+
+describe('Garde pré-trade (soldes réels vérifiés avant CHAQUE ordre)', () => {
+  it('refuse un ordre quand le livre dérive du solde réel (livre fantôme)', async () => {
+    const { adapter } = mkAdapter({
+      balances: [
+        { asset: 'USDT', free: 62.56, locked: 0 },
+        { asset: 'BTC', free: 0.19, locked: 0 },
+      ],
+    }, SPOT_SI, 12_496)
+    await expect(adapter.submit({ side: 'BUY', type: 'MARKET', quoteQty: 12_496 })).rejects.toThrow(/dérive/)
+  })
+
+  it('borne un BUY market au solde quote réel (jamais de 51008 au satoshi près)', async () => {
+    const captured: Record<string, unknown>[] = []
+    const { adapter } = mkAdapter({
+      captured,
+      balances: [{ asset: 'USDT', free: 999, locked: 0 }],
+    }, SPOT_SI, 1_000)
+    await adapter.submit({ side: 'BUY', type: 'MARKET', quoteQty: 1_000 })
+    expect(Number(captured[0]!.sz)).toBeCloseTo(999, 6)
+  })
+
+  it('clampe une VENTE à la poussière près, refuse la sur-revendication', async () => {
+    const captured: Record<string, unknown>[] = []
+    const { adapter } = mkAdapter({
+      captured,
+      balances: [
+        { asset: 'USDT', free: 0, locked: 0 },
+        { asset: 'BTC', free: 0.2015158, locked: 0 },
+      ],
+    }, SPOT_SI, 0)
+    adapter.restore({ posQty: 0.20151586, posEntry: 60_000, realizedNet: 0, seq: 0, quoteLedger: 0 })
+    await adapter.submit({ side: 'SELL', type: 'MARKET', qty: 0.20151586 })
+    expect(Number(captured[0]!.sz)).toBeCloseTo(0.2015, 8) // floored au pas de l'instrument
+
+    const { adapter: a2 } = mkAdapter({
+      balances: [
+        { asset: 'USDT', free: 0, locked: 0 },
+        { asset: 'BTC', free: 0.1, locked: 0 },
+      ],
+    }, SPOT_SI, 0)
+    a2.restore({ posQty: 0.2, posEntry: 60_000, realizedNet: 0, seq: 0, quoteLedger: 0 })
+    await expect(a2.submit({ side: 'SELL', type: 'MARKET', qty: 0.2 })).rejects.toThrow(/vente refusée/)
+  })
+
+  it('refuse tout ordre si les soldes réels sont invérifiables', async () => {
+    const { adapter } = mkAdapter({
+      balancesImpl: async () => {
+        throw new Error('OKX 502')
+      },
+    }, SPOT_SI)
+    await expect(adapter.submit({ side: 'BUY', type: 'MARKET', quoteQty: 100 })).rejects.toThrow(/invérifiables/)
   })
 })

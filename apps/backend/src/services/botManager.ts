@@ -514,6 +514,12 @@ class BotRunner {
     }
 
     this.timers.push(setInterval(() => void this.saveState(), 15_000))
+    // sonde anti-dérive : un fill perdu gonfle le livre → gel AVANT que la
+    // stratégie ne trade sur des soldes imaginaires (incident 2026-07-14 : 3 h
+    // entre le fill perdu et le rachat en double — une sonde horaire gèle avant)
+    if (this.rawExec instanceof OKXLiveAdapter) {
+      this.timers.push(setInterval(() => void this.checkLedgerDrift(), 3_600_000))
+    }
 
     this.abortIfStopRequested()
     const equityNow = this.rawExec.equity()
@@ -618,6 +624,13 @@ class BotRunner {
 
   private async onOrderEvent(order: Order): Promise<void> {
     const { db, config } = this.deps
+    // transition d'état détectée sur la ligne précédente en DB (fiable après
+    // restart, contrairement à un Set en mémoire) → Telegram par transaction
+    const prev = await db
+      .select({ status: ordersTable.status })
+      .from(ordersTable)
+      .where(eq(ordersTable.id, order.id))
+    const prevStatus = prev[0]?.status
     await db
       .insert(ordersTable)
       .values({
@@ -648,6 +661,13 @@ class BotRunner {
         set: { status: order.status, executedQty: order.executedQty, cumQuote: order.cumQuote, updatedAt: order.updatedAt },
       })
     hub.publish(`bot:${config.id}`, { t: 'bot:order', botId: config.id, order })
+    if (order.status === 'FILLED' && prevStatus !== 'FILLED') void this.notifyTransaction(order)
+    if (order.status === 'REJECTED' && prevStatus !== 'REJECTED') {
+      sendTelegram(
+        `⚠️ <b>${config.name || config.strategyId}</b> [${config.mode}] ordre REJETÉ : ` +
+          `${order.side} ${order.type} ${order.symbol}${order.reason ? ` — ${order.reason}` : ''}`,
+      )
+    }
     try {
       await this.runtime.handleOrderUpdate(order)
     } catch (err) {
@@ -798,6 +818,50 @@ class BotRunner {
     this.counters.cooldownUntil = 0
     this.pushLog({ time: Date.now(), level: 'info', message: 'Bot relancé manuellement' })
     this.publishInfo()
+  }
+
+  /** Sonde horaire : le livre quote du bot ne doit jamais excéder le solde réel
+   *  (fill perdu, retrait, bot jumeau). Dérive critique → gel — le verrou
+   *  riskCheck coupe toute transaction en statut 'error'. */
+  private async checkLedgerDrift(): Promise<void> {
+    if (this.status !== 'running' && this.status !== 'paused_risk') return
+    if (!(this.rawExec instanceof OKXLiveAdapter)) return
+    try {
+      const d = await this.rawExec.quoteDrift()
+      if (!d?.critical) return
+      const msg = `dérive de solde : livre ${d.ledger.toFixed(2)} vs réel ${d.real.toFixed(2)}`
+      this.status = 'error'
+      this.statusReason = msg
+      this.pushLog({ time: Date.now(), level: 'error', message: `Dérive de solde détectée — bot gelé: ${msg}` })
+      sendTelegram(`🛑 <b>${this.deps.config.name || this.deps.config.strategyId}</b> ${msg} — bot gelé (fill perdu probable)`)
+      this.publishInfo()
+    } catch {
+      // sonde best-effort : nouvelle tentative dans une heure
+    }
+  }
+
+  /** Exigence produit (post-incident 2026-07-14) : CHAQUE transaction exécutée
+   *  (achat comme vente) part sur Telegram — quantités et frais RÉELS, agrégés
+   *  depuis les fills persistés (prix moyen = quote/qty). Best-effort. */
+  private async notifyTransaction(order: Order): Promise<void> {
+    try {
+      const { db, config } = this.deps
+      const fs = await db.select().from(fillsTable).where(eq(fillsTable.orderId, order.id))
+      const qty = fs.reduce((s, f) => s + f.qty, 0) || order.executedQty
+      const quote = fs.reduce((s, f) => s + f.quoteQty, 0)
+      const fee = fs.reduce((s, f) => s + f.fee, 0)
+      const avg = qty > 0 && quote > 0 ? quote / qty : (order.price ?? 0)
+      const si = this.symbolInfoV
+      const head = order.side === 'BUY' ? '🟢 ACHAT' : '🔴 VENTE'
+      sendTelegram(
+        `${head} <b>${config.name || config.strategyId}</b> [${config.mode}] ` +
+          `${qty.toFixed(8)} ${si.baseAsset} @ ${avg.toFixed(2)} (${quote.toFixed(2)} ${si.quoteAsset}` +
+          `${fee ? `, frais ${fee.toFixed(4)} ${si.quoteAsset}` : ''})` +
+          (order.reason ? `\n${order.reason}` : ''),
+      )
+    } catch {
+      // notification best-effort : ne bloque jamais le flux d'événements
+    }
   }
 
   private onStrategyError(hook: string, err: unknown): void {

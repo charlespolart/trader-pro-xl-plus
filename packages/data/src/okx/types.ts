@@ -56,6 +56,12 @@ export interface OkxOrderEvent {
   execType?: string
   accFillSz?: string
   avgPx?: string
+  /** Présents quand l'ordre régulier a été ENGENDRÉ par un algo (stop/TP)
+   *  déclenché : algoClOrdId porte le client-id de l'algo d'origine (notre
+   *  préfixe), clOrdId est alors un id GÉNÉRÉ PAR OKX (« O… ») — confirmé en
+   *  réel le 2026-07-14 (fill perdu faute de matcher ces champs). */
+  algoClOrdId?: string
+  algoId?: string
 }
 
 /** A normalized push from a private channel (orders / orders-algo / positions). */

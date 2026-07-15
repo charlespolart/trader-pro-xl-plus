@@ -184,6 +184,10 @@ export default defineStrategy({
     // ---- on est en USDT (vendu) : racheter quand la baisse s'essouffle
     if (candle.close > rebuyEma.value!) {
       await ctx.order.cancelAll()
+      // le stop de rachat a pu se DÉCLENCHER pendant l'annulation : l'adaptateur
+      // rejoue alors son fill (position restaurée) — ne pas racheter en double
+      // (incident 2026-07-14)
+      if (ctx.position.qty > (ctx.symbolInfo?.minQty ?? 1e-8)) return
       const quote = ctx.balances.find((b) => b.asset === ctx.symbolInfo?.quoteAsset)
       const usdt = quote ? quote.free : 0
       if (usdt <= 0) return
@@ -191,7 +195,9 @@ export default defineStrategy({
       const gainPct = ((sold - candle.close) / sold) * 100
       await ctx.order.market({
         side: 'BUY',
-        quoteQty: usdt,
+        // marge frais+slippage : un BUY à 100 % du solde part en 51008 — le
+        // bracket garde déjà ×0,995 (incident 2026-07-14)
+        quoteQty: usdt * 0.995,
         reason: `Rachat sur recroisement EMA${ctx.params.rebuyEmaLen} (vendu ${sold.toFixed(0)} → rachat ${candle.close.toFixed(0)}, ${gainPct >= 0 ? '+' : ''}${gainPct.toFixed(1)}% en ETH)`,
         tag: 'exit',
       })
