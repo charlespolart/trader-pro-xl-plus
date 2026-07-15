@@ -1,0 +1,4 @@
+bot_id,state,realized_pnl_total,realized_pnl_today,pnl_day,equity_peak,consecutive_losses,cooldown_until,updated_at
+e2bc323b-89d5-4179-91d5-5c4a66639ecf,"{""__adapter"": {""seq"": 0, ""posQty"": 3.996648, ""posEntry"": 1803.82, ""quoteLedger"": 0, ""realizedNet"": 0}}",0,0,2026-07-14,7494.59426256,0,0,1784050799506
+0c9e1449-a03c-4551-a1ba-fb56ffa2277a,"{""__adapter"": {""seq"": 0, ""posQty"": 0.20151586, ""posEntry"": 64270, ""quoteLedger"": 0, ""realizedNet"": 0}}",0,0,2026-07-14,13046.940824681398,0,0,1784050799510
+7f8b10ca-5241-42ab-9d49-bef031357f43,"{""stop"": 63909.1, ""bracket"": true, ""__adapter"": {""seq"": 3, ""posQty"": 0, ""posEntry"": 0, ""quoteLedger"": 12496.23999535821, ""realizedNet"": -455.18432684179}, ""soldPrice"": 62288.23}",0,0,2026-07-14,12954.64857596,0,0,1784050799513

@@ -1,0 +1,2 @@
+id,order_id,bot_id,market,symbol,side,price,qty,quote_qty,fee,fee_asset,maker,time,tag,reason
+tpx7f8b10camrgg3s3u1-t3953063,tpx7f8b10camrgg3s3u1,7f8b10ca-5241-42ab-9d49-bef031357f43,spot,BTCUSDT,SELL,62229,0.20151586,12540.13045194,43.89045658179,USDC,f,1783972800376,entry,"Régime baissier (tendance 3d+1d en déclin, ER 0.45, flow 0.46, prix < EMA50) → vente du BTC pour rachat plus bas"
