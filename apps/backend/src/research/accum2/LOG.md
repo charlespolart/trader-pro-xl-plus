@@ -233,3 +233,20 @@ n=13) est dans le mauvais sens et sous-échantillonné — n'achète pas 40 Go d
   soutenu → tous les moteurs d'accumulation sont ~flat ; seule la v2-BTC est restée saine
   (+4,9%/DD-25) grâce à sa double confirmation. 26 familles testées dans la session, 0 déployable,
   v2 défauts = seul survivant OOS. Bilan complet des scripts : accum2/*.py + *.ts.
+
+## ERRATUM 2026-07-15 (audit1 — chasse aux classes de bugs actions)
+
+Deux conventions de fill au CLOSE de la bougie-signal (au lieu de l'open
+suivant) trouvées dans des mini-sims de réfutation 1d : `geom_study.py:207`
+(sim short : entrée au close de la cassure) et `newedges.py:98-102`
+(`run_flip` : bascules au close du bar-signal, signal SMA incluant ce close).
+Optimisme d'exécution léger → les réfutations G2/G3/G7 et N2/N3/N5 restent
+valides (l'optimisme joue EN FAVEUR des familles réfutées), mais les chiffres
+publiés portent cette réserve. Les figures géométriques seront de toute façon
+retestées avec constructions fidèles + open+1 dans le chantier chartiste
+(patterns-crypto). Par ailleurs le null timing-aveugle de la v2 (médiane −22 %,
+percentile 97,3), dont le script d'origine n'était plus dans l'arbre, a été
+RECONSTRUIT et re-exécuté sur données canoniques : réel +120,4 % (produit des
+excursions moteur — identique au chiffre de juin), null méd −26,3 %,
+**percentile 98,0** → validation-phare confirmée et désormais re-exécutable
+(`audit1/accum_null.ts`).

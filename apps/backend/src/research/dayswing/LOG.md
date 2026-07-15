@@ -227,3 +227,21 @@ les edges documentés 2023-2026 avec tailles d'effet, en filtrant par la carte d
   **0 incohérence** vs série brute ; structure zigzag récente lue et cohérente (capitulation
   10,2×ATR 05-06, LL 58,1k 25-06, HH 02-07). Suite core 74/74, typecheck monorepo vert.
   ⚠ contrat : état muté en place — ne lire que l'état courant, jamais `at(n)`.
+
+## ERRATUM 2026-07-15 (audit1)
+
+`donchwf.ts` (quick-sim d'étape D20) : coûts ASYMÉTRIQUES entre bras réel
+(~22,5 bps/AR : entrée ×(1+7,5 bps), sortie ×(1−15 bps)) et null (30 bps) —
+les nulls étaient pénalisés d'~7,5 bps × trades, gonflant le percentile.
+Impact mesuré : ~0,5 point de percentile (88,0 → 87,5 symétrisé, sur données
+canoniques). SANS effet sur la promotion D21 : le chiffre promu venait de
+`wfswing --entry=donchian` (bras réel = MOTEUR, null 30 bps symétrique),
+re-exécuté à l'identique sur données canoniques fraîches le 2026-07-15 :
+OOS composé +392,5 % (5/6, doc +390,0), **percentile null = 95,0 = la barre,
+reproduit exactement**, stress ×2/×3/eq60/ETH conformes. Noter aussi que le
+quick-sim donchwf sur données canoniques donne +484 % (4/6) vs +390 % (5/6)
+à l'époque — ce sim simplifié (stop fixe −300, time-stop 126, coûts 22,5 bps)
+est sensible à la provenance des données ; le moteur, lui, reproduit.
+Seuils quantile full-sample notés dans h3exits/h5swing/h4squeeze/h4b15m/phase0
+(sélection d'events seulement, features causales — à passer en fenêtre
+causale pour tout usage déployable).
