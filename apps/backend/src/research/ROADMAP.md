@@ -60,11 +60,18 @@ qui « bat » sans arsenal complet n'existe pas.
    pour les perps, stress ×2/×3. Event study close→close = mesure de
    SÉPARATION, jamais un backtest — requalifier avant tout chiffre publié.
 
-## Phase 1 — Audit des fondations (préalable, EN COURS)
+## Phase 1 — Audit des fondations : ✅ TERMINÉ le 2026-07-15 (session 1)
 
-→ `audit1/LOG.md` (protocole pré-enregistré, attendus chiffrés A1-A7).
-Incident PG 2026-07-15 consigné là-bas (base dev corrompue, snapshot fait,
-base de recherche neuve port 5438, décision de réparation = Mario).
+→ `audit1/LOG.md`. Verdict : **les fondations tiennent** — indicateurs 41/41 à
+la précision machine vs Python indépendant ; moteur accordé à 0,0000 pt de
+CAGR avec une comptabilité indépendante (390 fills) ; données canoniques
+saines (agrégations 3d/1w exactes, artefacts de venue documentés) ; stratégies
+live reproduites AU TRADE PRÈS, validations-phares re-exécutées (swing
+percentile 95,0 exact, accumulator 98,0 — null reconstruit, désormais dans
+l'arbre) ; classes de bugs actions absentes des chemins porteurs (errata
+mineurs consignés accum2/dayswing). Restes : diff bit-à-bit ancienne base
+(suspendu décision PG Mario) ; fenêtre aveugle du stop i+2 backtest-vs-live
+(à trancher par Mario).
 
 ## Chantier dédié OBLIGATOIRE — catalogue chartiste complet (patterns-crypto)
 
@@ -105,8 +112,9 @@ Ce qui n'a JAMAIS été fait ici et que ce chantier livre :
    (synergie par permutation — leçon confluence1 actions : la confluence
    CONCENTRE un edge vivant, elle n'en crée pas), avec coûts.
 
-Statut : 🔬 à lancer après audit1. Données : OK (1h/4h/1d BTC/ETH en cours de
-re-téléchargement ; alts USDT multi-TF à télécharger — Vision les a).
+Statut : 🔬 protocole pré-enregistré committé (`patterns-crypto/LOG.md`,
+2026-07-15) ; données BTC/ETH prêtes ; prochaine session = garde-fous
+(placebo + contrôle positif) puis IS.
 
 ## Les horizons (mécanisme / données / prior / statut)
 

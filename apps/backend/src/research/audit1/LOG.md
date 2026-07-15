@@ -147,6 +147,67 @@ réparation (Mario).** Pas d'alerte : aucune décision de trading ne change.
 swing WR 36 % (~33 % doc), payoff élevé, trend-follower qui dort hors bull ✓ ;
 accum PF 1,63-1,64, payoff 3,5:1 documenté cohérent ✓ ; VRX PF 2,08 (2,1 doc) ✓.
 
+### A6 — Chasse aux 5 classes de bugs actions : **classes 1/4/5 SAINES partout** ✅⚠
+
+Revue dirigée (agent + relecture manuelle des nulls porteurs des stratégies
+live). Verdicts :
+
+- **Classe 1 (signe de dérive des nulls directionnels)** : ABSENTE. Aucune
+  occurrence du motif `net = perf − |base|` sur événements short ; les études
+  short (donchshort, h2sweep miroir) comparent à des baselines appariées
+  signées ou simulent un vrai P&L short (stop sur high, signe correct).
+- **Classe 2 (extrema glissants comme niveaux ancrés)** : 1 suspect confirmé —
+  `families.ts:339-359` (fibRetrace §F) : ancres fib = highestHigh/lowestLow
+  55 glissants et indépendants (pas une jambe pivot→pivot). Causal, figé à
+  l'entrée → pas de lookahead, mais construction infidèle (même classe que
+  l'etf6 actions). La famille était réfutée ; **retest fidèle au chantier
+  chartiste** (fib ANCRÉ). orderblocks/sr/sr2/sr3/wedges Python : ancrés ✓.
+- **Classe 3 (fill au close du signal)** : 3 occurrences mineures dans des
+  mini-sims de réfutation 1d (`geom_study.py:207`, `newedges.py:98-102`,
+  `wide2.ts:320-337` diagnostic) — optimisme d'exécution qui joue EN FAVEUR
+  des familles pourtant réfutées → réfutations maintenues, réserve consignée
+  (errata dans accum2/LOG.md). Toutes les sims dayswing TS : open+1 ✓.
+- **Classe 4 (état initial entre moteurs comparés)** : SAINE (fractest,
+  phase3d/phasestrat warmup 300/1000 apparié, vrx2/vrxparity, runswing/wfswing).
+- **Classe 5 (causalité pivots)** : SAINE partout (fractalPivots confirmé à
+  i+right + test de troncature ; gardes `sh+L > i` correctes dans sr/sr2 ;
+  consommateurs h2sweep/wide1/wide2 sur `conf`).
+- Bonus classe 6 : seuils quantile FULL-SAMPLE pour la sélection d'événements
+  dans 5 études dayswing (features causales, sélection seulement — sévérité
+  faible, consigné) ; vrx2.py et accum6 utilisent déjà les bonnes pratiques
+  (seuils absolus / z-scores roulants causaux).
+
+**Nulls porteurs des stratégies live, re-vérifiés un à un :**
+
+| Null | verdict | re-exécution données canoniques |
+|---|---|---|
+| vrx_validate.py (VRX) | SAIN (durées réelles, contexte hors-bull exigé, même comptabilité les 2 bras, décalage 1 barre) | — (baselines VRX déjà exactes en A5) |
+| wfswing --entry=donchian (swing, LE chiffre promu) | SAIN (bras réel = moteur, null 30 bps symétrique) | **OOS +392,5 % (5/6), percentile 95,0 — reproduit EXACTEMENT** ; stress ×2/×3/eq60/ETH conformes |
+| donchwf.ts (quick-sim d'étape D20) | coûts asymétriques réel 22,5 bps vs null 30 bps (~0,5 pt de percentile) + sensible à la provenance des données (88 vs 95 sur données fraîches) — erratum dayswing/LOG.md ; SANS effet sur la promotion | 88,0 (orig) / 87,5 (symétrisé) |
+| null timing-aveugle v2 (accumulator) | script d'origine ABSENT de l'arbre (résultat seul survivait) → **RECONSTRUIT** (`accum_null.ts`, pattern vrx_validate : bras réel = produit des excursions moteur, null = close→close aveugle mêmes durées/régime bear, 300 tirages non chevauchants) | **réel +120,4 % (identique au chiffre de juin), null méd −26,3 %, percentile 98,0** (juin : 97,3) ✅ |
+| lib.py shift_null_p (screening accum3 → VRX) | SAIN (FFT sur rangs, exclusion bilatérale ≥240, auto-testé bruit + signal planté) | auto-tests OK |
+
+Leçon de l'audit du reconstruit : le replay close→close SOUS-ESTIME les pertes
+stoppées de 2-6 pts (le cap intrabar −5 % est invisible au close) → le bras
+réel DOIT venir du moteur pour toute stratégie à stop. Consigné pour tous les
+futurs nulls.
+
+## Verdict Phase 1
+
+**Les fondations tiennent.** Indicateurs conformes aux sources à la précision
+machine (41/41) ; moteur en accord parfait avec une comptabilité indépendante
+(0,0000 pt, 390 fills) ; données canoniques saines (artefacts de venue
+documentés, agrégations exactes) ; les 4 stratégies live reproduisent leurs
+décisions AU TRADE PRÈS et leurs validations-phares (percentile 95,0 swing,
+98,0 accumulator) se re-exécutent sur données fraîches ; les 5 classes de bugs
+actions sont absentes des chemins porteurs (2 constructions infidèles et 3
+fills-au-close confinés à des étapes de réfutation, errata consignés).
+Différence vs actions : ici le moteur unique était DÉJÀ correct (fills open+1,
+pivots i+k prouvés par test) — le filet n'a rien eu à réparer, il a rendu les
+validations RE-EXÉCUTABLES. Restes ouverts : diff bit-à-bit ancienne base
+(suspendu à la décision PG de Mario) ; note de parité stop-blind-window
+(i+2 backtest vs immédiat live) à trancher par Mario si on veut la fermer.
+
 ## Journal
 
 - 2026-07-15 : ouverture. Incident PG consigné (ci-dessus). Lecture complète du
