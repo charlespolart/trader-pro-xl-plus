@@ -248,3 +248,39 @@ déterministe — barre : T3>T1, T3>tous, p(T3)<0,05) :
 passe 1-3 ; tout le reste échoue au critère 3 (ou aux robustes). À faire :
 critère 4 (trades canoniques) pour TRI, galeries SVG, réplication 1h/1d,
 puis OOS UNE passe pour les survivants complets uniquement.
+
+## PASSE 2 (suite) — critère 4, réplication 1d, et l'OOS
+
+**Critère 4 (trades canoniques, 30 bps AR, stop prioritaire)** sur les 12
+robustes : TRI sym k3,g1 → **BTC +148,6 bps/tr net (t=+2,1, n=81), ETH +39,3**
+✓ ; TRI sym k5,g1 → +108,5/+44,1 ✓ ; TT bear → BTC −11,0 ✗ (mort) ; CUP k5
+BTC +83,2 (win 21 % — l'objectif canonique rarement atteint) mais **ETH +622,0
+(t=+3,7)** ; ROUND bottom k8 BTC +51,2, **ETH +557,9 (t=+3,5)** ; SR sup_break
+N/A (pas de stop/objectif canonique). CUP/ROUND restent morts au critère 3
+(dose-réponse 0,053/plat) malgré ces trades ETH spectaculaires — consigné pour
+mémoire, la barre ne bouge pas.
+
+**Réplication 1d** (balayage complet) : TRI sym/k3,g1 **BH sur 1d aussi**
+(n=25, +1 373 bps, p=0,006) — même construction, TF indépendant. Autres
+familles : n insuffisant partout sur 1d (figures quotidiennes rares), sauf
+SR res_break p=0,058 (sous BH) et TL dose-réponse ✓ 1d (T3 +1 187, p=0,035).
+
+**OOS UNE PASSE (2024-01→2026-07, consommé pour TRI sym gated uniquement)** :
+
+| config | IS poolé | OOS poolé | verdict |
+|---|---|---|---|
+| TRI sym k3,g1 | +199,3 bps | **−25,5 bps (p=0,59)**, trades BTC −50,8 / ETH −27,8 | **ÉCHEC — flip de signe** |
+| TRI sym k5,g1 | +251,4 bps | **−54,7 bps (p=0,71)**, trades BTC +20,5 / ETH −169,3 | **ÉCHEC — flip de signe** |
+
+1d OOS : n=8 (insuffisant). Le flip de signe IS↔OOS est la signature du bruit
+(patterns1). **La seule famille ayant franchi les critères 1-4 meurt au
+critère 5.** L'OOS des autres familles n'a PAS été consommé (mortes avant).
+
+**État du chantier après passe 2** : 0 survivant complet. Restent au
+protocole avant verdict définitif de la campagne : balayage 1h (grille
+light), desserrage FLAG/PENN + re-placebo (les 2 seules familles jamais
+vraiment testées faute d'événements), galeries SVG (audit visuel), volet 2
+indicateurs/confluence. Les caveats déjà actés : OOS 2024→26 sans bear
+soutenu ; CUP/ROUND ont des médianes IS robustes et des trades ETH forts mais
+pas de dose-réponse — s'il faut les rejuger un jour, ce sera sur données
+VIERGES futures, pas en repassant le même OOS.
