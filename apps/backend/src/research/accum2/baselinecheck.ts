@@ -44,22 +44,26 @@ interface Check {
 }
 
 const CHECKS: Check[] = [
-  // — BTC Accumulator : baselines docstring (révision 2026-07, données complètes)
+  // ⚠ RE-BASELINE 2026-07-15 (audit1) : cd5845c (feeMargin adaptatif 0,999 —
+  // rachat plein→×0,999, bracket ×0,995→×0,999) a changé les défauts APRÈS la
+  // révision docstring de début juillet. Les valeurs ci-dessous = défauts
+  // ACTUELS sur données canoniques Vision (le fichier stratégie du 04-07
+  // rejoué tel quel redonne les anciens chiffres AU CENTIÈME : +61,95/29,57/57
+  // — preuve audit1/verify_july4.ts que moteur et données sont inchangés).
+  // — BTC Accumulator
   { label: 'BTC 2019→2026', def: btcAccum, symbol: 'BTCUSDT', start: '2019-01-01', end: '2026-06-13',
-    net: [61.9, 0.15], dd: [29.6, 0.15], trades: 57 },
+    net: [61.73, 0.15], dd: [29.73, 0.15], trades: 57 },
   { label: 'BTC 2020-08→2026', def: btcAccum, symbol: 'BTCUSDT', start: '2020-08-01', end: '2026-06-09',
-    net: [112.5, 0.15], dd: [28.0, 0.15], trades: 49 },
+    net: [112.76, 0.15], dd: [27.9, 0.15], trades: 49 },
   { label: 'BTC full 2018→2026', def: btcAccum, symbol: 'BTCUSDT', start: '2018-04-05', end: '2026-07-01',
-    net: [126.2, 0.15], dd: [32.5, 0.15], trades: 65 },
+    net: [125.88, 0.15], dd: [32.67, 0.15], trades: 65 },
   { label: 'BTC 2024→2026 (chop)', def: btcAccum, symbol: 'BTCUSDT', start: '2024-01-01', end: '2026-07-01',
-    net: [4.9, 0.15] },
-  // — ETH Accumulator : IS + holdout (docstring ; 'both' = défaut produit)
+    net: [5.1, 0.15] },
+  // — ETH Accumulator : IS + holdout ('both' = défaut produit)
   { label: 'ETH IS 2018→2024', def: ethAccum, symbol: 'ETHUSDT', start: '2018-04-05', end: '2024-01-01',
-    net: [436, 1], trades: 38, pf: [2.65, 0.01] },
-  // (le « -2% / DD -41% » des docs = confirmMode 'eth' — vérifié identique ;
-  //  ici on fige le comportement des DÉFAUTS produit, 'both')
+    net: [437.42, 1], trades: 38, pf: [2.65, 0.01] },
   { label: 'ETH holdout 2024→2026', def: ethAccum, symbol: 'ETHUSDT', start: '2024-01-01', end: '2026-07-01',
-    net: [14.2, 0.15], dd: [23.8, 0.15], trades: 14 },
+    net: [14.4, 0.15], dd: [23.64, 0.15], trades: 14 },
   // — BTC VRX : baselines docstring (campagne accum3 2026-07, parité python vérifiée)
   { label: 'VRX IS 2018→2024', def: btcVrx, symbol: 'BTCUSDT', start: '2018-04-05', end: '2024-01-01',
     net: [243.7, 0.15], dd: [29.1, 0.15], trades: 81 },

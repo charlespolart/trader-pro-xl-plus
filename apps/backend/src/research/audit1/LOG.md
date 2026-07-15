@@ -192,6 +192,44 @@ stoppées de 2-6 pts (le cap intrabar −5 % est invisible au close) → le bras
 réel DOIT venir du moteur pour toute stratégie à stop. Consigné pour tous les
 futurs nulls.
 
+### Post-scriptum 2026-07-15 (après GO Mario) — récupération PG + forensic FERMÉ ✅
+
+1. **Réparation** : `pg_resetwal -f` sur la COPIE (volume `tpx-research-pgdata`,
+   original + tarball intacts). Récupération INTÉGRALE vérifiée : coinalyze
+   **123 439** (exactement le chiffre documenté), perp_funding **2 425 126 /
+   791 symboles** (exact), binance_metrics 1 100 538, univers 489 \*/BTC
+   présent. Seule perte du crash : rien de visible (les tables bots/trades
+   locales étaient déjà vides — bots archivés en CSV avant l'incident).
+2. **Diff forensic bougies** (`diff_candles.py`, ancienne base vs archive
+   canonique, BTC+ETH × 1h/4h/1d/3d/1w) : **prix OHLC IDENTIQUES À 100 %** ;
+   uniquement 1 cellule volume/takerBuyBase (BTC 1d 2019-10-01, 0,016 %,
+   re-publication Vision, propagée aux agrégats 3d/1w) et la queue post-crash
+   absente de l'ancienne (≥ 2026-07-04). L'hypothèse « provenance de données »
+   pour les écarts A5 est RÉFUTÉE.
+3. **Vraie cause racine des écarts A5, prouvée** : le commit produit `cd5845c`
+   (2026-07-15, POST-baselines) « feeMargin adaptatif » — rachat market
+   `quoteQty: usdt` (plein) → ×0,999 et bracket ×0,995 → ×0,999 sur
+   accumulator/eth/swing. VRX n'a pas de feeMargin → seul exact. **Preuve
+   définitive** (`verify_july4.ts`) : le fichier stratégie du 04-07 (25c66fa)
+   rejoué tel quel sur moteur + données d'aujourd'hui redonne
+   **+61,95 % / DD 29,57 / 57tr = la baseline documentée au centième.**
+   Moteur et données totalement innocentés ; les écarts = changement de sizing
+   DÉLIBÉRÉ du correctif d'incident. (Au passage : feeMargin=1,0 casse les
+   stops en sim — rejets de solde au fill — DD 41 % : la marge est bien
+   nécessaire, le 0,999 est le bon réglage mesuré en réel.)
+4. **Re-baseline** : `baselinecheck.ts` mis à jour aux défauts ACTUELS sur
+   données canoniques (commentaire de traçabilité inclus) → **8/8 vert**.
+   ⚠ Les docstrings des stratégies (fichiers produit, déployés) portent
+   encore les chiffres pré-cd5845c (écarts +0,2-3 pt) — rafraîchissement
+   laissé au GO de Mario (règle : pas de modification du runtime).
+5. **Dev local rebranché** (GO Mario) : volume neuf `tpx-pgdata-v2` cloné
+   depuis la copie réparée, compose dev pointé dessus, migrations OK —
+   `make db` fonctionne, port 5436 de retour avec tout l'historique. Le
+   volume corrompu d'origine est conservé tel quel (pièce forensic) +
+   snapshot froid `~/pg-snapshots/`. Cartographie finale : **5436 = dev
+   (réparé, historique complet) · 5438 = recherche (canonique Vision) ·
+   volume `tpx-research-pgdata` = master réparé (sans conteneur)**.
+
 ## Verdict Phase 1
 
 **Les fondations tiennent.** Indicateurs conformes aux sources à la précision

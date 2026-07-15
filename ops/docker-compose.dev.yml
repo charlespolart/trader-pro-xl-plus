@@ -27,5 +27,8 @@ services:
 
 volumes:
   pgdata:
-    # reuse the pre-existing local volume so the candle cache survives
-    name: trader-pro-xl-plus_pgdata
+    # 2026-07-15 : volume v2 = données RÉPARÉES après la corruption WAL du
+    # crash disque-plein (pg_resetwal sur copie, intégrité vérifiée — audit1).
+    # L'ancien volume `trader-pro-xl-plus_pgdata` est conservé tel quel
+    # (corrompu) en pièce forensic ; snapshot froid dans ~/pg-snapshots/.
+    name: tpx-pgdata-v2

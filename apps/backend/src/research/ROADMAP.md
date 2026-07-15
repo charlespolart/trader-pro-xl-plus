@@ -69,9 +69,13 @@ saines (agrégations 3d/1w exactes, artefacts de venue documentés) ; stratégie
 live reproduites AU TRADE PRÈS, validations-phares re-exécutées (swing
 percentile 95,0 exact, accumulator 98,0 — null reconstruit, désormais dans
 l'arbre) ; classes de bugs actions absentes des chemins porteurs (errata
-mineurs consignés accum2/dayswing). Restes : diff bit-à-bit ancienne base
-(suspendu décision PG Mario) ; fenêtre aveugle du stop i+2 backtest-vs-live
-(à trancher par Mario).
+mineurs consignés accum2/dayswing). **Forensic FERMÉ (GO Mario 15-07)** :
+ancienne base réparée sur copie (Coinalyze/funding récupérés à l'identique),
+diff bougies = prix 100 % identiques, écarts A5 expliqués au centième par le
+changement feeMargin délibéré cd5845c (preuve : stratégie du 04-07 rejouée =
+baseline exacte), baselinecheck re-basé 8/8 vert, dev 5436 rebranché.
+Seul reste ouvert : fenêtre aveugle du stop i+2 backtest-vs-live (note A3, à
+trancher par Mario un jour — sans urgence, direction conservatrice).
 
 ## Chantier dédié OBLIGATOIRE — catalogue chartiste complet (patterns-crypto)
 
