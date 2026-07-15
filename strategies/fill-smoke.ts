@@ -64,31 +64,39 @@ export default defineStrategy({
 
     if (phase === 'buy') {
       if (holding) return
-      ctx.state['phase'] = 'wait'
-      ctx.state['armed'] = false
+      // la phase ne bascule qu'APRÈS un submit accepté : un refus (garde
+      // pré-trade…) laisse la machine en 'buy' et elle retente au candle suivant
       await ctx.order.market({
         side: 'BUY',
         quoteQty: ctx.params.quoteBudget,
         reason: 'SMOKE 1/4 : achat initial (le fill armera le trigger)',
         tag: 'entry',
       })
+      ctx.state['phase'] = 'wait'
+      ctx.state['armed'] = false
       return
     }
 
     if (phase === 'wait') {
+      // récupération : un refus/restart a pu laisser 'wait' sans position ni
+      // trigger armé → repartir de l'achat
+      if (!holding && ctx.state['armed'] !== true) {
+        ctx.state['phase'] = 'buy'
+        return
+      }
       if (ctx.state['armed'] !== true) return // fill/armement encore en cours
       if (!holding) {
         // ✅ LE test central : le trigger s'est déclenché et le fill de l'ordre
         // engendré (clOrdId OKX « O… ») a été ingéré en temps réel — la
         // position est revenue à ~0 sans intervention. Avant le fix : fantôme.
-        ctx.state['phase'] = 'cancel'
-        ctx.state['armed2'] = false
         await ctx.order.market({
           side: 'BUY',
           quoteQty: ctx.params.quoteBudget,
           reason: 'SMOKE 3/4 : ✅ fill du trigger ingéré — achat pour le test d’annulation',
           tag: 'entry2',
         })
+        ctx.state['phase'] = 'cancel'
+        ctx.state['armed2'] = false
         return
       }
       // Le marché DÉMO est un bac à sable quasi mort (constaté : vol24h ~1,6 BTC,
