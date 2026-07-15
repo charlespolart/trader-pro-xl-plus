@@ -87,6 +87,17 @@ export default defineStrategy({
     atrPeriod: p.int({ default: 14, min: 2, max: 100, label: 'Période ATR', group: 'Risque' }),
     atrMult: p.number({ default: 2.5, min: 0.5, max: 6, step: 0.1, label: 'Stop = ATR ×', group: 'Risque' }),
     maxLossPct: p.percent({ default: 4, min: 1, max: 10, label: 'Perte max par trade (cap du stop)', group: 'Risque' }),
+    feeMargin: p.number({
+      default: 0.999,
+      min: 0.98,
+      max: 1,
+      step: 0.001,
+      label: "Part du budget engagée à l'entrée",
+      description:
+        'OKX spot prélève les frais dans la devise REÇUE (mesuré en réel). 0,999 = marge d’arrondi ; 0,995 sur une venue qui facture en quote.',
+      group: 'Risque',
+      advanced: true,
+    }),
     equityPct: p.percent({ default: 98, min: 10, max: 100, label: 'Part de l’équité par trade', group: 'Risque' }),
   },
 
@@ -203,8 +214,9 @@ export default defineStrategy({
     } else {
       const stop = ctx.roundPrice(Math.max(candle.close - ctx.params.atrMult * a, candle.close * (1 - ctx.params.maxLossPct / 100)))
       ctx.state['stop'] = stop
-      // spot : marge pour slippage+frais, sinon le BUY over-budget est rejeté silencieusement
-      await ctx.order.market({ side: 'BUY', quoteQty: budget * 0.995, reason: reasonBase, tag: 'entry' })
+      // marge d'arrondi (frais d'achat prélevés en BASE sur OKX, mesuré en réel ;
+      // la garde pré-trade borne au solde réel)
+      await ctx.order.market({ side: 'BUY', quoteQty: budget * ctx.params.feeMargin, reason: reasonBase, tag: 'entry' })
     }
   },
 

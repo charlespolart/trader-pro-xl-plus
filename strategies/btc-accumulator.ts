@@ -158,6 +158,17 @@ export default defineStrategy({
       description: 'Rachat forcé si le prix remonte de N×ATR (on s’est trompé) — limite la perte de BTC',
       group: 'Risque',
     }),
+    feeMargin: p.number({
+      default: 0.999,
+      min: 0.98,
+      max: 1,
+      step: 0.001,
+      label: 'Part du solde engagée au rachat',
+      description:
+        'OKX spot prélève les frais dans la devise REÇUE (mesuré en réel) : un achat peut engager ~100 % du quote. 0,999 garde un cheveu pour les arrondis de pas ; baisser à 0,995 sur une venue qui facture en quote.',
+      group: 'Risque',
+      advanced: true,
+    }),
     maxLossPct: p.number({
       default: 5,
       min: 0,
@@ -260,9 +271,10 @@ export default defineStrategy({
       const gainPct = ((sold - candle.close) / sold) * 100
       await ctx.order.market({
         side: 'BUY',
-        // marge frais+slippage : un BUY à 100 % du solde part en 51008 — le
-        // bracket garde déjà ×0,995 (incident 2026-07-14)
-        quoteQty: usdt * 0.995,
+        // marge d'arrondi : OKX prélève les frais d'achat en BASE (devise reçue,
+        // mesuré en réel) — le quote peut être engagé à ~100 %. La garde
+        // pré-trade borne de toute façon au solde réel (incident 2026-07-14).
+        quoteQty: usdt * ctx.params.feeMargin,
         reason: `Rachat sur recroisement EMA${ctx.params.rebuyEmaLen} (vendu ${sold.toFixed(0)} → rachat ${candle.close.toFixed(0)}, ${gainPct >= 0 ? '+' : ''}${gainPct.toFixed(1)}% en BTC)`,
         tag: 'exit',
       })
@@ -277,7 +289,7 @@ export default defineStrategy({
       const quote = ctx.balances.find((b) => b.asset === ctx.symbolInfo?.quoteAsset)
       const usdt = quote ? quote.free : 0
       if (stop > 0 && usdt > 0) {
-        const qty = ctx.roundQty((usdt / stop) * 0.995)
+        const qty = ctx.roundQty((usdt / stop) * ctx.params.feeMargin)
         if (qty > 0) {
           await ctx.order.stopMarket({
             side: 'BUY',
