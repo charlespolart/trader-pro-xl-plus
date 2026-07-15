@@ -10,8 +10,9 @@ const START = Date.parse('2019-01-01T00:00:00Z')
 const END = Date.now()
 const ALTS = ['BNBUSDT', 'SOLUSDT', 'XRPUSDT', 'ADAUSDT', 'DOGEUSDT', 'AVAXUSDT', 'LINKUSDT', 'DOTUSDT', 'LTCUSDT', 'MATICUSDT', 'ATOMUSDT', 'UNIUSDT', 'NEARUSDT', 'FILUSDT', 'ETCUSDT', 'XLMUSDT', 'ALGOUSDT', 'VETUSDT', 'TRXUSDT', 'EOSUSDT']
 
-for (const symbol of ALTS) {
-  for (const interval of ['1d', '4h', '1h'] as Interval[]) {
+// 1d pour TOUS d'abord (le pilote xsection1 n'a besoin que de ça), puis 4h/1h
+for (const interval of ['1d', '4h', '1h'] as Interval[]) {
+  for (const symbol of ALTS) {
     try {
       await store.ensureRange('spot', symbol, interval, START, END, {})
       const rows = await store.getCandles('spot', symbol, interval, START, END)
