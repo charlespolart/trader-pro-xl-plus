@@ -14,8 +14,14 @@ export function toInstId(base: string, quote: string, market: MarketType): strin
  * trade USDT (MiCA delisted Tether in the EEA) — they execute on the USDC pair
  * instead, while market DATA stays on the original USDT Binance symbol (price
  * tracks 1:1). Other regions / other quotes pass through unchanged.
+ *
+ * DEMO trading est exempté : la restriction MiCA ne vise que le réel, et sur le
+ * bac à sable EEA les paires *-USDC sont des carnets morts (vol24h ~0, last
+ * figé — un trigger n'y est jamais évalué) alors que les *-USDT y répliquent le
+ * marché réel (constaté le 2026-07-15 pendant le smoke de l'incident).
  */
-export function execQuoteAsset(quoteAsset: string): string {
+export function execQuoteAsset(quoteAsset: string, demo = false): string {
+  if (demo) return quoteAsset
   if ((process.env.OKX_REGION ?? 'global').toLowerCase() === 'eea' && quoteAsset === 'USDT') return 'USDC'
   return quoteAsset
 }

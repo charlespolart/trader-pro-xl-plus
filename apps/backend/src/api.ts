@@ -489,7 +489,7 @@ export function buildApi(s: Services): Hono {
     const symbol = c.req.param('symbol').toUpperCase()
     const si = await new BinanceMarketData(new BinanceRest({ market })).symbolInfo(symbol)
     if (!si) return c.json({ error: `symbole inconnu : ${symbol}` })
-    const instId = toInstId(si.baseAsset, execQuoteAsset(si.quoteAsset), market)
+    const instId = toInstId(si.baseAsset, execQuoteAsset(si.quoteAsset, name === 'testnet'), market)
     const account = new OkxAccount(new OkxRest({ demo: name === 'testnet', credentials: creds }))
     const fee = await account.tradeFee(instType(market), instId)
     return c.json(fee ?? { error: 'lecture des frais impossible côté OKX' })

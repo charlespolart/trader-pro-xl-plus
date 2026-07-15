@@ -231,8 +231,9 @@ class BotRunner {
       const creds = await manager.credentials.get(config.mode === 'live' ? 'live' : 'testnet')
       if (!creds) throw new Error(`Aucune clé API configurée pour le mode ${config.mode}`)
       // EU (EEA) accounts can't trade USDT — execute on the USDC pair instead while
-      // the DATA symbol (config.symbol / candles) stays on Binance USDT. No-op elsewhere.
-      const execQuote = execQuoteAsset(symbolInfo.quoteAsset)
+      // the DATA symbol (config.symbol / candles) stays on Binance USDT. No-op
+      // elsewhere, et EXEMPTÉ en démo (les paires USDC du bac à sable sont mortes).
+      const execQuote = execQuoteAsset(symbolInfo.quoteAsset, testnet)
       const instId = toInstId(symbolInfo.baseAsset, execQuote, config.market)
       const rest = new OkxRest({ demo: testnet, credentials: creds })
       const account = new OkxAccount(rest)
