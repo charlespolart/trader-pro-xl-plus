@@ -63,9 +63,10 @@ def signals(P, fam, prm):
 
 
 def run_portfolio(P, S, K, seg, kind='LS', rng_null=None):
-    """rendement quotidien net du portefeuille ; poids décidés au close t
-    (rangs de S[t] parmi les vivants), effectifs sur r(t+1) ; rebalancement
-    tous les K jours ; si rng_null : rangs PERMUTÉS parmi les vivants."""
+    """rendement quotidien net ; poids décidés au close t, effectifs sur
+    r(t+1) ; rebalancement tous les K jours. (rng_null : ancien null par
+    rangs — CONDAMNÉ par le placebo : turnover maximal → anti-conservateur ;
+    conservé pour trace, le null officiel est le réétiquetage de colonnes.)"""
     lp = np.log(P)
     r = np.vstack([np.zeros((1, P.shape[1])), np.diff(lp, axis=0)])  # r[t] = close t-1→t
     lo, hi = seg
@@ -107,17 +108,23 @@ def metrics(daily):
 
 
 def eval_config(P, S, K, seg, kind, nperm=1000, seed=7):
+    """null par RÉÉTIQUETAGE : une permutation de colonnes du SIGNAL par
+    tirage — chaque actif reçoit la trajectoire de signal d'un autre. La
+    persistance (donc le turnover et les coûts) est préservée, l'alignement
+    coupe↔rendements est détruit. (Amendement 2026-07-15 après que le placebo
+    a condamné le null par rangs re-tirés — consigné au LOG.)"""
     real = run_portfolio(P, S, K, seg, kind)
     m = metrics(real)
     rng = np.random.default_rng(seed)
     cnt = 0
     for _ in range(nperm):
-        null = run_portfolio(P, S, K, seg, kind, rng_null=rng)
+        perm = rng.permutation(S.shape[1])
+        null = run_portfolio(P, S[:, perm], K, seg, kind)
         sd = null.std(ddof=1)
         s_null = null.mean() / sd * np.sqrt(365) if sd > 0 else -9
         if s_null >= m['sharpe']:
             cnt += 1
-    m['p'] = (1 + cnt) / (1 + nperm)
+    m['p'] = np.nan if not np.isfinite(m['sharpe']) else (1 + cnt) / (1 + nperm)
     m['daily'] = real
     return m
 
@@ -215,23 +222,26 @@ def main():
         lp = np.log(P)
         r = np.diff(lp, axis=0)
         rng = np.random.default_rng(42)
-        # mélange par blocs de 30 j PAR ACTIF (détruit coupe et momentum)
-        rp = np.copy(r)
-        for a in range(r.shape[1]):
-            fin = np.where(np.isfinite(r[:, a]))[0]
-            if len(fin) < 120:
+        # mélange JOUR PAR JOUR PAR ACTIF (placebo machinerie : détruit TOUTE
+        # structure — les blocs 30 j laissaient fuir le momentum court intra-
+        # bloc, attrapé par le placebo v2 à 10,4 %) ; reconstruit depuis la
+        # PREMIÈRE cote de chaque actif (bug jour-0 attrapé par le placebo v1)
+        P2 = np.full_like(P, np.nan)
+        for a in range(P.shape[1]):
+            fin = np.where(np.isfinite(P[:, a]))[0]
+            if len(fin) < 150:
                 continue
-            vals = r[fin, a]
-            nb = len(vals) // 30
-            blocks = [vals[i * 30:(i + 1) * 30] for i in range(nb)]
-            rng.shuffle(blocks)
-            sh = np.concatenate(blocks + [vals[nb * 30:]])
-            rp[fin, a] = sh
-        P2 = np.vstack([P[0:1], P[0:1] * np.exp(np.cumsum(rp, axis=0))])
+            lpa = np.log(P[fin, a])
+            vals = np.diff(lpa)
+            sh = rng.permutation(vals)
+            P2[fin, a] = np.exp(np.concatenate([[lpa[0]], lpa[0] + np.cumsum(sh)]))
         if mode == 'control':
-            # facteur PLANTÉ : +20 bps/j sur 4 actifs fixes
+            # facteur PLANTÉ : +60 bps/j sur 4 actifs listés dès 2019 (courbe de puissance : 20→31% slots, 40→p 0,057)
+            # (v1 : +20 bps/j sur SOL/AVAX/LTC/NEAR — 3 listent fin 2020 et
+            # l'ampleur était sous le bruit de rang des alts mélangés → 31 %
+            # des slots seulement ; contrôle redessiné, consigné au LOG)
             drift = np.zeros(P2.shape[1])
-            drift[[1, 5, 9, 13]] = 0.0020
+            drift[[0, 2, 8, 14]] = 0.0060
             P2 = P2 * np.exp(np.cumsum(np.tile(drift, (len(P2), 1)), axis=0))
         seg = seg_of(ts, IS_START, IS_END)
         rows = sweep(ts, P2, seg, nperm=300, label=f'{mode.upper()} (panel mélangé blocs 30 j)')

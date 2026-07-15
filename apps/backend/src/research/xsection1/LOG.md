@@ -91,3 +91,30 @@ ledger complet, BH-FDR 10 % PAR FAMILLE sur la stat primaire.
 - 2026-07-15 : protocole écrit et committé avant exécution. Téléchargement
   top-20 en cours (ensure_alts.ts). Machinerie : xsection.py à écrire
   (panel → facteurs → éval permutation → placebo/contrôle → IS).
+
+## GARDE-FOUS (2026-07-15) — le placebo a réparé le null LUI-MÊME (ledger complet)
+
+1. Placebo v1 : 48/48 « hits » — BUG du harnais (panel reconstruit depuis le
+   jour 0 de la grille → NaN propagés, Sharpe NaN compté comme hit). Corrigé
+   (reconstruction par actif depuis SA première cote ; p=NaN si Sharpe NaN).
+2. Placebo v2 : 22/48 — **null par rangs re-tirés CONDAMNÉ** : re-tirer les
+   rangs à chaque rebalancement = turnover maximal = coûts maximaux → tout
+   signal PERSISTANT bat le null sur bruit pur par la seule économie de
+   frais. **Null officiel remplacé : RÉÉTIQUETAGE de colonnes** (une
+   permutation d'actifs par tirage — persistance/turnover préservés,
+   alignement coupe↔rendements détruit).
+3. Placebo v3 : 10,4 % — les blocs de 30 j laissaient fuir le momentum court
+   intra-bloc. Placebo machinerie passé en mélange iid jour par jour.
+4. **Placebo final : 0/48 à p<0,01 ✓.**
+5. Contrôle planté v1 (+20 bps/j sur SOL/AVAX/LTC/NEAR) : NON retrouvé — mal
+   conçu (3 plantés listent fin 2020 ; ampleur sous le bruit de rang : 31 %
+   des slots du top seulement). v2 (+40 bps/j, 4 actifs 2019) : p=0,057.
+   **v3 (+60 bps/j) : Sharpe 1,46, p=0,0033 ✓ RETROUVÉ.**
+6. **Courbe de puissance consignée** (pré-cadre la lecture de l'IS) : à 20
+   actifs, l'instrument ne certifie à p<0,01 que des facteurs ÉNORMES
+   (~+60 bps/j sur 4 noms). Un facteur réel modéré passera sous le radar du
+   pilote → la réplication univers-complet (40-100 actifs, délistées
+   incluses) n'est pas qu'anti-survivorship : c'est le VRAI test de
+   puissance. Le null par réétiquetage est « contaminé » par construction
+   (les tirages détiennent le panel drifté au hasard) : le test mesure la
+   SÉLECTION au-delà de la composition du panel — c'est la bonne question.
