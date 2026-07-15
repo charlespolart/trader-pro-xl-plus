@@ -304,6 +304,29 @@ Frais : le 0,35 % taker mesuré = barème OFFICIEL OKX EEA sans compte dérivés
 **Ouvrir X-Perps ramène le spot à 0,08/0,10 %** (barème des backtests) — à
 faire avec la plomberie carry. Reste : déploiement VPS + bot démo fill-smoke.
 
+## SMOKE DÉMO (2026-07-15) — résultats et limites du bac à sable EEA
+
+Validé EN CONDITIONS RÉELLES (bot fill-smoke, démo, cadence 1m) :
+- flux WS privé démo + ingestion du fill d'achat + **Telegram par transaction** ;
+- **9+ cycles cancel→re-arm** propres (backfillIfTriggered exercé à chaque
+  annulation : état lu AVANT marquage) ;
+- **ré-adoption du trigger après redémarrage** backend (reconcile §14) ;
+- **garde pré-trade : 2 refus grandeur nature sur livre fantôme** (allocation
+  1000 USDT vs 0 réel → « ordre refusé, resynchroniser » + gel + alerte) — le
+  scénario de l'incident, bloqué AVANT l'ordre.
+
+Limites STRUCTURELLES du démo EEA découvertes (documentées ici pour la suite) :
+1. Carnets *-USDC démo MORTS (vol24h ~1 BTC, last figé) → un trigger n'y est
+   jamais évalué, un ordre market y est ANNULÉ (carnet vide) ;
+2. Paires *-USDT démo : données répliquées du réel mais TRADING interdit
+   (51155 compliance, comme en réel EEA) ;
+3. Auto-liquidité impossible : STP bloque le croisement de ses propres ordres.
+→ **Un déclenchement de trigger n'est PAS reproductible sur le démo EEA.**
+Le seul maillon non observé en direct reste le push WS d'un enfant déclenché ;
+sa forme est prouvée par REST (l'enfant de l'incident PORTE algoClOrdId) et le
+traitement est couvert par tests unitaires aux payloads réels. Clôture du
+maillon : micro-cycle réel (~20 USDC) OU premier cycle réel surveillé.
+
 ## Empreinte de l'investigation (traçabilité)
 
 - Accès : `ssh root@45.32.123.66` (lecture) ; `docker exec` psql (SELECT only) ;
