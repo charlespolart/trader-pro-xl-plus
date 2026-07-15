@@ -211,3 +211,40 @@ volume/VWAP/Ichimoku, 1 à 3 facteurs. Configurations d'usage réelles
     par famille ; galerie SVG (audit visuel Mario) ; réplication 1h/1d ;
     trades canoniques des BH ; OOS UNE passe à la toute fin. survivors_is.json
     committé.
+
+## PASSE 2 (2026-07-15) — stats robustes + dose-réponse poolée
+
+Incident machine en cours de passe : Docker/PG retombés (ENOSPC hôte pendant
+une rafale d'écriture — même schéma que le matin), relancés ; volume master
+redondant libéré (~1,4 G ; chaîne de garde intacte : original corrompu +
+tarball + v2 vivant). ⚠ Disque à surveiller en début de chaque session.
+
+**Stats robustes sur les 17 BH** (barre pré-déclarée : méd>0 ET trim10>0 ET
+p_trim<0,05) → **12/17 retenues** (`survivors_robust.json`). Le filtre a mordu
+juste : TRI desc tués (médianes NÉGATIVES −60/−45 — moyennes portées par les
+extrêmes), ROUND top k5,r0.5 et CUP k8,d0.1 tués. Profils des retenues :
+- **CUP bull (3 cfg) : médianes +347/+473/+362, p_méd 0,004-0,038** — robuste
+  au sens fort, pas un artefact de crash ;
+- **ROUND bottom (2 cfg) : médianes +296/+362** — idem ;
+- ROUND top (2), TT (1), SR sup_break (2) : retenues par la moyenne tronquée
+  (p 0,003-0,047) mais médianes faibles (+5 à +89) — queues grasses des bears,
+  fragilité consignée ;
+- TRI sym gated (2) : médianes +140/+116, trim p=0,020.
+
+**Dose-réponse poolée par famille** (toutes configs, dédup par sig, départage
+déterministe — barre : T3>T1, T3>tous, p(T3)<0,05) :
+- **TRI : ✓ (T1 +34 → tous +95 → T3 +177, p=0,023)** — seule famille où le
+  score de qualité chartiste a un contenu démontré ;
+- CUP : monotone dans le bon sens mais p=0,053 → ÉCHEC au critère 3 tel que
+  pré-enregistré (noté borderline : les DEUX terciles sont fortement positifs,
+  l'effet famille domine le gradient de qualité) ;
+- ROUND : plat (T1 +234 / T3 +209) — l'effet n'est pas porté par la qualité ;
+- **ANTI-dose-réponse** (la « qualité » du manuel fait PIRE) : TB (+238 →
+  −78 !), TL (+22 → −34), iHS (+25 → −160) — le folklore inversé, consigné ;
+- FLAG/PENN toujours n quasi nul (constructions à desserrer avant toute
+  conclusion sur ces familles).
+
+**État de la chaîne de survie** (critères 1-6 du protocole) : TRI sym gated
+passe 1-3 ; tout le reste échoue au critère 3 (ou aux robustes). À faire :
+critère 4 (trades canoniques) pour TRI, galeries SVG, réplication 1h/1d,
+puis OOS UNE passe pour les survivants complets uniquement.
