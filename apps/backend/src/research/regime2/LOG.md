@@ -67,3 +67,25 @@ prétendre à un edge au-delà du carry connu, la composante PRIX doit être
 significative SEULE ; le carry, lui, est acquis mais n'est pas un « edge
 regime2 ». Le premier run IS (lancé avant cet amendement) ne sera PAS
 utilisé pour un verdict.
+
+## VERDICT (2026-07-17) : ⛔ N1 CLOS — n structurellement insuffisant, rien au-dessus du carry connu
+
+L'IS (lancé avant l'amendement 2, lu APRÈS son commit) tranche A FORTIORI :
+même la version INCLUANT le carry funding mécanique (généreuse) ne franchit
+RIEN — BH : aucun ; meilleur Sharpe +0,53 (G2,5/D1, p=0,73) ; ON 0,2-2,9 % ;
+épisodes quasi tous à ±0-3 % (le +16-17 % isolé = 1 épisode, « n
+insuffisant » pré-assumé). La composante PRIX seule (l'edge prétendu) serait
+mécaniquement inférieure → le re-run décomposé est sans objet, verdict
+acquis par domination.
+
+Lecture : les capitulations profondes sont trop RARES et trop COURTES au
+grain quotidien/hebdo cross-section pour porter une stratégie gated (2-11
+épisodes en 6 ans, souvent ≤ 1 mois) — le rebond post-capitulation, s'il
+existe, n'est pas capturable par cette construction. Confirme accum6
+(« ls_z contrarian réel mais non tradable ») par une voie indépendante.
+Le carry funding des capitulations est réel mais DÉJÀ connu (carry3) et
+n'est pas un edge regime2. OOS JAMAIS touché (préservé).
+
+Leçon de méthode gravée : pour toute porte à ON minuscule, le placebo
+« prix iid, funding réel » est invalide (le carry domine) — placebo
+price-only obligatoire. (5e attrape placebo de la mission.)
