@@ -85,6 +85,9 @@ def main():
         return
 
     S = zvol_signal(V)
+    if len(sys.argv) > 2 and sys.argv[2] == 'inv':
+        S = -S
+        print('(direction MIROIR : short les pumps de volume)')
     label = {'placebo': 'PLACEBO volumes iid', 'is': 'IS 2019-07→2024-01',
              'oos': 'OOS 2024-01→2026-07 — UNE PASSE'}[mode]
     print(f'=== zvol1 {label} (net 30 bps/côté) ===')
