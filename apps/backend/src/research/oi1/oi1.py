@@ -140,22 +140,13 @@ def main():
         n, na = O.shape
         s_mom = np.full((n, na), np.nan)
         s_mom[7:] = lO[7:] - lO[:-7]
-        V = load_vol_panel(syms, ts)
-        adv = np.full((n, na), np.nan)
-        vf = np.where(np.isfinite(V), V, 0.0)
-        vm = np.isfinite(V).astype(float)
-        csv_ = np.vstack([np.zeros((1, na)), np.cumsum(vf, axis=0)])
-        csm = np.vstack([np.zeros((1, na)), np.cumsum(vm, axis=0)])
-        for t in range(30, n):
-            cnt = csm[t] - csm[t - 30]
-            adv[t] = np.where(cnt >= 20, (csv_[t] - csv_[t - 30]) / np.maximum(cnt, 1), np.nan)
-        oi_usd = O * P
-        s_rel = zexp(np.log(oi_usd / adv))
+        # amendement placebo : OI-LEVEL PUR (aucun prix/volume mélangé)
+        s_rel = zexp(lO)
     label = {'placebo': 'PLACEBO OI iid', 'is': 'IS 2020-07→2024-01',
              'oos': 'OOS 2024-01→2026-07 — UNE PASSE'}[mode]
     print(f'=== oi1 {label}{" — MIROIR" if inv else ""} (couverture {ncov}/{na}, net 30 bps) ===')
     rows = []
-    for nm, S in (('OI-MOM', s_mom), ('OI-REL', s_rel)):
+    for nm, S in (('OI-MOM', s_mom), ('OI-LEVEL', s_rel)):
         Su = -S if inv else S
         for kind in ('LO', 'LS'):
             m, _ = eval_config(P, Su, 7, seg, kind, nperm=1000 if mode != 'placebo' else 200)

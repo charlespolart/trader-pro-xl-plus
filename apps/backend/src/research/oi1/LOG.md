@@ -33,3 +33,17 @@ perps ∩ univers, cache CSV. Prix : panel univers en base.
 ## Journal
 
 - 2026-07-17 : protocole écrit et committé avant exécution.
+
+## Amendement — ATTRAPÉ PAR LE PLACEBO (2026-07-17, avant tout regard sur l'IS)
+
+Placebo OI-iid : 1/4 à p<0,01 (OI-REL LO p=0,005) → STOP. Diagnostic :
+OI-REL = z(log(OI×P/ADV)) MÉLANGE l'OI avec le prix et l'ADV RÉELS — le
+placebo (qui ne shuffle que l'OI) révèle que la structure survivante vient
+de P/ADV, pas de l'open interest. Un signal composite ne teste pas
+« l'OI » : tout edge d'OI-REL serait inattribuable. (6e attrape placebo de
+la mission — leçon : les ingrédients non testés d'un signal composite
+doivent être neutralisés par le placebo, sinon spécifier PUR.)
+**Amendement (committé avant lecture de l'IS, qui est jeté)** : OI-REL
+RETIRÉ, remplacé par OI-LEVEL = z-exp90 de log(OI_coin) PUR (aucun prix,
+aucun volume). Signaux finaux : OI-MOM (Δlog7 OI_coin, pur) + OI-LEVEL
+(pur). Re-placebo complet exigé avant IS.
