@@ -21,3 +21,19 @@ Barre d'exploitation : |ΔQ5−Q1| 30 j ≥ 120 bps, sinon « non tradable ».
 ## Journal
 
 - 2026-07-16 : protocole écrit et committé avant exécution.
+
+## VERDICT (2026-07-16) : ⛔ H10 CLOS — 0/6 cellules sous BH (placebo sain 3/100)
+
+- **G1 F&G : néant** (fwd30 +744 bps mais p=0,27 ; le signe POSITIF —
+  cupidité → hausse, momentum de sentiment — contredit d'ailleurs l'usage
+  contrarian populaire ; confirme le prior maison « F&G mort »).
+- **G2 AdrActCnt : la seule trace** (fwd7 +289 bps p=0,044 ; fwd30
+  +929 bps p=0,07) — mais 6 cellules mesurées → BH 10 % exige p ≤ 0,017 au
+  rang 1 : ÉCHOUE. Pas de survivant, pas de re-test (l'aveu serait du
+  mining).
+- **G3 TxTfrValAdjUSD : source INDISPONIBLE** dans l'API community
+  Coinmetrics (fichier vide) — verdict « non testé faute de source
+  gratuite », pas « réfuté ».
+- 3/6 signaux exogènes du folklore (vol implicite, sentiment, adresses
+  actives) : rien qui franchisse même la première barre. OOS jamais touché.
+- H10 historique maison : 0/8 → désormais 0/11.

@@ -33,3 +33,16 @@ résolution 1D, profondeur ~2021→. Vol réalisée RV30 = σ des log-returns
 ## Journal
 
 - 2026-07-16 : protocole écrit et committé avant exécution.
+
+## VERDICT (2026-07-16) : ⛔ H13 CLOS — rien d'exploitable (placebo sain 3/100)
+
+- **S1 DVOL niveau : dégénéré structurellement** — en rang expansif, la
+  tendance BAISSIÈRE de la vol implicite depuis 2021 vide le quintile haut
+  après 2022 (n5 < 30 : « n insuffisant » = un fait de structure, pas un
+  bug). Le niveau de DVOL n'est pas un signal stationnaire.
+- **S2 VRP (DVOL − RV30) : néant** — Δ(Q5−Q1) négatif et GROS en apparence
+  (−949 bps/30 j : VRP riche → BTC sous-performe) mais p=0,25 (n Q5 = 69
+  jours seulement) → indiscernable du hasard. Sous-puissance consignée
+  d'avance (2,6 ans d'IS).
+- DVOL reste dispo en cache (dvol_btc.csv, 1 940 j) si un jour le n
+  s'allonge. OOS jamais touché.
