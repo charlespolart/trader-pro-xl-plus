@@ -47,3 +47,14 @@ d'avance — consigné).
 ## Journal
 
 - 2026-07-16 : protocole écrit et committé avant exécution.
+- 2026-07-16 : **CONTRÔLE PLANTÉ ÉCHOUÉ (1er essai) → amendements de
+  machinerie AVANT tout regard sur le réel** : paire synthétique (hl 10 j)
+  trouvée 36 % des mois seulement, Sharpe brut +0,96. Causes diagnostiquées :
+  (a) le tri « top-20 par R² AR(1) » est mal calibré — une vraie
+  co-intégration hl 10 j a un R² intrinsèque ~3 %, les artefacts l'évincent
+  → **tri remplacé par la |t-stat| de β (critère canonique
+  Engle-Granger)** ; (b) le retrait mensuel de sélection fermait de force
+  les positions ouvertes → **les positions OUVERTES restent gérées par
+  leurs règles (z/stop/timeout) même hors sélection ; seule l'ENTRÉE exige
+  la sélection**. Barre du contrôle inchangée : trouvée majoritairement +
+  Sharpe brut élevé, sinon stop.
