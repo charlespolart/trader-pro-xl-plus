@@ -41,3 +41,10 @@ baissier), le junk le plus shorté (funding le plus négatif) rebondit
 ## Journal
 
 - 2026-07-17 : protocole écrit et committé avant exécution.
+
+## Amendement pré-exécution (2026-07-17, avant tout calcul)
+
+Exécution PERP INTÉGRALE d'entrée (rendements perps réels + fallback spot
+compté ; la jambe BTC de D2 en perp paie/reçoit son funding) — leçon de
+l'étape 6 de regime1 : plus conservateur que le proxy spot, et les données
+sont déjà en base. Aucun autre changement.
