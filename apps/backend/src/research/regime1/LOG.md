@@ -120,3 +120,40 @@ d'exécution (liquidité de la jambe short en manie, slippage au tick).
 - Barre : Sharpe OOS perp ≥ 0,9 (≈50 % du 1,77 spot). Sinon : MORT, verdict,
   horizon suivant.
 - Aucune nouvelle grille : G2,5/C3 uniquement, IS+OOS rejoués tels quels.
+
+## ÉTAPE 6 — VERDICT (2026-07-16) : SURVIT ✓ (Sharpe OOS perp +1,62 ≥ 0,9)
+
+Données : 447/447 perps téléchargés (491 163 candles 1d, 2020-01→2026-07-13,
+0 erreur ; LUNA délisté présent avec sa vraie fin — survivorship préservé).
+Couverture perp de la jambe short : **99,8 % des jours-poids** (fallback spot
+négligeable). Contrôle de non-régression : la réf. spot rejouée redonne les
+chiffres publiés à l'identique (IS +1,15/2,12 ép 6/10 ; OOS +1,77/3,67 ép
+7/11, p=0,015).
+
+| Variante | IS Sharpe/Calmar | OOS Sharpe/CAGR/DD/Calmar | ép OOS |
+|---|---|---|---|
+| spot (réf.) | +1,15 / 2,12 | +1,77 / +122,7 % / 33,4 % / 3,67 | 7/11 |
+| **PERP INTÉGRAL (jugée)** | **+0,89 / 1,34** | **+1,62 / +103,4 % / 34,0 % / 3,04** | **7/11** |
+| diag short-perp/BTC-spot | +1,14 / 2,09 | +1,74 / +114,8 % / 33,5 % / 3,43 | 7/11 |
+
+Coûts ×2 (perp intégral) : IS +0,56, OOS +1,31 — la barre 4 d'origine
+tiendrait encore. p permutation perp : IS 0,001, OOS 0,038 (sélection
+intra-porte toujours significative seule sous exécution perp ; la barre de
+l'étape était le Sharpe, pas p — noté).
+
+**Décomposition** : le diag (jambe short perp + long BTC SPOT) ≈ réf. spot
+→ la quasi-totalité de la dégradation vient du FUNDING PAYÉ PAR LE LONG BTC
+PERP (~12 %/an en moyenne, plus cher en manie précisément quand la porte est
+ON), PAS des prix de la jambe short (basis 1d minime, prix perps ≈ spot).
+Conséquence de design pour la stratégie finale (pas un re-choix de cellule —
+la variante jugée passe d'elle-même) : la jambe longue BTC gagnerait à être
+SPOT, ce qui est RÉALISABLE en vrai (les bots détiennent déjà du BTC spot) et
+redonne quasi les chiffres spot.
+
+Notes univers consignées : 15 perps à préfixe 1000×/1000000× (PEPE, BONK,
+FLOKI, LUNC…) ne matchent jamais le symbole spot → jamais éligibles dans
+TOUT carry3/regime1 (IS, OOS et réplication cohérents entre eux) ; l'univers
+shorté est donc conservateur — un mapping 1000×↔spot est une amélioration
+FUTURE à tester proprement, hors réplication. Panel : 445/564 colonnes avec
+données futures (les ~120 restantes = paires spot sans perp — jamais
+shortables, cohérent).
