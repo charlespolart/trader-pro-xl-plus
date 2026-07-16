@@ -351,3 +351,13 @@ rendements log sont invariants au facteur 1000).
 - Verdict pour la FICHE uniquement : améliore → l'univers déployé inclura
   le mapping ; dégrade ou neutre → univers actuel conservé. Décision prise
   UNE fois, ici, avant la démo — pas de sélection répétée.
+
+### Extension 1000× — RÉSULTAT (une passe, 2026-07-17) : NEUTRE → univers actuel CONSERVÉ
+
+7 perps mappables vers un spot de l'univers (BONK, BTTC, FLOKI, LUNC, PEPE,
+SHIB, XEC ; les 8 autres n'ont pas de spot univers). Référence reproduite
+exacte (non-régression ✓). Étendu : IS +0,92/1,38 (vs +0,89/1,34), OOS
++1,63/3,03 (vs +1,62/3,04) — l'ajout de 7 noms dans ~265 éligibles ne
+déplace pas un quintile équipondéré. **Règle pré-déclarée appliquée :
+neutre → univers ACTUEL conservé pour la fiche** (et le PortfolioRunner
+n'aura pas de logique d'alias à maintenir — simplicité gagnée).
