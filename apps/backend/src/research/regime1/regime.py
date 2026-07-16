@@ -81,7 +81,8 @@ def gate_series(P, F, cnt, lastev, hist):
 
 
 def portfolio_gated(P, F, cnt, lastev, S, gate_on, seg, cons, btc_r=None,
-                    perm=None, cost_mult=1.0, r_exec=None, btc_f=None, cover=None):
+                    perm=None, cost_mult=1.0, r_exec=None, btc_f=None, cover=None,
+                    shortable=None):
     lp = np.log(P)
     n, na = P.shape
     r = np.vstack([np.zeros((1, na)), np.diff(lp, axis=0)])
@@ -100,6 +101,8 @@ def portfolio_gated(P, F, cnt, lastev, S, gate_on, seg, cons, btc_r=None,
         if gate_on[t]:
             elig = (np.isfinite(Su[t]) & np.isfinite(P[t]) & (hist[t] >= C.WARMUP)
                     & (cnt[t] >= 21) & (lastev[t] <= 2))
+            if shortable is not None:
+                elig = elig & shortable[t]      # re-mesure univers restreint (étape 8c)
             idx = np.flatnonzero(elig)
             if len(idx) >= C.MIN_ALIVE:
                 ntop = max(1, int(round(len(idx) * C.TOPQ)))
@@ -153,16 +156,16 @@ def episodes_of(gate_on, seg, ts):
 
 
 def eval_cell(P, F, cnt, lastev, S, gate_on, seg, cons, btc_r, ts, nperm=1000,
-              r_exec=None, btc_f=None, cover=None):
+              r_exec=None, btc_f=None, cover=None, shortable=None):
     real = portfolio_gated(P, F, cnt, lastev, S, gate_on, seg, cons, btc_r,
-                           r_exec=r_exec, btc_f=btc_f, cover=cover)
+                           r_exec=r_exec, btc_f=btc_f, cover=cover, shortable=shortable)
     m = C.metrics(real)
     rng = np.random.default_rng(7)
     hit = 0
     for _ in range(nperm):
         null = portfolio_gated(P, F, cnt, lastev, S, gate_on, seg, cons, btc_r,
                                perm=rng.permutation(P.shape[1]),
-                               r_exec=r_exec, btc_f=btc_f)
+                               r_exec=r_exec, btc_f=btc_f, shortable=shortable)
         sd = null.std(ddof=1)
         if (null.mean() / sd * np.sqrt(365) if sd > 0 else -9) >= m['sharpe']:
             hit += 1

@@ -308,3 +308,31 @@ noms OKX-listables (ce qu'on ferait en vrai sur notre infra) ?
   univers réduit » ; sinon → « OKX insuffisant en l'état », options à
   arbitrer par Mario (venue Binance ? attendre l'élargissement du listing
   OKX ? sleeve réduite ?). UNE passe.
+
+### Re-mesure OKX — RÉSULTAT (une passe) : DÉPLOYABLE ✓ (Sharpe +1,39 ≥ 0,9)
+
+`okx_replay.py` : sous-univers shortable méd 117 noms (vs 265), quintile ~35
+(vs ~80). **OOS univers-OKX : Sharpe +1,39 (86 % de la réf +1,62), CAGR
++89,9 %/an, DD 33,0 %, Calmar 2,73, ép 7/11** — l'edge transpose à
+l'univers exécutable sur notre infra.
+
+**Nuance consignée (importante, pas cosmétique)** : p permutation = 0,26
+dans le sous-univers (vs 0,038 complet) — DANS l'univers OKX récent, la
+sélection funding-max ne bat plus significativement un panier junk-OKX
+aléatoire : le listing OKX pré-filtre la qualité, la dispersion de junk y
+est plus faible, et le rendement vient de la PORTE + l'exposition short-junk
+générique + long BTC. Implications : (a) robustesse d'implémentation (la
+sélection exacte importe peu dans ce sous-univers) ; (b) ne PAS vendre la
+« sélection fine » comme la source de l'edge en exécution OKX ; (c) la
+validation statistique de la stratégie reste celle des étapes 1-5 (univers
+complet, placebo/nulls/épisodes/Bonferroni) — ceci est une mesure
+d'exécutabilité. Toute simplification (ex. panier équipondéré sans signal)
+serait une NOUVELLE stratégie : non testée ici, non pré-déclarée, PAS de
+dérive.
+
+**VERDICT ÉTAPE 8 GLOBAL : PASSE** — 8a capacité ×10 la barre (après
+correction d'artefact consignée), 8b coûts déjà nets + stress ×2, 8c
+couverture brute insuffisante MAIS re-mesure pré-déclarée → déployable sur
+univers OKX réduit à 86 % du Sharpe. **La chaîne 1-8 est COMPLÈTE : premier
+candidat de la mission validé de bout en bout.** Prochain livrable : fiche
+de proposition à Mario (aucune action live sans GO explicite — Phase 0).
