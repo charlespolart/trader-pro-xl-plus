@@ -64,7 +64,7 @@ def signal_matrix(P, fam, prm):
     return S
 
 
-def portfolio_fast(P, S, K, seg, kind='LS', perm=None):
+def portfolio_fast(P, S, K, seg, kind='LS', perm=None, min_alive=MIN_ALIVE):
     """version vectorisée : poids constants entre rebalancements."""
     lp = np.log(P)
     n, na = P.shape
@@ -80,7 +80,7 @@ def portfolio_fast(P, S, K, seg, kind='LS', perm=None):
         alive = np.isfinite(Su[t]) & np.isfinite(P[t]) & (hist[t] >= WARMUP)
         idx = np.flatnonzero(alive)
         neww = np.zeros(na)
-        if len(idx) >= MIN_ALIVE:
+        if len(idx) >= min_alive:
             ntop = max(1, int(round(len(idx) * TOPQ)))
             order = idx[np.argsort(Su[t][idx])]
             neww[order[-ntop:]] += 1.0 / ntop
@@ -89,9 +89,10 @@ def portfolio_fast(P, S, K, seg, kind='LS', perm=None):
         i0 = t - lo
         out[i0] -= COST * np.abs(neww - w).sum()
         w = neww
-        # rendements du bloc [t+1, min(t+K, hi)] avec ces poids
+        # rendements du bloc : jours t..min(t+K−1, hi−1), chacun payé par
+        # r[jour+1] — le jour-frontière r[hi] compte (parité pilote exacte)
         j1 = t + 1
-        j2 = min(t + K, hi - 1) + 1
+        j2 = min(t + K, hi, n - 1) + 1
         if j1 < j2:
             out[i0:i0 + (j2 - j1)] += r[j1:j2] @ w
     return out
@@ -157,7 +158,7 @@ def main():
             S = sig20(P, fam, prm)
             for kind in ('LS', 'LO'):
                 a = rp20(P, S, K, seg, kind)
-                b = portfolio_fast(P, S, K, seg, kind)
+                b = portfolio_fast(P, S, K, seg, kind, min_alive=10)
                 worst = max(worst, float(np.abs(a - b).max()))
         print(f'parité pilote↔vectorisé : écart max {worst:.2e} → '
               f"{'OK' if worst < 1e-9 else 'ÉCHEC — ne pas utiliser'}")
