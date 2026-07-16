@@ -99,3 +99,13 @@ déployable sans chantier multi-symbole + bot démo + GO Mario — décision
 parquée sur sa directive « démo plus tard »). Corrélation avec regime1 à
 mesurer au moment du portefeuille (les deux shortent du junk — mais l'un en
 manie chronique, l'autre à l'événement listing).
+
+### Re-mesure exécutabilité OKX — RÉSULTAT (une passe) : PASSE ✓
+
+84 événements couverts 2024-26, retard d'entrée réel médian 2 j (entrée au
+close J+1 du listTime OKX, conservateur) : **Sharpe +1,70 vs +2,04 pour
+l'entrée Binance sur le MÊME sous-ensemble (83 % — barre 50 % largement
+passée)**, Calmar 4,30, méd/trade +23,2 %, win 67 %. Le drift est assez
+profond et durable pour survivre au retard de listing OKX. En pratique :
+~34 événements/an jouables sur notre infra (55 % de couverture), S2 K30
+stop, marge isolée par position.
