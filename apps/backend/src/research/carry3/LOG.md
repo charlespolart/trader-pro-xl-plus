@@ -72,3 +72,15 @@ IS : 2020-07→2024-01 (warmup funding 6 mois).
 ## Journal
 
 - 2026-07-16 : protocole écrit et committé avant exécution.
+
+## GARDE-FOUS (2026-07-16) — passés du premier coup (pipeline hérité rodé)
+
+- **Contrôle positif** : composante funding SEULE de FLEVEL L7 K7 L/S —
+  p=0,002 sous permutation ✓ ; spread BRUT (sans double-compter les coûts,
+  qui appartiennent à la stratégie entière) : **+27,0 %/an à Sharpe 17**
+  (transfert quasi déterministe). La machinerie retrouve la coupe de funding
+  connue. Note d'harnais consignée : la version « avec coûts pleins sur la
+  composante seule » donnait Sharpe −0,54 (double comptage) — le critère du
+  protocole était p<0,01, tenu.
+- **Placebo** (prix iid par actif, funding réel, PnL prix seuls) : 0/24 ✓.
+- Éligibilité observable effective : 132 perps médians sur l'IS.
