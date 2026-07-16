@@ -139,7 +139,7 @@ Priors : maison (campagnes passées listées) × littérature. Statuts :
 | H4 | **Chantier chartiste complet** (section dédiée ci-dessus) | — | 1h/4h/1d multi-actifs | maison : folklore ⛔ sauf Donchian ✅ ; dose-réponse JAMAIS faite | 🔬 prioritaire |
 | H5 | **Lead-lag** : BTC→alts, gros→petits, spot→perp | information incorporée d'abord sur l'actif liquide | klines alts multi-TF (cf. H1) + perp vs spot BTC (déjà là) | littérature : réel à minutes-heures, fragile après frais ; maison : vierge | 🕳 |
 | H6 | **Flux mécaniques** : cascades de liquidations, purges d'OI, réversion post-flux forcé | le flux FORCÉ (pas le sentiment) déplace le prix au-delà de l'équilibre | Coinalyze agrégé (fenêtres 4h/1h glissantes — pertes possibles selon décision PG) ; binance_metrics 5min re-téléchargeable ; tick liquidations = Tardis ~3 k$/mois ⏸ | maison : accum6 ⛔ aux DEUX grains (cascade continue, squeeze=momentum, ΔOI mort, ls_z réel mais non tradable) | ⛔ sauf grain tick ⏸ |
-| H7 | **Vol & régimes + le côté SHORT** : vol-targeting perps, régimes de dominance, stratégies SHORT dédiées | vol clusterisée ; TOUT l'historique maison est long-only — la moitié de l'espace est vierge ; un short perp en bear TOUCHE le funding | funding + klines déjà là ; futures OK | maison : accum4 (shorts perdent dans les RANGES — mais le short de TENDANCE bear avec carry funding est vierge) ; strat2 actions : vol-target dans la bande placebo | 🕳 (short tendance+carry) |
+| H7 | **Vol & régimes + le côté SHORT** : vol-targeting perps, régimes de dominance, stratégies SHORT dédiées | vol clusterisée ; TOUT l'historique maison est long-only — la moitié de l'espace est vierge ; un short perp en bear TOUCHE le funding | funding + klines déjà là ; futures OK + 447 perps 1d en base | **regime1 = PREMIER SURVIVANT CHAÎNE 1-8** (2026-07-16) : G2,5/C3 short quintile funding-max + long BTC, porté par porte médiane-funding ≥ 2,5 bps/j — OOS spot +1,77 / perps réels +1,62 / univers OKX +1,39 ; duel solo perdu (DD) mais **contribution sleeve 20 % : composite OOS Sharpe 0,66→1,30, ρ≈0** ; fiche = regime1/PROPOSITION.md, décision Mario en attente | ✅ **survivant → fiche à Mario** |
 | H8 | **Stat-arb / pairs entre alts corrélés** | co-intégration sectorielle (L1s, DeFi, memes) | klines alts USDT (cf. H1) ; frais serrés = maker requis | littérature 2017-21 riche, décay ; maison vierge | 🕳 |
 | H9 | **Événementiel** : listings/délistings, halvings, unlocks, inclusions | flux d'offre/demande datés et publics | listings = historique Binance reconstructible ; unlocks = source externe à trouver ; halvings n=4 | n faible partout ; prior faible-moyen | 🕳 |
 | H10 | **On-chain / sentiment** | métriques d'adoption/spéculation | sources externes (Coinmetrics community, F&G…) | maison : 0/8 (aggflow CVD ⛔, sentiment jamais survivant) ; actions : F&G mort en OOS | 🕳 (réfutation rapide) |
@@ -149,9 +149,10 @@ Priors : maison (campagnes passées listées) × littérature. Statuts :
 | H14 | **Méta-portefeuille des moteurs maison** : sizing/vol-target/corrélation entre accum, vrx, swing (+ candidats) | la diversification des MÉCANISMES est le seul free lunch local | equity curves des backtests | duo 50/50 déjà ✅ (DD −19,5 % vs −29) ; formalisation complète jamais faite | 🔬 après 1er candidat |
 
 **Ordre d'attaque proposé** (prior × faisabilité données, révisable chaque
-session) : audit1 → H4 (chartiste, données prêtes) → H1 (téléchargement alts
-USDT en parallèle) → H2 (basis/funding momentum, re-fetch funding) → H3/H5 →
-H7 (short) → H8 → H11/H12 → H9/H13 → H10.
+session) : audit1 ✅ → H4 ⛔ → H1 ⛔ → H2-coupe ⛔ → H7 ✅ (regime1
+survivant, fiche à Mario) → **suite : H14 (méta-portefeuille, le « 1er
+candidat » existe désormais) et/ou H3 (saisonnalités, vierge) et/ou
+H2-basis-datés** → H5/H8 → H11/H12 → H9/H13 → H10.
 
 ## Règles de session (reprise)
 
