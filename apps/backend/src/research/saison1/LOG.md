@@ -46,6 +46,17 @@ verdict rapide, propre, chiffré.
 - Stabilité par année ; règle du trop-beau ; ledger de tout essai ;
   OOS unique à la fin.
 
+## Amendement pré-exécution (2026-07-16, AVANT tout calcul)
+
+Le null « permutation de blocs journaliers » est INOPÉRANT pour F1 :
+l'étiquette d'heure survit à une permutation de l'ordre des jours. Null
+UNIFIÉ pour toutes les familles : **décalage circulaire global de k heures**
+(k aléatoire uniforme, k mod période ≠ 0 — période 24 h pour F1/F3/F4,
+168 h pour F2), 1000 tirages — préserve TOUTE l'autocorrélation de la
+série, casse uniquement l'alignement calendaire. Placebo : pipeline complet
+sur rendements iid-shufflés (~1 % de faux positifs attendus à p<0,01).
+
 ## Journal
 
 - 2026-07-16 : protocole écrit, committé avant exécution.
+- 2026-07-16 : amendement du null (ci-dessus) committé avant exécution.
