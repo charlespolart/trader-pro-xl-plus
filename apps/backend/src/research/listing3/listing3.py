@@ -22,8 +22,14 @@ CACHE = os.path.join(HERE, 'okx_listings_px.csv')
 
 
 def get(url):
-    out = subprocess.run(['curl', '-s', url], capture_output=True, text=True, check=True).stdout
-    return json.loads(out)
+    for attempt in range(3):
+        try:
+            out = subprocess.run(['curl', '-s', '--max-time', '20', url],
+                                 capture_output=True, text=True, check=True).stdout
+            return json.loads(out)
+        except Exception:
+            time.sleep(2 * (attempt + 1))
+    return {}
 
 
 def fetch():
