@@ -103,3 +103,20 @@ un candidat déployable.** Restent (pré-inscrits) : 6. réplication VRAIS prix
 perps (le proxy spot sous-estime basis/coûts de la jambe courte) ;
 7. duel/contribution vs incumbents (ROADMAP) + WF ancré ; stress
 d'exécution (liquidité de la jambe short en manie, slippage au tick).
+
+## ÉTAPE 6 (2026-07-16) — réplication vrais prix perps : définition PRÉ-DÉCLARÉE
+
+Écrit et committé AVANT de voir le moindre chiffre perp.
+
+- Données : klines 1d um-futures Vision, 447 symboles (funding ∩ univers spot
+  + BTCUSDT), 2020-01→now, base 5438 (`ensure_perps.ts` + `perp_symbols.txt`).
+- Réplication STRICTE : porte, éligibilité, sélection = INCHANGÉES (spot).
+  Seule l'EXÉCUTION change : rendements perp réels quand disponibles
+  (fallback spot compté et rapporté), long BTC en PERP qui PAIE son funding
+  (coût de portage réel en manie, ignoré par le proxy spot).
+- **Variante jugée (unique) : « perp intégral »** = jambe short perp + long
+  BTC perp − funding BTC. Le diag « short perp + long BTC spot » est
+  INFORMATIF seulement (localiser la dégradation), pas une cellule de choix.
+- Barre : Sharpe OOS perp ≥ 0,9 (≈50 % du 1,77 spot). Sinon : MORT, verdict,
+  horizon suivant.
+- Aucune nouvelle grille : G2,5/C3 uniquement, IS+OOS rejoués tels quels.
