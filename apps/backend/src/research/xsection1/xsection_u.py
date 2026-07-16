@@ -170,6 +170,28 @@ def main():
     alive = (np.isfinite(P[seg[0]:seg[1]]).sum(axis=1))
     print(f'univers : {len(syms)} symboles ≥180 j ; vivants méd. IS = {int(np.median(alive))}')
 
+    if mode == 'placebo':
+        rng = np.random.default_rng(42)
+        P2 = np.full_like(P, np.nan)
+        for a in range(P.shape[1]):
+            fin = np.where(np.isfinite(P[:, a]))[0]
+            if len(fin) < 150:
+                continue
+            lpa = np.log(P[fin, a])
+            sh = rng.permutation(np.diff(lpa))
+            P2[fin, a] = np.exp(np.concatenate([[lpa[0]], lpa[0] + np.cumsum(sh)]))
+        rows = []
+        for fam, prm, K in GRID:
+            S = signal_matrix(P2, fam, prm)
+            for kind in ('LS', 'LO'):
+                m, _ = eval_config(P2, S, K, seg, kind, nperm=200)
+                rows.append(m['p'])
+        ps = [p for p in rows if np.isfinite(p)]
+        hit = sum(1 for p in ps if p < 0.01)
+        print(f'PLACEBO UNIVERS : {hit}/{len(ps)} à p<0,01 = {hit / len(ps) * 100:.1f}% (toléré ≤3%) → '
+              f"{'OK' if hit <= 0.03 * len(ps) else 'ALERTE — STOP'}")
+        return
+
     if mode == 'is':
         rows = []
         for fam, prm, K in GRID:
