@@ -157,3 +157,42 @@ shorté est donc conservateur — un mapping 1000×↔spot est une amélioration
 FUTURE à tester proprement, hors réplication. Panel : 445/564 colonnes avec
 données futures (les ~120 restantes = paires spot sans perp — jamais
 shortables, cohérent).
+
+## ÉTAPE 7 (2026-07-16) — duel & contribution vs incumbents : protocole PRÉ-DÉCLARÉ
+
+Committé AVANT tout calcul. Série regime1 utilisée PARTOUT : la variante
+JUGÉE de l'étape 6 (perp intégral, la plus conservatrice — si elle bat, le
+long-BTC-spot bat a fortiori). Rendements quotidiens, fenêtre continue
+2020-07-01→2026-07-01 (IS+OOS enchaînés, mêmes poids/porte, rien re-fitté).
+
+**7a. Séries incumbents** (`incumbents_run.ts`, moteur réel runBacktest,
+coûts OKX taker 0,10 % + slip 0,05 %, défauts committés, base 5438,
+symbolInfo épinglé) : btc-swing (quote USD), btc-accumulator (base BTC),
+btc-vrx (base BTC) sur 2020-07→2026-07 ; équités quotidiennes dumpées CSV.
+Conversion USD des sleeves base : équité_BTC × close BTCUSDT spot 1d.
+
+**7b. Duel direct (dénomination commune USD)** vs btc-swing — le seul
+incumbent quote. Fenêtre JUGE = OOS pur 2024-01→2026-07 (zéro sélection
+regime1 dedans) ; fenêtre info = 2020-07→2026-07. Barre (ROADMAP) : CAGR
+supérieur à DD égal ou moindre, OU CAGR ~égal à DD nettement moindre.
+
+**7c. Contribution portefeuille à risque constant.** Composite référence =
+1/3 accum + 1/3 vrx + 1/3 swing (rendements quotidiens USD, rebalancement
+quotidien — simplification standard, consignée). Candidat = 80 % référence
++ 20 % regime1 (sleeve FIGÉE d'avance, pas de grille). Le candidat est mis à
+l'échelle scalaire pour ÉGALISER la vol quotidienne du référence sur la
+fenêtre. Barre : CAGR supérieur ET DD pas pire de plus de 3 pts, sur les
+DEUX fenêtres (info + juge). Rapportées : corrélations quotidiennes regime1
+vs chaque incumbent et vs composite (attendu |ρ| ≤ 0,5 — le long BTC 1:1
+pendant ON créera de la corrélation BTC, à mesurer honnêtement), part des
+jours ON de regime1 où chaque incumbent est simultanément en position.
+
+**7d. Stabilité temporelle** (WF « ancré » adapté : AUCUN paramètre n'est
+re-fitté, on teste que le résultat n'est pas porté par un seul bloc) :
+Sharpe du perp intégral par période calendaire (2020H2, 2021, …, 2026H1) ;
+comptées seulement les périodes avec ≥ 15 jours ON ; barre : majorité des
+périodes comptées positives ET aucune ≤ −1,0.
+
+Si 7b OU 7c passe (avec 7d tenue) → étape 8 (stress d'exécution). Si les
+deux échouent → verdict « facteur réel mais n'améliore pas l'existant »,
+consigné, horizon suivant.
