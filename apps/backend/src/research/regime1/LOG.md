@@ -75,3 +75,31 @@ IS : 2020-07→2024-01. OOS intact jusqu'à barre 1-4 tenue.
   une médiane réelle 3,0-5,0 bps/j — la manie n'est devenue maniaque qu'à
   partir de fin décembre 2020. MON prior de calendrier était faux, la porte
   est juste. Consigné, seuil INCHANGÉ, aucun re-fit.
+
+## IS + OOS (2026-07-16) — PREMIER SURVIVANT DE LA CHAÎNE COMPLÈTE
+
+**IS** (placebo 0/9 ✓) : 7/9 BH ; deux cellules tiennent la chaîne 1-4 :
+- **G5,0/C1 (primaire)** : Sharpe +1,91, +38,7 %/an, DD 23,0 %, Calmar 1,68,
+  p=0,001, ép 4/7, ON 17,8 %, coûts ×2 → 1,49 ✓ ;
+- G2,5/C3 : Sharpe +1,15, Calmar 2,12, ép 6/10, coûts ×2 → 0,82 ✓.
+
+**OOS 2024-01→2026-07 (UNE passe, dépensée pour ces deux cellules)** :
+- G5,0/C1 : **ÉCHEC à la barre** (Sharpe +0,79 = 41 % de l'IS < 50 % ;
+  ép 1/3) — même signe et p=0,006, mais la barre est la barre.
+- **G2,5/C3 : PASSE TOUT — Sharpe +1,77 (154 % de l'IS), +122,7 %/an,
+  DD 33,4 %, Calmar 3,67, ép 7/11 positifs, BH ✓** (Bonferroni ×2 sur les
+  2 tests OOS : p=0,03, tient). La jambe short nue (C2) confirme le mécanisme
+  en OOS : +115,9 %/an, ép 8/11 — les vagues memecoin 2024-25 ont payé les
+  shorts de junk comme la thèse le prévoyait.
+
+**Anatomie du survivant G2,5/C3** : porte médiane-funding ≥ 2,5 bps/j (ON
+69 % IS / 50 % OOS — plus « chronique » que la G5, dormance partielle) ;
+short quintile funding-max + long BTC 1:1 pendant ON ; signal FLEVEL L3
+hérité ; K7. IS 1,15/2,12 → OOS 1,77/3,67 : le facteur s'est RENFORCÉ hors
+échantillon (rare — cohérent avec des manies 2024-25 plus fréquentes).
+
+**STATUT : premier survivant chaîne complète (critères 1-5+OOS) — PAS ENCORE
+un candidat déployable.** Restent (pré-inscrits) : 6. réplication VRAIS prix
+perps (le proxy spot sous-estime basis/coûts de la jambe courte) ;
+7. duel/contribution vs incumbents (ROADMAP) + WF ancré ; stress
+d'exécution (liquidité de la jambe short en manie, slippage au tick).
