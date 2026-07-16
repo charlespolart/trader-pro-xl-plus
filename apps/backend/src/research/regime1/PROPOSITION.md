@@ -80,8 +80,11 @@ recommandation ; 10 % est déjà substantiel si tu préfères démarrer petit.
 
 1. **Spécifier la stratégie TS** (`strategies/`) : multi-symbole perps OKX,
    porte sur funding Binance (data), K7, sleeve paramétrable — chantier
-   moteur : premier bot MULTI-SYMBOLE de la plateforme (le moteur est
-   mono-symbole aujourd'hui — travail réel à chiffrer avant d'engager).
+   moteur : premier bot MULTI-SYMBOLE de la plateforme. **CHIFFRÉ le
+   17-07 : voir `research/moteur-multi/ETUDE.md`** — PortfolioRunner dédié
+   (zéro risque pour les bots live), ~15-24 j de dev pour les DEUX
+   candidats (listing2 partage 70 % de l'infra), plan A/B/C, risques et
+   parades. La démo des deux candidats est donc un SEUL chantier.
 2. **Bot DÉMO OKX** avec les gardes habituelles (pré-trade soldes réels,
    dérive bloquante, Telegram par transaction), sleeve simulée ~6 k$.
    Validation : ≥ 1 épisode ON complet propre + funding OKX mesuré vs
