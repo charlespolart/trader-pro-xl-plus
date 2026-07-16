@@ -76,3 +76,16 @@ disponibilité ET l'autocorrélation, casse l'alignement aux rendements ;
 conservateur sur le turnover. LIMITE PRÉ-DÉCLARÉE : dernier amendement de
 machinerie d'oi1 — si le placebo sonne encore, verdict « OI non testable
 proprement » (pattern pairs1), campagne close sans lecture d'IS.
+
+## VERDICT (2026-07-17) : ⛔ E1 CLOS au critère 4 — réel-ish mais les frais mangent tout
+
+Machinerie assainie en 3 amendements (composite → univers → null intra-vie,
+placebo final 0/4). IS lisible : direction longue p≈1 → miroir :
+- OI-MOM : mort aux DEUX sens (le churn du Δ7j se paie deux fois) ;
+- **OI-LEVEL LS miroir (short le levier gonflé / long le délaissé) :
+  +0,98/1,18 p=0,002, 3/4 années positives** (2020 +1,16 ; 2021 +1,99 ;
+  2022 +0,11 ; 2023 −0,16 — décay net) ; **coûts ×2 → +0,17 : critère 4
+  MORT** (~80 % du brut part en frais à ×1). OOS JAMAIS consommé.
+Cohérence de famille (zvol, OI-MOM, OI-LEVEL) : TOUT facteur cross-section
+exogène à churn hebdomadaire meurt aux frais taker — seuls survivent chez
+nous les ÉVÉNEMENTS datés (listing2) et les PORTES de régime (regime1).

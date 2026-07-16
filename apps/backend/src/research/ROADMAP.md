@@ -180,6 +180,9 @@ formalisé/parqué. Extension par priors × faisabilité × non-redondance :
 | N4 | **Flux de listings Bybit/OKX pour listing2** — élargit le n et la capacité du candidat n°2 | même drift, autres venues d'événements | listTime OKX ✓ ; archive Bybit | renforce la fiche | 🕳 | ⛔ élargissement (OKX-only ne drifte pas) / ✓ mécanisme précisé (= événement BINANCE ; communs −58 % pct 0,0) |
 | N5 | Timing d'exécution 15m-1h des ordres candidats | réduction de slippage | 1h univers en base | utilité démo | ⏸ à la démo |
 
+| E1 | **OI cross-section** (OI-MOM, OI-LEVEL purs) | stock de levier = crowding | Coinalyze .A, 443 perps (oi1/oi_binance.csv) | **⛔ critère 4 (2026-07-17)** : OI-LEVEL miroir réel-ish (+0,98 IS, 3/4 années, décay 22-23) mais ×2→0,17 ; 3 attrapes placebo (6e-7e-8e : composite, univers, disponibilité→null intra-vie) ; OOS préservé | ⛔ frais |
+| E5 | Corrélation candidat1×candidat2 | additivité portefeuille | séries en place | **✓ ρ≈0,04-0,10** — les 2 sleeves coexistent | ✓ mesuré |
+
 Ordre d'attaque : N1 → N2 → N3/N4 (renforcement des fiches). Arsenal
 inchangé (protocole committé avant, placebo, contrôle, BH, OOS une passe,
 barre inamovible).
