@@ -109,3 +109,12 @@ passée)**, Calmar 4,30, méd/trade +23,2 %, win 67 %. Le drift est assez
 profond et durable pour survivre au retard de listing OKX. En pratique :
 ~34 événements/an jouables sur notre infra (55 % de couverture), S2 K30
 stop, marge isolée par position.
+
+### Corrélation entre candidats (E5, 2026-07-17) : ρ ≈ 0 — les deux sleeves coexistent
+
+ρ(regime1 perp intégral, listing2 S2 K30 stop) = +0,04 (fenêtre commune) /
++0,07 (OOS) ; sur les jours où les DEUX sont actifs (43-46 % du temps) :
++0,06/+0,10. Malgré la parenté « short de junk », populations et timings
+diffèrent (manie chronique vs premier mois post-listing). Conséquence
+portefeuille : les deux candidats sont additifs (chacun ρ≈0 aux moteurs ET
+entre eux) — le PortfolioRunner pourra porter les deux sleeves.
