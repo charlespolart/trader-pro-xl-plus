@@ -336,3 +336,18 @@ couverture brute insuffisante MAIS re-mesure pré-déclarée → déployable sur
 univers OKX réduit à 86 % du Sharpe. **La chaîne 1-8 est COMPLÈTE : premier
 candidat de la mission validé de bout en bout.** Prochain livrable : fiche
 de proposition à Mario (aucune action live sans GO explicite — Phase 0).
+
+## EXTENSION 1000× (2026-07-17) — protocole PRÉ-DÉCLARÉ avant exécution
+
+Correction de la limitation technique documentée à l'étape 6 : 15 perps
+memecoin à préfixe 1000×/1000000× (PEPE, BONK, FLOKI, LUNC…) n'ont JAMAIS
+été éligibles faute de match de nom avec le spot — le junk le plus junk
+échappait à la jambe short. Ce n'est PAS un knob : cellule, seuils, signal,
+K, coûts, fenêtres restent STRICTEMENT inchangés ; seul le MATCHING
+funding/perp↔spot s'élargit (alias 1000XUSDT→XUSDT, appliqué UNIQUEMENT si
+le spot strippé existe dans l'univers — garde anti-faux-match ; les
+rendements log sont invariants au facteur 1000).
+- Test : G2,5/C3 perp intégral, IS + OOS, UNE passe.
+- Verdict pour la FICHE uniquement : améliore → l'univers déployé inclura
+  le mapping ; dégrade ou neutre → univers actuel conservé. Décision prise
+  UNE fois, ici, avant la démo — pas de sélection répétée.
