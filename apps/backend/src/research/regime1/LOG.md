@@ -196,3 +196,40 @@ périodes comptées positives ET aucune ≤ −1,0.
 Si 7b OU 7c passe (avec 7d tenue) → étape 8 (stress d'exécution). Si les
 deux échouent → verdict « facteur réel mais n'améliore pas l'existant »,
 consigné, horizon suivant.
+
+## ÉTAPE 7 — VERDICT (2026-07-16) : 7b PERDU / **7c GAGNÉ ×2 fenêtres** / 7d 7/7 → étape 8
+
+Exécution : `incumbents_run.ts` (moteur réel : swing ×5,48 USD, accum 2,110
+BTC, vrx 2,753 BTC sur 2020-07→2026-07) + `regime.py series` (série continue
+perp intégral, rebal K7 continu) + `duel.py`.
+
+**7b duel USD brut vs btc-swing : PERDU à la lettre de la barre** — CAGR
+écrase (info : +87,6 %/an vs +32,8 % ; JUGE OOS : +133,3 %/an vs +10,1 %)
+mais DD supérieur (45,3 % vs 24,2 % ; 33,7 % vs 20,4 %) → ni cas A ni cas B.
+En solo à risque brut, ce n'est PAS une domination : il rapporte ~3× plus en
+prenant ~1,8× plus de DD. (Nota : Sharpe duel 2,08 OOS vs 1,62 à l'étape 6 =
+rendements simples vs log + série continue — convention, pas un bug.)
+
+**7c contribution à risque constant : AMÉLIORE, nettement, sur les DEUX
+fenêtres.** Composite 1/3 accum + 1/3 vrx + 1/3 swing (USD), sleeve 20 %
+figée, vol égalisée (levier ≈ ×1,19) :
+- info 2020-07→26 : Sharpe 1,27→1,66, CAGR +52,6→+77,9 %/an, DD 40,1→34,9 %
+  (Calmar 1,31→2,23) — rendement +25 pts ET DD −5 pts ;
+- **JUGE OOS 2024→26 : Sharpe 0,66→1,30, CAGR +17,9→+45,4 %/an, DD
+  31,7→30,2 %** (Calmar 0,57→1,50).
+
+**Corrélations quotidiennes ≈ ZÉRO** (vs swing +0,02, accum +0,01, vrx
+−0,00, composite +0,01 ; idem sur jours ON) — vrai diversifiant, le long BTC
+1:1 pendant ON ne crée pas de corrélation mesurable (jambes compensées).
+Co-activité pendant les jours ON : swing en position 35,6 % (concentration
+BTC simultanée à surveiller au design final), accum en excursion 4,3 %, vrx
+8,0 % — les manies ne coïncident pas avec les excursions des accumulateurs.
+
+**7d stabilité : 7/7 périodes comptées positives** (pire : 2021 à +0,18 —
+l'année « porte chronique » qui paie peu net de coûts ; 2022 +1,00 avec
+133 j ON ; 2024 +2,49 ; 2025 +2,12) → STABLE ✓.
+
+**Décision protocolaire : 7c ✓ + 7d ✓ → étape 8 (stress d'exécution).**
+Lecture honnête pour Mario : regime1 ne REMPLACE pas un incumbent — il
+s'AJOUTE au portefeuille comme sleeve décorrélée et c'est là qu'il crée de
+la valeur (le composite OOS passe de Calmar 0,57 à 1,50 à vol égale).

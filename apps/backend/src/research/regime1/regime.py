@@ -233,6 +233,33 @@ def main():
               f"{verdict_oos:+.2f} → {'SURVIT ✓' if ok else 'MORT ✗'}")
         return
 
+    if mode == 'series':
+        # étape 7 : dump de la série quotidienne du PERP INTÉGRAL (variante
+        # jugée étape 6), fenêtre CONTINUE IS+OOS, rebal K7 continu. Aucune
+        # évaluation nouvelle — juste la série pour duel/contribution.
+        P_perp = load_perp_panel(syms, ts)
+        btc_r_perp = load_btc(ts, market='futures')
+        F_btc = load_btc_funding(ts)
+        na = P.shape[1]
+        with np.errstate(all='ignore'):
+            r_p = np.vstack([np.zeros((1, na)), np.diff(np.log(P_perp), axis=0)])
+            r_s = np.vstack([np.zeros((1, na)), np.diff(np.log(P), axis=0)])
+        has = np.isfinite(r_p)
+        has[0] = False
+        r_s = np.where(np.isfinite(r_s), r_s, 0.0)
+        r_exec = np.where(has, r_p, r_s)
+        on = np.where(np.isfinite(g), g >= 2.5 / 1e4, False)
+        sg = (int(np.searchsorted(ts, IS_START)), int(np.searchsorted(ts, OOS_END)))
+        real = portfolio_gated(P, F, cnt, lastev, S, on, sg, 'C3', btc_r_perp,
+                               r_exec=r_exec, btc_f=F_btc)
+        out = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'regime1_perp_daily.csv')
+        with open(out, 'w') as f:
+            f.write('ts,ret,gate_on\n')
+            for i in range(sg[0], sg[1]):
+                f.write(f'{int(ts[i])},{real[i - sg[0]]:.10f},{int(bool(on[i]))}\n')
+        print(f'{out} : {sg[1] - sg[0]} jours, cumul log {real.sum():+.3f}')
+        return
+
     if mode == 'control':
         import datetime
         def dstr(i):
