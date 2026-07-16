@@ -268,3 +268,43 @@ long BTC réalisable en spot déjà détenu (étape 6 : variante meilleure).
 Barre globale étape 8 : **8a ✓ ET 8c ≥ 70 %** → fiche complète de
 proposition à Mario (stratégie + intégration portefeuille + plan bot démo).
 Sinon : consigner ce qui casse, verdict, suite ROADMAP.
+
+## ÉTAPE 8 — mesures (2026-07-16) : 8a PASSE (après correction d'artefact), 8c CASSE structurellement
+
+Première passe : p10 capacité = 0 → vérification factuelle AVANT verdict :
+l'artefact venait de 0,1 % de noms sans kline + perps moribonds à volume
+réellement nul (1,7-7,6 % des noms selon l'année — délistages en cours).
+**8a corrigé (noms mesurés >0) : S_max méd 2,4 M$, p10 651 k$, min 159 k$ →
+barre 60 k$ PASSÉE ×10, même le pire panier fait ×26 la sleeve.** Correction
+de mesure consignée (l'esprit de la barre : chaque nom shorté supporte 1 %
+de participation), pas un déplacement de barre. À la fiche : filtre
+d'exécutabilité ADV>0 (impact sélection ~2-8 % des noms, re-mesure incluse
+ci-dessous). Structurel noté : ntop 13 (2020) → 104 (2026), la queue du
+panier s'affine (ADVmin p10 : 7,4 M$ en 2021 → 0,4-0,8 M$ en 2025-26).
+
+**8b : turnover 54×/an → 16,2 %/an de coûts aux 30 bps — déjà DANS tous les
+chiffres nets ; stress ×2 passé (étape 6).** Consigné.
+
+**8c : couverture OKX 44 % global et DÉCROISSANTE — 66,7 % (2020) →
+26-34 % (2025-26). CASSE réelle, pas un artefact** : l'univers perp Binance
+récent (ntop ~100) est plein de junk fin jamais listé chez OKX (spot-check :
+ACX, PHB, SANTOS, SLP, LUMIA… — mapping vérifié). L'exécution OKX ne peut
+PAS répliquer la stratégie mesurée telle quelle.
+
+### Re-mesure « univers OKX » PRÉ-DÉCLARÉE (avant exécution)
+
+Question : que vaut G2,5/C3 si la jambe short ne peut sélectionner QUE des
+noms OKX-listables (ce qu'on ferait en vrai sur notre infra) ?
+- Fenêtre : **OOS 2024-01→2026-07 UNIQUEMENT** — la liste OKX vivante y est
+  une approximation raisonnable de la liste d'époque ; appliquée à 2020-23
+  elle créerait du survivorship (délistés OKX absents), donc PAS de re-run
+  historique complet avec cette liste (consigné).
+- Sélection : quintile funding-max RECALCULÉ dans le sous-univers
+  éligibles ∩ OKX-listables ∩ volume>0 ; MIN_ALIVE, G, K, signal, coûts,
+  porte : INCHANGÉS. Porte calculée sur TOUS les éligibles (le régime est
+  global) — seule la jambe shortable est restreinte. Exécution perp
+  intégrale (r_exec + long BTC perp − funding).
+- Barre (esprit étape 6) : **Sharpe OOS ≥ 0,9** → « déployable sur OKX,
+  univers réduit » ; sinon → « OKX insuffisant en l'état », options à
+  arbitrer par Mario (venue Binance ? attendre l'élargissement du listing
+  OKX ? sleeve réduite ?). UNE passe.
