@@ -27,3 +27,23 @@ par Binance (flux additionnel pur).
 ## Journal
 
 - 2026-07-17 : protocole écrit et committé avant exécution.
+
+## VERDICT (2026-07-17) : pas d'élargissement (⛔ OKX-only) — mais le MÉCANISME est précisé
+
+233 listings SWAP OKX 2024-01→2026-06, prix OKX 1d :
+- **OKX-only (n=113) : AUCUN drift négatif** — excès J+1→30 : +2,2/+7,8/
+  +6,3 % (moy/méd/trim10), percentiles 81/100/100 (plutôt POSITIF à la
+  limite). Les coins listés seulement chez OKX ne subissent pas le drift.
+- **Communs (n=31, mesurés depuis leur listing OKX) : −57/−59/−53 %,
+  percentile 0,0** — encore plus profond que le −26 % de listing1 (petit n,
+  coins les plus « hype » listés partout).
+
+**Lecture** : le drift post-listing est attaché à L'ÉVÉNEMENT BINANCE (pic
+d'attention / exit-liquidity de la vague memecoin), PAS au listing
+générique d'une venue. Conséquences : (1) le flux d'événements de listing2
+RESTE les listings Binance exécutés sur OKX (~34/an) — pas d'élargissement
+par OKX-only ; (2) le mécanisme du candidat n°2 est mieux compris (et le
+contraste net 0,0 vs 81-100 confirme que la machinerie discrimine, pas un
+artefact de méthode) ; (3) piste future consignée : le co-listing
+(Binance + OKX rapproché) semble MARQUER les pires drifts — info de sizing
+potentielle pour la démo, à re-mesurer proprement le moment venu.
