@@ -10,7 +10,8 @@ const db = createDb(process.env.DATABASE_URL ?? 'postgres://tpx:tpx@localhost:54
 const store = new CandleStore(db)
 const START = Date.parse('2020-01-01T00:00:00Z')
 const END = Date.now()
-const syms = readFileSync(new URL('./perp_symbols.txt', import.meta.url), 'utf8')
+const file = process.env.SYMBOLS_FILE ?? new URL('./perp_symbols.txt', import.meta.url).pathname
+const syms = readFileSync(file, 'utf8')
   .split('\n').map((s) => s.trim()).filter(Boolean)
 
 let done = 0
