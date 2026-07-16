@@ -50,3 +50,23 @@ IS tient la chaîne).
 ## Journal
 
 - 2026-07-16 : protocole écrit, committé avant exécution.
+
+## VERDICT (2026-07-16) : ⛔ H5 CLOS au grain 1d — 0/12 BH, effet inexistant ou broyé
+
+- Machinerie prouvée : contrôle planté (fuite t+1) **Sharpe +11,54
+  p=0,005** ✓ ; placebo panel iid **0/12** à p<0,01 ✓.
+- **L1 BTC→alts : néant total** (Sharpe −2,4…+0,02 ; les alts bougent AVEC
+  BTC le jour même, rien ne reste pour t+1).
+- **L2 gros→petits : la seule trace positive** (L7 : Sharpe 0,55-0,59,
+  p=0,027-0,058) mais TRÈS loin de la chaîne : p > BH (rang 1 exigerait
+  0,0083), Sharpe < 0,8, coûts ×2 → ~0,2.
+- Turnover de timing 60-400 flips/an = 18-120 %/an de coûts taker : même un
+  vrai signal fin de cette classe est broyé par construction au quotidien.
+- OOS 2024→26 : JAMAIS touché (rien ne tenait l'IS).
+- Grain horaire/spot→perp : PARQUÉ pour des raisons de FOND uniquement —
+  littérature = minutes-heures en maker/HFT (hors périmètre bots taker), et
+  les coûts taker seraient PIRES au grain fin (plus de flips). À rouvrir si
+  l'infra maker existe un jour. (La contrainte disque initialement notée est
+  LEVÉE par Mario le 16-07 — « ne te limite jamais pour le disque » — et le
+  1h univers est téléchargé pour les horizons suivants : H8 stat-arb
+  intraday, H11 microstructure.)
