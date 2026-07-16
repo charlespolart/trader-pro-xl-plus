@@ -62,3 +62,16 @@ IS : 2020-07→2024-01. OOS intact jusqu'à barre 1-4 tenue.
 ## Journal
 
 - 2026-07-16 : protocole écrit et committé avant exécution.
+
+## GARDE-FOUS (2026-07-16) — contrôle de porte : substance ✓, prior de calendrier corrigé
+
+- Porte G=5 bps/j : **7 épisodes IS = les manies connues** (août-20, nov-20,
+  déc-20→mai-21, août-21, oct-21, nov-23, déc-23 — la vague memecoin de
+  fin 2023 est DÉJÀ attrapée en bout d'IS) ; **0 % d'activation dans la zone
+  morte juin-22→juin-23** (littéral). G=2,5 trop lâche (ON 69 %), G=10
+  resserre sans changer les épisodes.
+- Le critère chiffré « ON >60 % de nov-20→avr-21 » a raté d'un point (59 %) :
+  vérification factuelle → **0 trou de données** ; les 74 jours OFF avaient
+  une médiane réelle 3,0-5,0 bps/j — la manie n'est devenue maniaque qu'à
+  partir de fin décembre 2020. MON prior de calendrier était faux, la porte
+  est juste. Consigné, seuil INCHANGÉ, aucun re-fit.
