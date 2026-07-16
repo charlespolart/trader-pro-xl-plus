@@ -58,3 +58,29 @@ d'avance — consigné).
   leurs règles (z/stop/timeout) même hors sélection ; seule l'ENTRÉE exige
   la sélection**. Barre du contrôle inchangée : trouvée majoritairement +
   Sharpe brut élevé, sinon stop.
+
+## VERDICT (2026-07-16) : ⛔ H8 CLOS SANS EXÉCUTER LE RÉEL — sélection structurellement sous-puissante (courbe de puissance)
+
+Le contrôle planté a été poussé sur TROIS designs de sélection et deux
+forces de signal — il n'a jamais atteint la barre :
+- tri R² : trouvée 36 % des mois (σ_spread 2 %/j) ;
+- tri |t| : 36 % (2 %/j), **47 % même à 1 %/j** (co-intégration très
+  propre), Sharpe brut ≤ +1,4 — le top-20 est squatté par des t-stats
+  SPURIOUS (sous H0, le t d'AR(1) suit Dickey-Fuller : |t| 4-8 fréquents
+  sans co-intégration, half-lives longues) ;
+- filtre t ≥ 3,4 (seuil EG) + tri hl : **0 %** — et le calcul le prouve :
+  **t_max théorique d'une VRAIE co-intégration ≈ |φ|/√(0,13/n)
+  ≈ 2,5 pour hl 10 j sur 180 j, INDÉPENDANT du bruit** ; le seuil EG n'est
+  atteignable que pour hl ≤ ~5 j.
+
+**Conclusion structurelle** : sur une fenêtre de sélection raisonnable
+(180 j — au-delà, les relations crypto ne sont plus stationnaires), une
+co-intégration à hl 3-30 j est NON-CERTIFIABLE : tout top-k sera dominé
+par du spurious, et un backtest « réel » n'aurait pas été interprétable
+(pile le rôle du contrôle : il l'a démontré AVANT). Les hl ≤ 5 j
+certifiables impliquent des cycles courts où les coûts taker
+(1,2 %/cycle) sont prohibitifs — même impasse que partout au grain fin.
+- Le RÉEL n'a jamais été évalué → OOS ET IS vierges par construction.
+- Angle maker + grain 1h : hors périmètre bots actuels, noté (le 1h
+  univers est en base pour un éventuel futur).
+- ROADMAP : H8 ⛔ (sous-puissance de sélection × coûts taker).

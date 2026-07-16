@@ -100,9 +100,11 @@ def select_pairs(t0, univ, lp):
             if Rm[i, j] >= CORR_MIN:
                 s = lp[t0 - LOOK_SEL:t0, univ[i]] - lp[t0 - LOOK_SEL:t0, univ[j]]
                 hl, t = half_life_tstat(s)
-                if np.isfinite(hl) and HL_LO <= hl <= HL_HI:
-                    cands.append((t, int(univ[i]), int(univ[j])))
-    cands.sort(reverse=True)
+                # t ≥ 3,4 (seuil Engle-Granger ~5 %) puis half-life la plus
+                # COURTE d'abord (les spurious ont des hl longues)
+                if np.isfinite(hl) and HL_LO <= hl <= HL_HI and t >= 3.4:
+                    cands.append((hl, int(univ[i]), int(univ[j])))
+    cands.sort()
     return [(a, b) for _, a, b in cands[:NPAIRS]]
 
 
@@ -147,7 +149,7 @@ def run(ts, lp, r, F, months, pair_fn, cost_mult=1.0):
 
 def main():
     mode = sys.argv[1] if len(sys.argv) > 1 else 'is'
-    nperm = int(sys.argv[2]) if len(sys.argv) > 2 else 300
+    nperm = int(sys.argv[2]) if len(sys.argv) > 2 and mode == 'is' else 300
     rng = np.random.default_rng(7)
     syms = universe_symbols()
     ts, P = load_panel(syms)
@@ -179,9 +181,10 @@ def main():
         t0 = months[6]
         univ = eligible_universe(t0, V, lp, elig_perp, hist)
         a, b = int(univ[-1]), int(univ[-2])
+        sig = float(sys.argv[2]) if len(sys.argv) > 2 else 0.02
         s = np.zeros(n)
         phi = np.exp(np.log(0.5) / 10.0) - 1.0     # AR(1) de half-life 10 j
-        eps = rng.normal(0, 0.02, n)
+        eps = rng.normal(0, sig, n)
         for t in range(1, n):
             s[t] = s[t - 1] * (1 + phi) + eps[t]
         lp2 = lp.copy()
