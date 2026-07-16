@@ -48,3 +48,22 @@ Exécution PERP INTÉGRALE d'entrée (rendements perps réels + fallback spot
 compté ; la jambe BTC de D2 en perp paie/reçoit son funding) — leçon de
 l'étape 6 de regime1 : plus conservateur que le proxy spot, et les données
 sont déjà en base. Aucun autre changement.
+
+## Amendement 2 — ATTRAPÉ PAR LE PLACEBO (2026-07-17, AVANT tout regard sur l'IS)
+
+Placebo « prix iid, funding réel » : 6/9 à p<0,01 → STOP. Diagnostic : avec
+une porte à ON minuscule (~21 j IS à G2,5), la composante FUNDING domine —
+un long du quintile funding-min pendant une capitulation REÇOIT un carry
+énorme (30-100 bps/j), réel et mécanique, détectable même à prix iid (les
+nulls permutés sélectionnent des colonnes à funding moyen ≈ 0). Le prior
+« 0-1/9 » de mon protocole était FAUX pour ce régime de porte (regime1
+passait 0/9 car 880 j ON noyaient le carry dans le bruit prix).
+Conséquence : le test tel quel ne distingue PAS « edge de PRIX
+post-capitulation » du « carry funding » déjà validé par carry3 (contrôle
++27 %/an). **Amendement (committé avant de lire l'IS)** : (a) placebo
+re-spécifié = composante PRIX SEULE sur prix iid (doit donner ~0/9) ;
+(b) l'éval IS rapporte la DÉCOMPOSITION prix vs funding par cellule — pour
+prétendre à un edge au-delà du carry connu, la composante PRIX doit être
+significative SEULE ; le carry, lui, est acquis mais n'est pas un « edge
+regime2 ». Le premier run IS (lancé avant cet amendement) ne sera PAS
+utilisé pour un verdict.
