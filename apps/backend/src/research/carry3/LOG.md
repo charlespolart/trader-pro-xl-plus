@@ -84,3 +84,31 @@ IS : 2020-07→2024-01 (warmup funding 6 mois).
   protocole était p<0,01, tenu.
 - **Placebo** (prix iid par actif, funding réel, PnL prix seuls) : 0/24 ✓.
 - Éligibilité observable effective : 132 perps médians sur l'IS.
+
+## IS + INSTRUCTION (2026-07-16) — VERDICT H2 : ARTEFACT DE RÉGIME 2020-21
+
+IS 2020-07→2024-01, 24 stats, 1 000 permutations : **3 BH, toutes L/S**
+(FLEVEL L3/K7 Sharpe +0,94 Calmar 0,62 p=0,008 ; FMOM L14/K7 +0,60 p=0,002 ;
+FMOM L30/K7 +0,75 p=0,001) — toutes sous le critère 2 (mur du Calmar, DD
+51-75 % : les jambes prix portent la vol du junk).
+
+**Instruction du meilleur (FLEVEL L3/K7) — fatale :**
+- sous-périodes : **2020-07→2022-01 : Sharpe +2,96, +182,8 %/an ; 2022-01→
+  2024-01 : Sharpe −1,15, −25,0 %/an** — le facteur est MORT avec la manie
+  des memes (compression du funding post-2022, cohérent carry1) ;
+- quintiles : seul Q1 (funding max, shorté) porte (−131 bps/7 j) ; la jambe
+  LONGUE n'a jamais rien donné (Q5 : +2 bps/7 j).
+
+**VERDICT H2 : « artefact de régime »** — la coupe de funding est réelle et
+la machinerie la voit (contrôle +27 %/an brut, 3 BH), mais son expression
+L/S n'a payé que pendant la bulle 2020-21 et PERD depuis 2022. Critère 2
+jamais tenu, sous-périodes rédhibitoires → **OOS JAMAIS consommé**. Le test
+de mélange pré-déclaré (LOWVOL+FUNDING) tombe : on ne blende pas un facteur
+mort (il ne pourrait que diluer LOWVOL, lui-même sous-barre).
+
+**Ce qui reste vivant de H1+H2 pour la suite** : (1) le SHORT de junk à
+funding/vol extrêmes est le seul mécanisme récurrent (les deux campagnes le
+retrouvent) — il alimente H7 (« short de tendance + carry », vierge) avec une
+contrainte connue : c'est épisodique (manies) → penser RÉGIME-GATED plutôt
+que facteur permanent ; (2) le pipeline coupe (placebo/parité/permutation/
+éligibilité observable) est rodé et réutilisable tel quel.
