@@ -165,3 +165,21 @@ H2-basis-datés** → H5/H8 → H11/H12 → H9/H13 → H10.
 4. Incident machine connu : disque plein → Docker/PG tombent. Vérifier
    `df -h` en début de session. Base de recherche : port **5438**
    (tpx-research-db) tant que la décision sur la base 5436 n'est pas prise.
+
+## ROADMAP v2 — EXTENSION DE LA CARTE (2026-07-17, sur directive Mario « étends la carte »)
+
+La carte initiale (14 horizons) est intégralement traitée : 2 candidats
+validés (H7 regime1, H9 listing2), 10 réfutations hermétiques, le reste
+formalisé/parqué. Extension par priors × faisabilité × non-redondance :
+
+| # | Piste | Mécanisme | Données | Prior | Statut |
+|---|---|---|---|---|---|
+| N1 | **regime2 « capitulation »** — le MIROIR de regime1 : porte funding médian ≤ −G, long le quintile funding-min (les plus shortés) ± hedge | squeeze/rebond post-capitulation ; accum6 avait noté « ls_z contrarian = seule trace réelle » ; les shorts crowded paient le rebond | 100 % en place (panel funding + perps) | moyen-fort | 🔬 attaqué |
+| N2 | **Facteur VOLUME cross-section** — z-score de volume anormal → forward (pump detection L/S) | le volume anormal du junk précède/accompagne les dumps | quote_volume univers 1d en base | moyen | 🕳 |
+| N3 | **Réplication Bybit de regime1** — le candidat n°1 doit exister sur une venue indépendante | validation externe (pas un nouvel edge) ; funding Bybit = le plus riche (R3) | archive publique Bybit à construire | renforce la fiche | 🕳 |
+| N4 | **Flux de listings Bybit/OKX pour listing2** — élargit le n et la capacité du candidat n°2 | même drift, autres venues d'événements | listTime OKX ✓ ; archive Bybit | renforce la fiche | 🕳 |
+| N5 | Timing d'exécution 15m-1h des ordres candidats | réduction de slippage | 1h univers en base | utilité démo | ⏸ à la démo |
+
+Ordre d'attaque : N1 → N2 → N3/N4 (renforcement des fiches). Arsenal
+inchangé (protocole committé avant, placebo, contrôle, BH, OOS une passe,
+barre inamovible).
