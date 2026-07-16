@@ -99,3 +99,11 @@ recommandation ; 10 % est déjà substantiel si tu préfères démarrer petit.
   de code live), puis on lance le bot démo.
 - Si tu préfères : je continue la ROADMAP (H3 saisonnalités, H2-basis) et
   cette fiche attend — le facteur est épisodique, il ne « périme » pas vite.
+
+## Post-scriptum robustesse (venue2, 2026-07-17)
+
+Le signal reconstruit à 100 % sur le funding BYBIT (venue indépendante, via
+Coinalyze) reproduit l'OOS : Sharpe +1,42 (88 % du candidat), +70,4 %/an,
+ép 3/4. Le facteur n'est pas un artefact de données Binance. Option de
+design pour la démo : porte multi-venue (plus robuste aux pannes de
+source).

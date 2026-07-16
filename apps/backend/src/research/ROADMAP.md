@@ -176,7 +176,7 @@ formalisé/parqué. Extension par priors × faisabilité × non-redondance :
 |---|---|---|---|---|---|
 | N1 | **regime2 « capitulation »** — le MIROIR de regime1 : porte funding médian ≤ −G, long le quintile funding-min (les plus shortés) ± hedge | squeeze/rebond post-capitulation ; accum6 avait noté « ls_z contrarian = seule trace réelle » ; les shorts crowded paient le rebond | 100 % en place (panel funding + perps) | moyen-fort | 🔬 attaqué | ⛔ (n structurel + carry connu ; 5e attrape placebo) |
 | N2 | **Facteur VOLUME cross-section** — z-score de volume anormal → forward (pump detection L/S) | le volume anormal du junk précède/accompagne les dumps | quote_volume univers 1d en base | moyen | 🕳 | ⛔ critère 4 (réel 5/5 années mais ×2→0,18 ; OOS préservé) |
-| N3 | **Réplication Bybit de regime1** — le candidat n°1 doit exister sur une venue indépendante | validation externe (pas un nouvel edge) ; funding Bybit = le plus riche (R3) | archive publique Bybit à construire | renforce la fiche | 🕳 |
+| N3 | **Réplication Bybit de regime1** — le candidat n°1 doit exister sur une venue indépendante | validation externe (pas un nouvel edge) ; funding Bybit = le plus riche (R3) | archive publique Bybit à construire | renforce la fiche | 🕳 | ✓ CONFIRMÉ (OOS +1,42 = 88 % du candidat, signal 100 % Bybit) |
 | N4 | **Flux de listings Bybit/OKX pour listing2** — élargit le n et la capacité du candidat n°2 | même drift, autres venues d'événements | listTime OKX ✓ ; archive Bybit | renforce la fiche | 🕳 |
 | N5 | Timing d'exécution 15m-1h des ordres candidats | réduction de slippage | 1h univers en base | utilité démo | ⏸ à la démo |
 

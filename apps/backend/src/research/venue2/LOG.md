@@ -30,3 +30,19 @@ alerte de robustesse à consigner).
 ## Journal
 
 - 2026-07-17 : protocole écrit et committé avant exécution.
+
+## VERDICT (2026-07-17) : ✓ ROBUSTESSE EXTERNE CONFIRMÉE — barre passée
+
+Couverture 315/564 colonnes (les perps Bybit ∩ univers). Signal 100 % Bybit
+(porte + sélection + éligibilité), exécution Binance inchangée :
+- IS : Sharpe +0,84, +33,2 %/an, Calmar 1,04, ON 54,7 % (porte plus lisse
+  que Binance : funding Bybit plus riche → épisodes fusionnés 2/2) ;
+- **OOS : Sharpe +1,42 (88 % du +1,62 du candidat), +70,4 %/an, DD 35 %,
+  Calmar 2,01, ép 3/4 → BARRE PASSÉE** (même signe, ≥ 0,8, majorité).
+- p permutation 0,90/0,48 : attendu — teste la sélection intra-porte (pas
+  la source de l'edge, cf. 8c) ; la barre de réplication est le Sharpe.
+**Le facteur regime1 n'est PAS un artefact de la venue Binance** : la même
+mécanique, signal reconstruit sur une venue indépendante (via Coinalyze),
+reproduit l'essentiel de l'OOS. Renfort de robustesse pour la fiche +
+option de design : porte multi-venue (médiane des médianes) notée pour la
+démo.
