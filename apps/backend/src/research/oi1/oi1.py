@@ -148,6 +148,27 @@ def main():
         s_mom[7:] = lO[7:] - lO[:-7]
         # amendement placebo : OI-LEVEL PUR (aucun prix/volume mélangé)
         s_rel = zexp(lO)
+    def eval_rotcol(S, kind, nperm):
+        """éval avec null par ROTATION INTRA-VIE par colonne (amendement 3)."""
+        from xsection_u import metrics, portfolio_fast
+        real = portfolio_fast(P, S, 7, seg, kind)
+        m = metrics(real)
+        rng2 = np.random.default_rng(7)
+        fins = [np.flatnonzero(np.isfinite(S[:, c])) for c in range(S.shape[1])]
+        hit = 0
+        for _ in range(nperm):
+            Sk = np.full_like(S, np.nan)
+            for c, fin in enumerate(fins):
+                if len(fin) > 60:
+                    k = int(rng2.integers(30, len(fin) - 29))
+                    Sk[fin, c] = np.roll(S[fin, c], k)
+            null = portfolio_fast(P, Sk, 7, seg, kind)
+            sd = null.std(ddof=1)
+            if (null.mean() / sd * np.sqrt(365) if sd > 0 else -9) >= m['sharpe']:
+                hit += 1
+        m['p'] = (1 + hit) / (1 + nperm)
+        return m
+
     label = {'placebo': 'PLACEBO OI iid', 'is': 'IS 2020-07→2024-01',
              'oos': 'OOS 2024-01→2026-07 — UNE PASSE'}[mode]
     print(f'=== oi1 {label}{" — MIROIR" if inv else ""} (couverture {ncov}/{na}, net 30 bps) ===')
@@ -155,7 +176,7 @@ def main():
     for nm, S in (('OI-MOM', s_mom), ('OI-LEVEL', s_rel)):
         Su = -S if inv else S
         for kind in ('LO', 'LS'):
-            m, _ = eval_config(P, Su, 7, seg, kind, nperm=1000 if mode != 'placebo' else 200)
+            m = eval_rotcol(Su, kind, 500 if mode != 'placebo' else 200)
             rows.append(dict(nm=nm, kind=kind, **m))
             calmar = m['cagr'] / m['dd'] if m['dd'] > 0 else np.nan
             print(f"{nm} K7 {kind:2s} | Sharpe {m['sharpe']:+5.2f} CAGR {m['cagr']:+7.1f}% "

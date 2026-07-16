@@ -60,3 +60,19 @@ null par EFFET D'UNIVERS (perp vs pas-perp), pas par l'information OI.
 **Amendement 2 (avant toute lecture d'IS, v2 jetée aussi)** : évaluation
 RESTREINTE aux colonnes couvertes par l'OI (le null permute dans le même
 univers) ; placebo re-testé ensuite.
+
+## Amendement 3 (DERNIER — pré-déclaré comme tel) : null par rotation intra-vie
+
+Placebo v3 sonne encore (OI-LEVEL LO p=0,005, univers restreint). Diagnostic
+final : la DISPONIBILITÉ de l'OI suit la vie du PERP (≠ vie du spot) — le
+réétiquetage de colonnes déplace aussi les fenêtres de disponibilité → le
+null diffère du réel par la structure « investi tôt/large vs tard/étroit »,
+un artefact de disponibilité, pas d'information OI. (Le réétiquetage était
+valide pour les signaux dérivés du prix, dont la dispo est alignée à la vie
+de l'actif par construction — pas ici.)
+**Null v4 : ROTATION TEMPORELLE INTRA-VIE par colonne** (roll circulaire
+des valeurs finies de chaque colonne, k ≥ 30) — préserve exactement la
+disponibilité ET l'autocorrélation, casse l'alignement aux rendements ;
+conservateur sur le turnover. LIMITE PRÉ-DÉCLARÉE : dernier amendement de
+machinerie d'oi1 — si le placebo sonne encore, verdict « OI non testable
+proprement » (pattern pairs1), campagne close sans lecture d'IS.
