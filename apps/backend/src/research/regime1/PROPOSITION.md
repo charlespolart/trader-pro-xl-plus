@@ -59,9 +59,13 @@ recommandation ; 10 % est déjà substantiel si tu préfères démarrer petit.
    on déploie la version « univers OKX » (+1,39 OOS, non +1,62). Dans ce
    sous-univers la sélection fine n'est plus significative (p=0,26) : la
    porte fait l'edge, pas le tri intra-panier.
-2. **Funding OKX ≠ Binance** (R3 carry1 : OKX paie 1-3 pts de moins) : la
-   PORTE resterait calculée sur données Binance (données dispo), le funding
-   ENCAISSÉ serait OKX → à mesurer en démo avant tout réel.
+2. **Funding OKX ≠ Binance — MESURÉ (venue1, 2026-07-16)** : sur les 40
+   perps junk du quintile OOS, écart de niveau quasi nul (méd +0,03 bps/j)
+   et **ratio 0,88 les jours porte-ON** (OKX paie aussi en manie) ;
+   corrélation jour-à-jour fine +0,57 seulement — sans gravité car la
+   sélection fine n'est pas la source de l'edge OKX (étape 8c). Risque de
+   base GÉRABLE ; mitigation inchangée : re-mesurer la porte sur funding
+   OKX pendant la démo.
 3. **DD intrinsèque 33-45 %** de la sleeve seule ; épisodes perdants réels
    (4/11 en OOS). Le sizing 20 % est ce qui rend ça portable.
 4. Concentration BTC : pendant ON, le swing est long BTC 35,6 % du temps en
