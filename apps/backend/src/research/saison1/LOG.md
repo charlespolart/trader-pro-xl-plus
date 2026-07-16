@@ -56,7 +56,23 @@ UNIFIÉ pour toutes les familles : **décalage circulaire global de k heures**
 série, casse uniquement l'alignement calendaire. Placebo : pipeline complet
 sur rendements iid-shufflés (~1 % de faux positifs attendus à p<0,01).
 
+## Amendement 2 — ATTRAPÉ PAR LE PLACEBO (2026-07-16, avant toute conclusion)
+
+Premier run placebo : 2/62 cellules BH à p=0,001 sur du bruit iid → null
+INVALIDE. Cause : le décalage « k heures mod période » n'a que 23 valeurs
+distinctes pour F1 (167 pour F2) — résolution de p ≈ 1/24, incompatible
+avec BH 10 % sur 24 cellules (toute cellule extrême sort p=0,001
+artificiel). Les cellules « significatives » du premier run réel ont la
+même signature que le placebo : AUCUNE conclusion n'en est tirée.
+**Correction : rotation circulaire du VECTEUR de rendements entier
+(np.roll de k ∈ [24, n−24], k mod période ≠ 0 → ~52 000 décalages
+distincts), étiquettes fixes.** Le placebo doit repasser ~0/62 avant tout
+regard sur le réel. (3e attrape du placebo dans la mission : null par rangs
+xsection1, contrôles sous-puissants patterns, celui-ci.)
+
 ## Journal
 
 - 2026-07-16 : protocole écrit, committé avant exécution.
 - 2026-07-16 : amendement du null (ci-dessus) committé avant exécution.
+- 2026-07-16 : amendement 2 (null re-corrigé, attrapé par placebo) committé
+  avant toute conclusion sur le réel.
