@@ -47,3 +47,16 @@ doivent être neutralisés par le placebo, sinon spécifier PUR.)
 RETIRÉ, remplacé par OI-LEVEL = z-exp90 de log(OI_coin) PUR (aucun prix,
 aucun volume). Signaux finaux : OI-MOM (Δlog7 OI_coin, pur) + OI-LEVEL
 (pur). Re-placebo complet exigé avant IS.
+
+## Amendement 2 — le placebo sonne ENCORE (2026-07-17) : effet d'univers, pas l'OI
+
+Placebo v2 (signaux purs) : OI-LEVEL LO p=0,005 persiste → le mélange
+d'ingrédients n'était pas la seule fuite. Diagnostic : « avoir un OI » =
+« avoir un perp Binance » = coin établi — le NULL permute les colonnes sur
+TOUT l'univers (443 à OI + 121 spot-only), donc les sélections nulles
+atterrissent sur des colonnes sans OI/moins établies : le placebo bat le
+null par EFFET D'UNIVERS (perp vs pas-perp), pas par l'information OI.
+(7e attrape — parente du survivorship MOM de xsection1.)
+**Amendement 2 (avant toute lecture d'IS, v2 jetée aussi)** : évaluation
+RESTREINTE aux colonnes couvertes par l'OI (le null permute dans le même
+univers) ; placebo re-testé ensuite.

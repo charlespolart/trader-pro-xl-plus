@@ -115,6 +115,12 @@ def main():
     syms = universe_symbols()
     ts, P = load_panel(syms)
     O = load_oi(syms, ts)
+    # amendement 2 : univers RESTREINT aux colonnes à OI (le null permute
+    # dans le même univers — sinon effet perp-vs-pas-perp, 7e attrape)
+    keep = np.isfinite(O).any(axis=0)
+    P = P[:, keep]
+    O = O[:, keep]
+    syms = [s_ for s_, k in zip(syms, keep) if k]
     if mode == 'placebo':
         for c in range(O.shape[1]):
             fin = np.where(np.isfinite(O[:, c]))[0]
