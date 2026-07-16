@@ -206,3 +206,36 @@ shortable ENTIER plutôt qu'à l'intersection) ; (c) overlay bêta-hedge BTC.
 Chaque variante = une ligne de ledger, BH sur l'ensemble, et OOS UNIQUE
 seulement si critère 2 tenu. Sinon : H1 consigné « facteur réel,
 inexploitable à nos contraintes », et on passe à H2/H7.
+
+## EXTENSION CONSTRUCTION (2026-07-16) — AUCUN survivant, H1 SE REFERME
+
+| variante | Sharpe | Calmar | p | ×2 | verdict |
+|---|---|---|---|---|---|
+| base (référence) | +0,84 | 0,85 | 0,044 | +0,68 | sous la barre |
+| (a) vol-target 20 %/30j | +0,45 | 0,33 | 0,148 | +0,25 | PIRE (dé-levier tardif, re-levier dans les tops calmes) |
+| (b) short élargi | +0,75 | 0,68 | 0,084 | +0,58 | dilution du ciblage |
+| (a+b) | +0,45 | 0,33 | 0,140 | +0,25 | PIRE |
+| (c) beta-hedge BTC | +0,73 | 0,73 | 0,084 | +0,57 | le hedge coûte plus qu'il ne protège |
+
+La base implémentable reste l'optimum local — SOUS la barre (0,84/0,85 vs
+0,8 ET 1,0). Noter aussi p=0,044 en implémentable vs 0,001 en abstrait : la
+force statistique elle-même s'affaiblit avec la jambe réduite.
+
+## VERDICT H1 — « FACTEUR RÉEL, INEXPLOITABLE À NOS CONTRAINTES »
+
+- Le facteur LOW-VOL en coupe existe (abstrait : Sharpe 1,17, p=0,001 BH,
+  quintiles monotones, plateau entier, 2 sous-périodes, coûts ×3) ;
+- son cœur économique est la MORT DU JUNK (176 délistées à −86 %/30 j
+  finaux) + le funding payé par les longs de junk (+72,9 % reçus) ;
+- la part CAPTURABLE (shorts = perps actifs, funding réel) plafonne à
+  Sharpe 0,84 / Calmar 0,85, et aucune des 3 constructions pré-déclarées ne
+  l'améliore. **Critère 2 jamais tenu → OOS JAMAIS consommé** (préservé si
+  des contraintes d'exécution meilleures apparaissent un jour : maker,
+  borrow OTC, venue plus large).
+- MOM : artefact de survivorship (démonstration de manuel). REV : info
+  réelle broyée par les coûts taker (angle maker consigné). CARRY-20 :
+  cohérent carry1.
+- **Graine pour H2** : le vent porteur de funding des shorts de junk
+  (+72,9 %) est une trace directe de prime de funding en coupe — H2
+  (carry/basis/funding momentum) hérite du panel, du pipeline validé
+  (placebo/parité/permutation) et de funding_daily_all.csv (791 perps).
