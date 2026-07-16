@@ -76,3 +76,28 @@ xsection1, contrôles sous-puissants patterns, celui-ci.)
 - 2026-07-16 : amendement du null (ci-dessus) committé avant exécution.
 - 2026-07-16 : amendement 2 (null re-corrigé, attrapé par placebo) committé
   avant toute conclusion sur le réel.
+
+## VERDICT (2026-07-16) : ⛔ H3 CLOS — 4 familles, zéro survivant, machinerie PROUVÉE saine
+
+- Machinerie validée DES DEUX CÔTÉS : placebo iid 0/62 cellules (après
+  amendement 2) ET contrôle positif retrouvé — corr(funding, basis 8 h
+  précédentes) = **+0,82** sur BTC ET ETH (2 147 évts chacun) : l'alignement
+  événementiel et les séries sont bons ; « rien » signifie vraiment rien.
+- **F1 heure-du-jour : 0/48 cellules BH** (BTC+ETH, IS 2018→2024, 52 464 h).
+- **F2 jour-de-semaine : 0/14** — le weekend effect crypto n'existe plus
+  (ou jamais eu la taille supposée) sur 2018-2024.
+- **F3 fenêtres de funding : 0/8** — aucune pression pré/post-règlement
+  mesurable sur les prix perp conditionnée au signe (±0,3-5,7 bps/h,
+  p ≥ 0,39). L'effet mécanique existe dans la BASIS (contrôle +0,82) mais
+  ne fuit PAS dans les rendements horaires de façon exploitable.
+- **F4 sessions : 0/6** (US 13-22 ETH à p=0,016 brut, rejeté par BH sur 14 ;
+  +2 bps/h de toute façon).
+- **Exploitation taker exclue par ordre de grandeur** : meilleure cellule
+  brute ≈ 5,7 bps/h vs 60 bps de coût par cycle → net −54 bps. Même un vrai
+  signal de cette taille serait mort. Angle maker : NOTÉ, non exploré
+  (infra différente, hors périmètre bots actuels).
+- OOS 2024→26 : INTACT (jamais regardé — rien ne tenait l'IS).
+- Univers alts 1h : téléchargement NON justifié (rien sur BTC/ETH).
+
+Conséquence ROADMAP : H3 ⛔ définitif au grain 1h en taker. Prochains
+horizons vierges : H2-basis-datés, H5 lead-lag, H8 stat-arb.
