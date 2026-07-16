@@ -233,3 +233,38 @@ l'année « porte chronique » qui paie peu net de coûts ; 2022 +1,00 avec
 Lecture honnête pour Mario : regime1 ne REMPLACE pas un incumbent — il
 s'AJOUTE au portefeuille comme sleeve décorrélée et c'est là qu'il crée de
 la valeur (le composite OOS passe de Calmar 0,57 à 1,50 à vol égale).
+
+## ÉTAPE 8 (2026-07-16) — stress d'exécution : protocole PRÉ-DÉCLARÉ
+
+Committé AVANT tout calcul. Sleeve de référence : 20 % × ~30 k$ ≈ 6 k$ de
+capital, soit ~6 k$ de notional par jambe quand ON (12 k$ brut).
+
+**8a. Capacité de la jambe short en manie** (quoteVolume des klines
+um-futures, base 5438). Pour CHAQUE rebalancement ON de la fenêtre complète
+(sélection réelle rejouée, K7) : volume quotidien USDT de chaque nom shorté
+au jour du rebal ; capacité du panier = 1 % de participation sur le nom le
+plus fin × ntop (panier équipondéré : S_max = 1 % × ADV_min × ntop).
+Rapportés : médiane/p10 des S_max, et des ADV_min/med. **Barre : p10 des
+S_max ≥ 60 k$ (≥ 10× la sleeve actuelle).**
+
+**8b. Coûts/turnover** : turnover notionnel moyen par rebal et annualisé
+(|Δw| réels), coût annuel aux 30 bps/côté ; rappel du stress coûts ×2 déjà
+passé (étape 6 : OOS +1,31). Limite consignée : pas de mesure au tick
+(symbolInfo Binance géo-bloqué) — couverte par la marge du ×2 au grain 1d.
+
+**8c. Transposabilité OKX** (l'exécution réelle serait OKX ; le funding
+mesuré est Binance). Liste publique des instruments SWAP OKX (API v5, sans
+compte) ; mapping BASE-USDT-SWAP ; couverture = part des JOURS-POIDS de la
+jambe short dont le nom a un perp OKX. **Barre : ≥ 70 % des jours-poids**
+(70-90 % → « exécutable, univers réduit à re-mesurer à la fiche » ; < 70 %
+→ venue alternative nécessaire, décision Mario). Risque de base
+funding OKX≠Binance consigné (R3 carry1 : OKX paie 1-3 pts de moins) — la
+re-mesure fine appartient à la fiche stratégie, pas au stress.
+
+**8d. Marge/levier (consigné, pas de barre)** : notional brut 2× la sleeve
+quand ON (short junk + long BTC 1:1) → levier compte ≈ 2 en cross-margin ;
+long BTC réalisable en spot déjà détenu (étape 6 : variante meilleure).
+
+Barre globale étape 8 : **8a ✓ ET 8c ≥ 70 %** → fiche complète de
+proposition à Mario (stratégie + intégration portefeuille + plan bot démo).
+Sinon : consigner ce qui casse, verdict, suite ROADMAP.
