@@ -40,3 +40,19 @@ multiplicité est comptée par BH.
   K2 LS +0,96/0,92 (Calmar < 1, coûts K2) ; BH sur les 8 cellules
   cumulées : K7 LS passe largement. → passe critères 1-2 ; critères 3-4
   puis OOS conditionnel dans pass2.py (en cours).
+
+## VERDICT (2026-07-17) : ⛔ N2 CLOS au critère 4 — facteur réel, inexploitable aux coûts
+
+pass2 (parité portfolio_cm 0.00e+00 ✓) :
+- critère 3 : **5/5 années positives** (2019 +0,21 ; 2020 +1,59 ; 2021
+  +1,47 ; 2022 +2,18 ; 2023 +0,18) — la structure « short les pumps de
+  volume » est RÉELLE et stable ;
+- **critère 4 : MORT — coûts ×2 → Sharpe +0,18** (< 0,5) : le z-vol churne
+  le quintile en continu, ~85 % du brut part en frais à ×1 ; aucune marge
+  de sécurité sur les frais réels.
+- **OOS JAMAIS consommé** (arrêt avant, comme conçu) — préservé si un jour
+  une exécution maker/turnover réduit se justifie (ce serait un NOUVEAU
+  protocole, pas un rattrapage de celui-ci).
+Même catégorie que LOWVOL (H1) : « facteur réel, inexploitable à nos
+contraintes ». Cohérent avec listing2 : les pumps SE shortent — mais par
+ÉVÉNEMENT daté (listing, funding extrême), pas par churn de quintile.
