@@ -143,3 +143,37 @@ USDT (délistées incluses) = le vrai test — la largeur (60-100+ noms
 simultanés) multiplie la puissance ET tue le survivorship. Si MOM-30 L/S y
 franchit p<0,01 BH + Sharpe ≥ 0,8 + quintiles + plateau + coûts ×2, ALORS
 l'OOS 2024→26 sera dépensé. Sinon : H1 rejoint les angles réfutés.
+
+## UNIVERS COMPLET (2026-07-16) — MOM tué par le survivorship, LOWVOL surgit
+
+Panel : 564 symboles ≥180 j (délistées incluses), **258 vivants médians IS**
+(×13 le pilote). Placebo échelle univers : 0/44 ✓. Parité vectorisé↔pilote
+exacte (5,6e-17) après 2 bugs attrapés par la barrière (min_alive, jour-
+frontière).
+
+1. **MOM : le pilote était un ARTEFACT DE SURVIVORSHIP.** Sur l'univers vrai,
+   TOUTES les configs momentum s'effondrent (−25 à −77 %/an ; la J30-K2 du
+   pilote passe de +29,5 % à −59,5 %). Acheter les gagnants récents parmi les
+   futurs morts perd. Pièce d'exposition méthodologique — l'étage univers
+   valait à lui seul la campagne.
+2. REV : p=0,001 avec Sharpe −1,2..−6,1 — il y a de l'information de coupe
+   1-3 j RÉELLE (les nulls réétiquetés font PIRE) mais broyée par les coûts
+   taker. Non exploitable en l'état ; noté pour un éventuel angle maker.
+3. **LOWVOL L/S : Sharpe +1,03/+1,17, +47-51 %/an, DD 47 %, p=0,001-0,002 BH
+   — PREMIER candidat de la mission à franchir le critère 2.** Instruction :
+   quintiles PARFAITEMENT monotones (Q1 vol-max −328 bps/30 j → Q5 +110) ✓ ;
+   sous-périodes 2019-21 +1,40 / 2022-23 +0,98 ✓ ; plateau σ{20-60}×K{7-30}
+   ENTIER positif 0,82-1,47 ✓ ; coûts ×2 Sharpe 0,94, ×3 0,71 ✓.
+4. **Trop-beau — le nerf du candidat est la jambe SHORT** (junk volatil) :
+   les jambes séparées sont faibles (long +0,15, short +0,29 avec DD 95 %),
+   c'est le SPREAD qui annule le bêta et isole le facteur ✓ mécanique saine —
+   MAIS **176 séries délistées, log-ret moyen des 30 derniers jours −86 %** :
+   le backtest encaisse au short des agonies terminales que le réel ne peut
+   pas capturer (borrow rare/cher, règlement forcé).
+5. **Étape décisive pré-déclarée AVANT exécution : variante IMPLÉMENTABLE** —
+   jambe short restreinte aux noms ayant un PERP Binance ACTIF à la date
+   (fenêtre d'existence lue dans perp_funding, 791 perps) + FUNDING facturé
+   au taux réel de la position short (reçu si positif, payé si négatif) ;
+   jambe longue inchangée (spot). Même barre : Sharpe ≥ 0,8, Calmar > 1,
+   coûts ×2 > 0,5. Si ça tient → OOS unique 2024→26. Sinon : candidat réduit
+   à un artefact d'inexécutabilité, consigné.
