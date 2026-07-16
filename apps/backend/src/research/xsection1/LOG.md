@@ -177,3 +177,32 @@ frontière).
    jambe longue inchangée (spot). Même barre : Sharpe ≥ 0,8, Calmar > 1,
    coûts ×2 > 0,5. Si ça tient → OOS unique 2024→26. Sinon : candidat réduit
    à un artefact d'inexécutabilité, consigné.
+
+## VARIANTE IMPLÉMENTABLE (2026-07-16) — verdict : ÉCHEC au critère 2, le plus proche de la mission
+
+Shorts restreints aux perps Binance ACTIFS à la date (445/564 couverts,
+fenêtres lues dans perp_funding ; exclusion du dernier jour = conservateur),
+funding facturé au taux réel. Résultat sur les DEUX cellules BH
+pré-enregistrées :
+
+| cellule | Sharpe | CAGR | DD | Calmar | verdict (barre 0,8 ET 1,0) |
+|---|---|---|---|---|---|
+| K30 ×1 | **+0,84** | +50,3 % | 59,4 % | **0,85** | ✗ Calmar |
+| K30 ×2 | +0,68 | +39,1 % | 60,0 % | 0,65 | (coûts ×2 > 0,5 ✓) |
+| K7 ×1 | +0,72 | +47,7 % | 62,3 % | 0,76 | ✗✗ |
+
+- ~30 % du facteur abstrait vivait dans du junk NON shortable (Sharpe
+  1,17 → 0,84) ; la jambe short implémentable = ~29 noms (vs 77) → DD 47→59 %.
+- **Découverte à garder : le FUNDING est un vent porteur massif (+72,9 %
+  cumulés REÇUS par les shorts sur l'IS)** — le junk pompé paie ses shorts ;
+  cohérent H2/H7 de la ROADMAP.
+- **Pas d'OOS consommé** (critère 2 non tenu). La barre n'a pas bougé.
+
+**Extension pré-enregistrée pour la passe suivante (hypothèses de
+CONSTRUCTION, barre inchangée)** : (a) vol-targeting du L/S (cible 20 %
+annualisée, fenêtre 30 j — mécanique H7, améliore le Calmar si les queues ne
+dominent pas) ; (b) jambe short élargie (TOPQ court appliqué au sous-univers
+shortable ENTIER plutôt qu'à l'intersection) ; (c) overlay bêta-hedge BTC.
+Chaque variante = une ligne de ledger, BH sur l'ensemble, et OOS UNIQUE
+seulement si critère 2 tenu. Sinon : H1 consigné « facteur réel,
+inexploitable à nos contraintes », et on passe à H2/H7.
