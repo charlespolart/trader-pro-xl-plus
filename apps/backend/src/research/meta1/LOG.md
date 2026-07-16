@@ -54,3 +54,40 @@ FORME de la courbe (où le DD remonte, comportement dans les stress).
 ## Journal
 
 - 2026-07-16 : protocole écrit, committé avant exécution.
+
+## RÉSULTATS (2026-07-16) — formalisation faite, 3 conclusions robustes
+
+Exécution : `eth_run.ts` (eth-accum : 1→1,8844 ETH sur 2020-07→2026-07,
+35 trades) + `alloc.py`. Tableaux complets dans la sortie du script
+(re-exécutable) ; l'essentiel :
+
+**1. regime1 = l'unique corrélation ~0 du système.** Corrélations
+quotidiennes USD (fenêtre commune) : accum↔vrx **+0,91** (deux expressions
+du même bêta BTC — leur diversification réelle est dans les excursions, pas
+dans les rendements quotidiens), eth +0,73-0,76 vs bloc BTC, swing
++0,30-0,50, **regime1 : 0,00 / −0,01 / −0,02 / +0,03**.
+
+**2. La sleeve améliore les 3 règles à TOUS les poids {5,10,20,30 %},**
+fenêtre commune ET OOS, à vol égalisée — monotone, sans coude ≤30 % :
+- R-EQ commun : Calmar 1,13 (w0) → 1,88 (w20) → 2,47 (w30) ; DD 47→37 % ;
+- R-EQ OOS : Calmar **0,34 → 1,14 (w20)** → 1,70 (w30) ;
+- R-IVOL OOS : 0,81 → 2,36 (w20) ;
+- stress bear 2022 (R-EQ) : **−19,3 % → −13,0 %** à w20, DD moindre ;
+- stress 2026-H1 : −24,3 % → −22,0 % — amélioration marginale : porte peu
+  ON (37 j), la sleeve paie quand il y a des manies, pas dans tout bear.
+CAVEATS (à ne pas perdre) : courbes calculées sur la série univers COMPLET
+(la version déployable OKX ≈ 86 % du Sharpe sleeve) ; 6 ans d'historique,
+edge concentré sur épisodes ; risque funding OKX≠Binance hors chiffres ;
+la monotonie jusqu'à 30 % est MÉCANIQUE (ρ=0 + Sharpe relatif) — elle ne
+justifie PAS de pousser au-delà de la reco prudente 20 % de la fiche
+(10 % est déjà substantiel : Calmar OOS 0,70 vs 0,34).
+
+**3. Le portefeuille RÉEL actuel (R-REAL : accum+vrx+eth b&h, sans swing)
+a le pire profil** : DD 58,4 %, Calmar commun 0,93, OOS 0,27 —
+concentration bêta. R-IVOL (1/vol63 WF mensuel, zéro lookahead) améliore le
+PROFIL (OOS : Calmar 0,81 vs 0,34, DD 25,4 vs 37,1 %) au prix d'un CAGR
+brut moindre (43,8 vs 53,6 % commun) — classique risk-parity. L'ajout du
+swing validé + une sleeve ferait plus que tout tuning fin des poids.
+
+**Statut : H14 FORMALISÉ** (outil de décision, pas un « edge » — pas de
+barre de survie). Vol-target global : non exploré, noté pour plus tard.

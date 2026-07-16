@@ -46,6 +46,13 @@ les 3 moteurs) qui, ajoutée à 20 % à risque total constant, améliore
 fortement le composite (OOS : Calmar 0,57 → 1,50). Sa valeur vient de la
 PORTE (dormant hors manie) + l'exposition short-junk + long BTC.
 
+Complément meta1 (H14, LOG committé) : tes moteurs actuels corrèlent entre
+eux à +0,73…+0,91 (un bloc bêta BTC/ETH) — regime1 est la SEULE brique à
+ρ≈0 du système ; la courbe complète poids→profil {5,10,20,30 %} montre une
+amélioration à TOUS les poids (mécanique vu ρ=0 — voir caveats meta1/LOG),
+y compris pendant le bear 2022 (−19,3 %→−13,0 % à w=20). 20 % reste la
+recommandation ; 10 % est déjà substantiel si tu préfères démarrer petit.
+
 ## Limites et risques (tous consignés dans LOG.md)
 
 1. **Univers OKX réduit** : 26-34 % de couverture du panier théorique →
