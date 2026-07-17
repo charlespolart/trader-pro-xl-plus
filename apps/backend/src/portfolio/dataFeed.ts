@@ -162,7 +162,10 @@ export class PortfolioDataFeed {
           for (const h of entry.history ?? []) {
             if (h.c === null) continue
             const dailySum = (h.c / 100) * 3
-            const pseudoTime = h.t * 1000 + 12 * 3_600_000 + 1   // +1 ms : signature inambiguë (les perps 4h ont un VRAI événement à 12:00 pile — appris par le contrôle de parité)
+            // SIGNATURE des pseudo : 12:30:00 UTC — heure PHYSIQUEMENT impossible
+            // pour un vrai règlement (00/04/08/12/16/20 h ± jitter de ms côté
+            // Binance : 12:00:00.001 EXISTE en vrai — 2 purges ratées avant d'arriver ici)
+            const pseudoTime = h.t * 1000 + 12 * 3_600_000 + 30 * 60_000
             await this.cfg.sql.unsafe(
               `INSERT INTO funding_rates (symbol, time, rate) VALUES ($1, $2, $3)
                ON CONFLICT (symbol, time) DO UPDATE SET rate = EXCLUDED.rate`,
@@ -184,11 +187,11 @@ export class PortfolioDataFeed {
   async reconcileFunding(): Promise<number> {
     const res = await this.cfg.sql.unsafe(
       `DELETE FROM funding_rates p
-       WHERE (p.time % ${DAY}) = ${12 * 3_600_000 + 1}
+       WHERE (p.time % ${DAY}) = ${12 * 3_600_000 + 30 * 60_000}
          AND (SELECT count(*) FROM funding_rates r
               WHERE r.symbol = p.symbol
                 AND r.time / ${DAY} = p.time / ${DAY}
-                AND (r.time % ${DAY}) <> ${12 * 3_600_000 + 1}) >= 2`,
+                AND (r.time % ${DAY}) <> ${12 * 3_600_000 + 30 * 60_000}) >= 2`,
     )
     return res.count ?? 0
   }
@@ -200,8 +203,11 @@ export class PortfolioDataFeed {
   async compareFundingSources(csvPath: string): Promise<{ common: number; mismatches: number }> {
     const syms = await this.universe()
     const spot = await loadPanel(this.cfg.sql, syms, 'spot')
+    // MÊMES symboles aux deux chargeurs — des shapes différentes (564 vs
+    // 565 colonnes) désalignaient tous les indices (bug du comparateur,
+    // attrapé en croisant avec le diagnostic python aligné par clés)
     const a = loadFunding(csvPath, syms, spot.ts)
-    const b = await this.loadFundingFromTable([...syms, 'BTCUSDT'], spot.ts)
+    const b = await this.loadFundingFromTable(syms, spot.ts)
     let common = 0
     let mismatches = 0
     for (let k = 0; k < a.F.length; k++) {
