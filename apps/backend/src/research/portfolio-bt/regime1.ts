@@ -36,19 +36,18 @@ export function buildExecReturns(spot: Panel, perp: Panel): Float64Array {
   return out
 }
 
-/** signal FLEVEL L3 hérité : S[t] = −Σ F[t−L+1..t] (NaN avant L) */
+/** signal FLEVEL L3 hérité : S[t] = −Σ F[t−L+1..t] (NaN avant L).
+ *  Somme DIRECTE par fenêtre (pas d'accumulateur glissant) : arithmétique
+ *  bit-identique à la couche cibles du runner (portfolio/targets.ts) —
+ *  un accumulateur accumule des arrondis et fait diverger les tris aux
+ *  quasi-égalités en bord de quintile. */
 export function signalFlevel(fund: FundingPanel, n: number, na: number): Float64Array {
   const S = new Float64Array(n * na).fill(NaN)
   for (let a = 0; a < na; a++) {
-    let acc = 0
-    for (let i = 0; i < n; i++) {
-      acc += fund.F[i * na + a]
-      if (i >= FLEVEL_L) {
-        acc -= fund.F[(i - FLEVEL_L) * na + a]
-        S[i * na + a] = -acc
-      } else if (i === FLEVEL_L - 1) {
-        // t = L-1 : pas encore L jours pleins côté python (S défini à partir de t=L)
-      }
+    for (let i = FLEVEL_L; i < n; i++) {
+      let acc = 0
+      for (let j = i - FLEVEL_L + 1; j <= i; j++) acc += fund.F[j * na + a]
+      S[i * na + a] = -acc
     }
   }
   return S
