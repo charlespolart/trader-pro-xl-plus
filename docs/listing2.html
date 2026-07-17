@@ -159,13 +159,18 @@
     instruments <em>vivants</em> (les délistés disparaissent → biais du survivant garanti) et son
     historique de funding ne remonte qu'à ~3 mois. On l'a vérifié — c'est pour ça que la venue
     d'exécution ne peut pas être la venue de backtest.</li>
-    <li><strong>L'exécutabilité OKX se mesure séparément</strong>, avec le champ <code>listTime</code>
-    de l'API OKX : 55 % des listings Binance récents ont un perp OKX, listé avec un retard médian de
-    <strong>2 jours</strong> (27 % du temps OKX liste même en premier).</li>
+    <li><strong>Binance et OKX ne listent pas les mêmes coins — et c'est intégré des deux côtés.</strong>
+    Sens Binance→OKX : seuls <strong>55 %</strong> des listings Binance récents ont un perp OKX
+    (champ <code>listTime</code> de l'API, retard médian <strong>2 jours</strong>, 27 % du temps OKX
+    liste même en premier) — <em>les 45 % restants sont simplement sautés</em> : pas de perp OKX,
+    pas de trade. Sens inverse : les coins listés <em>uniquement</em> chez OKX ont été testés à part
+    (113 événements 2024-26) — <strong>ils ne driftent pas</strong> (+7,8 % médian) ; on ne rate donc
+    aucun edge en les ignorant.</li>
     <li><strong>Le test décisif</strong> : rejouer la stratégie en entrant au <em>vrai</em> jour de
-    listing OKX (pas Binance) sur le sous-ensemble couvert → <strong>Sharpe +1,70 = 83 % de la
-    référence</strong>. Le drift est assez profond et durable pour survivre au retard.
-    En pratique : <strong>~34 événements jouables par an</strong> sur notre infra.</li>
+    listing OKX (pas Binance), <em>uniquement sur le sous-ensemble couvert</em> →
+    <strong>Sharpe +1,70 = 83 % de la référence</strong>. Le drift est assez profond et durable pour
+    survivre au retard. Tous les chiffres « déployables » de cette fiche sont nets de cette
+    couverture : <strong>~34 événements jouables par an</strong>, pas les 65 théoriques.</li>
     <li>En démo, les fills réels OKX viendront confirmer le slippage des perps neufs (spreads plus
     larges les premiers jours — provisionnés par les 30 bps + le stress ×2).</li>
   </ol>
