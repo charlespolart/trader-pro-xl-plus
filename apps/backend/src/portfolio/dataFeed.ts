@@ -14,7 +14,7 @@
 import postgres from 'postgres'
 import { CandleStore, FundingStore } from '@tpx/data'
 import type { Db } from '@tpx/db'
-import { DAY, loadPanel, loadFunding, type FundingPanel, type Panel } from '../research/portfolio-bt/data'
+import { DAY, loadBtcReturns, loadPanel, loadFunding, type FundingPanel, type Panel } from '../research/portfolio-bt/data'
 import { histFinite } from '../research/portfolio-bt/regime1'
 import type { DayContext } from './targets'
 
@@ -108,7 +108,7 @@ export class PortfolioDataFeed {
   }
 
   /** panels alignés + contexte du DERNIER jour disponible */
-  async loadContext(source: 'csv' | 'table'): Promise<{ ctx: DayContext; syms: string[]; perp: Panel }> {
+  async loadContext(source: 'csv' | 'table'): Promise<{ ctx: DayContext; syms: string[]; perp: Panel; btcR: Float64Array }> {
     const syms = await this.universe()
     const spot = await loadPanel(this.cfg.sql, syms, 'spot')
     const perp = await loadPanel(this.cfg.sql, syms, 'futures', spot.ts)
@@ -116,7 +116,8 @@ export class PortfolioDataFeed {
       ? loadFunding(this.cfg.fundingCsv, syms, spot.ts)
       : await this.loadFundingFromTable([...syms, 'BTCUSDT'], spot.ts)
     const hist = histFinite(spot)
-    return { ctx: { t: spot.n - 1, spot, perp, fund, hist }, syms, perp }
+    const btcR = await loadBtcReturns(this.cfg.sql, spot.ts, 'futures')
+    return { ctx: { t: spot.n - 1, spot, perp, fund, hist }, syms, perp, btcR }
   }
 
   /**
