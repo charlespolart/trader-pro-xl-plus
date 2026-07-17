@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Regime1 — la sleeve short-junk régimée, et sa validation</title>
+<style>
+  :root {
+    --bg: #0b0e14; --panel: #11151f; --panel2: #161b28; --edge: #232a3b;
+    --txt: #e4e7ee; --muted: #9aa3b5; --dim: #6b7488;
+    --up: #26a69a; --down: #ef5350; --accent: #3b82f6; --amber: #f0a92b; --orange: #ff9800;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: radial-gradient(1200px 700px at 70% -10%, #15203a 0%, var(--bg) 55%);
+    color: var(--txt); font: 16px/1.65 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 940px; margin: 0 auto; padding: 0 22px 90px; }
+  code, .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  header { padding: 70px 0 36px; border-bottom: 1px solid var(--edge); }
+  .kicker { display:inline-block; font-size:12px; letter-spacing:.18em; text-transform:uppercase;
+    color: var(--accent); background: rgba(59,130,246,.1); border:1px solid rgba(59,130,246,.25);
+    padding:4px 11px; border-radius:999px; margin-bottom:20px; }
+  h1 { font-size: 42px; line-height: 1.12; margin: 0 0 14px; letter-spacing: -.02em; }
+  h1 .hot { color: var(--down); }
+  .lead { font-size: 19px; color: var(--muted); max-width: 760px; margin: 0; }
+  section { padding: 46px 0 0; }
+  h2 { font-size: 13px; letter-spacing:.16em; text-transform:uppercase; color: var(--dim);
+    margin: 0 0 18px; padding-bottom: 10px; border-bottom: 1px solid var(--edge); }
+  h3 { font-size: 21px; margin: 26px 0 8px; }
+  p { color: #cfd5e2; }
+  .muted { color: var(--muted); } strong { color: #fff; }
+  .callout { background: linear-gradient(180deg, rgba(59,130,246,.10), rgba(59,130,246,.03));
+    border: 1px solid rgba(59,130,246,.3); border-left: 3px solid var(--accent);
+    border-radius: 12px; padding: 20px 24px; margin: 8px 0 4px; }
+  .callout .big { font-size: 20px; line-height: 1.5; color: #fff; }
+  .grid { display: grid; gap: 16px; }
+  .cols-2 { grid-template-columns: 1fr 1fr; }
+  .cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  @media (max-width: 720px) { .cols-2, .cols-3 { grid-template-columns: 1fr; } }
+  .card { background: var(--panel); border: 1px solid var(--edge); border-radius: 12px; padding: 20px 22px; }
+  .card h3 { margin-top: 0; font-size: 17px; }
+  .aside { background: rgba(38,166,154,.06); border:1px solid rgba(38,166,154,.25); border-left:3px solid var(--up);
+    border-radius:12px; padding:14px 18px; margin:14px 0; }
+  .aside .t { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--up); font-weight:700; }
+  .warn { background: rgba(239,83,80,.06); border:1px solid rgba(239,83,80,.3); border-left:3px solid var(--down);
+    border-radius:12px; padding:14px 18px; margin:14px 0; }
+  .warn .t { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--down); font-weight:700; }
+  .flow { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:14px 0 8px;
+    font-family: ui-monospace, monospace; font-size:14px; }
+  .flow .b { background: var(--panel2); border:1px solid var(--edge); border-radius:8px; padding:6px 11px; }
+  .flow .b.on { border-color: rgba(239,83,80,.5); color:#ffd9d8; }
+  .flow .arrow { color: var(--dim); }
+  .pos { color: var(--up); } .neg { color: var(--down); }
+  .tbl-wrap { overflow-x: auto; margin: 14px 0; border: 1px solid var(--edge); border-radius: 12px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+  th { text-align: left; font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--dim); padding: 12px 16px; border-bottom: 1px solid var(--edge); background: var(--panel2); }
+  td { padding: 11px 16px; border-bottom: 1px solid var(--edge); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td.num { font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .ba { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:14px; }
+  @media (max-width:720px){ .ba { grid-template-columns:1fr; } }
+  .ba .col { border:1px solid var(--edge); border-radius:12px; padding:16px 18px; background:var(--panel); }
+  .ba .col.after { border-color: rgba(38,166,154,.4); background: rgba(38,166,154,.05); }
+  .ba .h { font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--dim); margin-bottom:8px; }
+  .ba .big { font-size:30px; font-weight:700; font-family: ui-monospace, monospace; }
+  ol, ul { color:#cfd5e2; } li { margin: 7px 0; }
+  .foot { margin-top: 60px; padding-top: 18px; border-top: 1px solid var(--edge); color: var(--dim); font-size: 13.5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <span class="kicker">Candidat n°1 · validé côté recherche · en attente de démo</span>
+  <h1>Regime1 — <span class="hot">shorter le junk</span> quand le marché est en manie</h1>
+  <p class="lead">Une sleeve de portefeuille dormante par défaut, qui ne s'active que lorsque le
+  funding des perpétuels signale une euphorie collective — et qui shorte alors le panier
+  d'altcoins le plus surchauffé, du BTC en face. Décorrélée de tout ce qu'on possède déjà.</p>
+</header>
+
+<section>
+  <h2>L'idée en une phrase</h2>
+  <div class="callout"><div class="big">Quand le funding médian des perps dépasse
+  <strong>2,5 bps/jour</strong> (les longs paient cher pour rester longs = manie), shorter le
+  quintile d'alts au funding le plus extrême et détenir le même montant de BTC en long ;
+  le reste du temps, <strong>rester totalement à plat</strong>.</div></div>
+  <p class="muted" style="margin-top:14px">Le mécanisme : dans les manies (2020-21, memecoins 2024-25), le junk le plus
+  sur-acheté porte un funding énorme — le shorter rapporte deux fois : la dégonfle du prix,
+  <em>et</em> le funding encaissé pendant qu'on attend. Le long BTC 1:1 neutralise le risque
+  « tout le marché monte ».</p>
+</section>
+
+<section>
+  <h2>La règle exacte</h2>
+  <div class="flow">
+    <span class="b">chaque rebalancement (K = 7 j)</span><span class="arrow">→</span>
+    <span class="b">médiane du funding des perps éligibles</span><span class="arrow">→</span>
+    <span class="b on">≥ 2,5 bps/j ? → ON</span><span class="arrow">sinon</span>
+    <span class="b">FLAT (zéro position, zéro coût)</span>
+  </div>
+  <div class="flow">
+    <span class="b on">ON</span><span class="arrow">→</span>
+    <span class="b">short équipondéré du quintile funding-max (funding cumulé 3 j)</span>
+    <span class="arrow">+</span><span class="b">long BTC, même notionnel</span>
+  </div>
+  <ul>
+    <li><strong>Éligible</strong> = perp avec ≥ 21 événements de funding <em>observés</em> et le dernier
+    &lt; 48 h (aucune donnée du futur — la règle est exécutable telle quelle chaque soir).</li>
+    <li><strong>Coûts modélisés</strong> : 30 bps par côté sur le notionnel tourné + funding réel
+    (reçu par les shorts ; payé par le long BTC s'il est en perp — le détenir en <em>spot</em>,
+    qu'on possède déjà, fait même un peu mieux).</li>
+    <li>Zéro paramètre optimisé : seuil, K et signal ont été figés par protocole <em>avant</em> les tests,
+    hérités des campagnes précédentes.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>La validation — chaîne complète, une seule passe d'OOS</h2>
+  <p>Chaque étape a son protocole committé <em>avant</em> l'exécution, un placebo propre
+  (0/9), des nulls par permutation, et l'out-of-sample n'a été regardé qu'une fois.</p>
+  <div class="tbl-wrap"><table>
+    <tr><th>Étape</th><th>Mesure</th><th>Résultat</th></tr>
+    <tr><td>IS 2020-07 → 2024-01</td><td>net de frais, placebo 0/9, BH-FDR, coûts ×2</td>
+      <td class="num">Sharpe +1,15 · Calmar 2,12 · ×2 → 0,82 ✓</td></tr>
+    <tr><td><strong>OOS 2024-01 → 2026-07</strong> (une passe)</td><td>proxy spot</td>
+      <td class="num"><strong>Sharpe +1,77 · +122,7 %/an · DD 33 %</strong> · ép. 7/11 · Bonferroni ×2 ✓</td></tr>
+    <tr><td>Vrais prix perpétuels</td><td>exécution perp intégrale, couverture 99,8 %</td>
+      <td class="num">OOS +1,62 · +103,4 %/an</td></tr>
+    <tr><td>Univers exécutable OKX</td><td>sélection restreinte aux perps OKX</td>
+      <td class="num">OOS +1,39 · +89,9 %/an</td></tr>
+    <tr><td>Venue indépendante</td><td>signal 100 % reconstruit sur funding <strong>Bybit</strong></td>
+      <td class="num">OOS +1,42 (88 % du candidat) · ép. 3/4</td></tr>
+    <tr><td>Stabilité temporelle</td><td>7 périodes calendaires 2020-2026</td>
+      <td class="num">7/7 positives (pire : 2021, +0,18)</td></tr>
+    <tr><td>Capacité</td><td>participation 1 % de l'ADV du panier</td>
+      <td class="num">p10 = 651 k$ — ×100 la sleeve visée</td></tr>
+  </table></div>
+  <div class="aside"><span class="t">Backtest TypeScript vérifié</span><br>
+  La stratégie est codée dans <code>apps/backend/src/research/portfolio-bt/regime1.ts</code> et son
+  backtest reproduit la validation python au centième (IS 0,90 / OOS 1,64 vs 0,89 / 1,62 —
+  l'écart vient des égalités de tri). Rejouer : <code>bun apps/backend/src/research/portfolio-bt/run.ts</code>.</div>
+</section>
+
+<section>
+  <h2>Ce qu'elle apporte au portefeuille — sa vraie raison d'être</h2>
+  <p>En solo, elle rapporte ~3× le btc-swing mais avec ~1,8× son drawdown : <strong>ce n'est pas un
+  remplaçant</strong>. Sa valeur : une corrélation <strong>≈ 0,00</strong> avec les trois bots actuels
+  (qui corrèlent entre eux à +0,73…+0,91 — un seul bloc bêta BTC/ETH) et avec le candidat n°2
+  (ρ +0,05). Ajoutée en <strong>sleeve de 20 %</strong> au portefeuille, à volatilité totale égale :</p>
+  <div class="ba">
+    <div class="col"><div class="h">Portefeuille actuel (OOS 2024-26)</div>
+      <div class="big">+17,9 %/an</div>
+      <div class="muted">Sharpe 0,66 · Calmar 0,57 · DD 31,7 %</div></div>
+    <div class="col after"><div class="h">+ sleeve regime1 20 % (vol égalisée)</div>
+      <div class="big pos">+45,4 %/an</div>
+      <div class="muted">Sharpe 1,30 · Calmar 1,50 · DD 30,2 %</div></div>
+  </div>
+  <p class="muted" style="margin-top:12px">Elle réduit même la perte du bear 2022 (−19,3 % → −13,0 %).
+  La courbe complète des poids {5, 10, 20, 30 %} améliore partout — 20 % reste la recommandation,
+  10 % est déjà substantiel pour démarrer petit.</p>
+</section>
+
+<section>
+  <h2>Limites et risques — sans embellissement</h2>
+  <div class="grid cols-2">
+    <div class="card"><h3>Univers OKX réduit</h3><p class="muted">OKX ne liste que 26-34 % du panier
+    théorique récent. On déploie la version mesurée dessus (+1,39, pas +1,62). Dans ce sous-univers,
+    c'est la <strong>porte</strong> qui fait l'edge, pas le tri fin (p=0,26).</p></div>
+    <div class="card"><h3>Risque de base funding</h3><p class="muted">Le signal se calcule sur données
+    Binance, l'encaissement se fait sur OKX. Mesuré : écart de niveau ≈ 0 bps/j, et quand la porte
+    est ON, OKX paie 88 % du funding Binance. Gérable ; re-mesure prévue en démo.</p></div>
+    <div class="card"><h3>Drawdown intrinsèque</h3><p class="muted">33-45 % pour la sleeve seule, avec
+    de vrais épisodes perdants (4/11 en OOS). C'est le sizing à 20 % qui rend ça portable — jamais plus
+    sans nouvelle discussion.</p></div>
+    <div class="card"><h3>Concentration BTC</h3><p class="muted">Pendant ON, le btc-swing est long BTC
+    35,6 % du temps en même temps que notre jambe longue — l'exposition BTC cumulée du compte est à
+    surveiller au design final.</p></div>
+  </div>
+  <div class="warn" style="margin-top:16px"><span class="t">Ce que le backtest ne couvre pas</span><br>
+  Le rebalancement se fait au close quotidien ; les minima d'ordres, la marge et le slippage réel des
+  perps fins feront l'objet du bot démo (2 semaines de marche à blanc comparée aux backtests, puis
+  tailles minimales). Rien ne passe en réel sans validation démo.</div>
+</section>
+
+<section>
+  <h2>Plan de mise en service (au GO)</h2>
+  <ol>
+    <li><strong>PortfolioRunner</strong> — l'exécuteur multi-symbole quotidien (étude chiffrée :
+    <code>research/moteur-multi/ETUDE.md</code>, ~15-24 j de dev pour les <em>deux</em> candidats,
+    zéro risque pour les bots actuels, sous-compte OKX dédié, marge isolée).</li>
+    <li><strong>Bot démo</strong> — paper puis micro-tailles, gardes habituelles (pré-trade sur soldes
+    réels, dérive bloquante, Telegram par transaction), ≥ 1 épisode ON complet propre.</li>
+    <li><strong>Revue ensemble</strong> → décision réel, sleeve 20 % max.</li>
+  </ol>
+</section>
+
+<div class="foot">Sources : <code>research/regime1/</code> (LOG.md = protocole + chaîne complète,
+PROPOSITION.md = fiche de décision), <code>research/venue1-venue2/</code> (risque de base, robustesse
+Bybit), <code>research/meta1/</code> (portefeuille), <code>research/portfolio-bt/</code> (code TS + parité).
+Validation du 2026-07-16/17 · données Binance Vision + OKX + Coinalyze · aucune action live sans GO.</div>
+
+</div>
+</body>
+</html>
