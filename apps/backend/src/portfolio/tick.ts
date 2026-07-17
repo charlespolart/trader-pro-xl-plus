@@ -13,10 +13,13 @@ const mode = process.argv.includes('dry') ? 'dry' : 'paper'
 const sql = postgres(DB_URL, { max: 4, prepare: false })
 const db = createDb(DB_URL)
 const feed = new PortfolioDataFeed({ sql, db, fundingCsv: fundingCsvPath() })
+const { sendTelegram } = await import('../services/telegram')
 const runner = new PortfolioRunner(feed, {
-  sleeveUsd: Number(process.env.PORTFOLIO_SLEEVE_USD ?? 6000),
+  sleeveR1Usd: Number(process.env.PORTFOLIO_SLEEVE_R1_USD ?? 6000),
+  sleeveL2Usd: Number(process.env.PORTFOLIO_SLEEVE_L2_USD ?? 6000),
   mode,
   ...defaultPaths(),
+  telegram: process.env.PORTFOLIO_TELEGRAM === '1' ? sendTelegram : undefined,
 })
 await runner.tick(source)
 await sql.end()
