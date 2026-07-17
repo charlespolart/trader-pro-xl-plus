@@ -162,7 +162,7 @@ export class PortfolioDataFeed {
           for (const h of entry.history ?? []) {
             if (h.c === null) continue
             const dailySum = (h.c / 100) * 3
-            const pseudoTime = h.t * 1000 + 12 * 3_600_000
+            const pseudoTime = h.t * 1000 + 12 * 3_600_000 + 1   // +1 ms : signature inambiguë (les perps 4h ont un VRAI événement à 12:00 pile — appris par le contrôle de parité)
             await this.cfg.sql.unsafe(
               `INSERT INTO funding_rates (symbol, time, rate) VALUES ($1, $2, $3)
                ON CONFLICT (symbol, time) DO UPDATE SET rate = EXCLUDED.rate`,
@@ -184,11 +184,11 @@ export class PortfolioDataFeed {
   async reconcileFunding(): Promise<number> {
     const res = await this.cfg.sql.unsafe(
       `DELETE FROM funding_rates p
-       WHERE (p.time % ${DAY}) = ${12 * 3_600_000}
+       WHERE (p.time % ${DAY}) = ${12 * 3_600_000 + 1}
          AND (SELECT count(*) FROM funding_rates r
               WHERE r.symbol = p.symbol
                 AND r.time / ${DAY} = p.time / ${DAY}
-                AND (r.time % ${DAY}) <> ${12 * 3_600_000}) >= 2`,
+                AND (r.time % ${DAY}) <> ${12 * 3_600_000 + 1}) >= 2`,
     )
     return res.count ?? 0
   }
