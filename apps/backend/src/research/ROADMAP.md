@@ -183,6 +183,8 @@ formalisé/parqué. Extension par priors × faisabilité × non-redondance :
 | E1 | **OI cross-section** (OI-MOM, OI-LEVEL purs) | stock de levier = crowding | Coinalyze .A, 443 perps (oi1/oi_binance.csv) | **⛔ critère 4 (2026-07-17)** : OI-LEVEL miroir réel-ish (+0,98 IS, 3/4 années, décay 22-23) mais ×2→0,17 ; 3 attrapes placebo (6e-7e-8e : composite, univers, disponibilité→null intra-vie) ; OOS préservé | ⛔ frais |
 | E5 | Corrélation candidat1×candidat2 | additivité portefeuille | séries en place | **✓ ρ≈0,04-0,10** — les 2 sleeves coexistent | ✓ mesuré |
 
+| E6 | **L/S ratio cross-section** (LSR-Z pur, contrarian accum6 en coupe) | crowding retail | Coinalyze .A (lsr1/lsr_binance.csv) | **⛔ (2026-07-17)** : les 2 directions mortes nettes (miroir LS −0,23 ; « BH » sur Sharpe négatif = pas un edge) ; placebo 0/2 v4 du 1er coup ; OOS intact ; FERME la famille cross-section exogène (8 directions, 0 survivant aux frais) | ⛔ |
+
 Ordre d'attaque : N1 → N2 → N3/N4 (renforcement des fiches). Arsenal
 inchangé (protocole committé avant, placebo, contrôle, BH, OOS une passe,
 barre inamovible).
