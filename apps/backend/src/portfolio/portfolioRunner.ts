@@ -199,8 +199,9 @@ export class PortfolioRunner {
 
 export function defaultPaths(): { statePath: string; killPath: string } {
   const root = resolve(import.meta.dir, '../../../..')
+  const stateDir = process.env.PORTFOLIO_STATE_DIR ?? resolve(import.meta.dir)
   return {
-    statePath: resolve(root, 'apps/backend/src/portfolio/.paper-state.json'),
-    killPath: resolve(root, 'portfolio.KILL'),
+    statePath: resolve(stateDir, '.paper-state.json'),
+    killPath: process.env.PORTFOLIO_KILL_PATH ?? resolve(root, 'portfolio.KILL'),
   }
 }
