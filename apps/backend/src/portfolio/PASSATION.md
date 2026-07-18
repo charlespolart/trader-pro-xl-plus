@@ -153,6 +153,54 @@ Principes : le moins de code neuf possible, réutiliser la plomberie OKX
    passant (tout changement de règle = retour à la case recherche avec
    protocole), pas de cross-margin, pas de trading hors sous-compte.
 
+## 6bis. Amendements Phase C décidés avec Mario (2026-07-18)
+
+Discussion Mario ↔ Fable 5 pendant la marche à blanc — ces décisions COMPLÈTENT
+la spec §6 (elles ne remplacent rien d'autre) :
+
+1. **Un sous-compte PAR stratégie** (amende le « sous-compte dédié » unique du
+   §6.1) : une sleeve = un sous-compte = un budget de capital physiquement
+   plafonné, P&L lisible directement (équité du sous-compte = perf de la
+   stratégie), aucun bug de sizing d'une sleeve ne peut consommer les USDT de
+   l'autre. Fait : Mario a créé le premier (`tpxportfolio`, type Standard,
+   dépôts OFF — vase clos : alimentation par virement interne uniquement,
+   retraits impossibles par nature) et sa clé API (rangée chez lui ; OKX purge
+   les clés inactives → la recréer au besoin le jour J, 2 min). Nom de
+   sous-compte : 6-20 caractères, lettres+chiffres, pas de spéciaux.
+2. **Migration des 3 bots spot vers un sous-compte chacun** — même passe
+   Phase C : fait disparaître STRUCTURELLEMENT le risque « bots qui se
+   marchent dessus » (l'arithmétique de sur-revendication née de l'incident
+   2026-07-14 devient sans objet). Prérequis plateforme : **multi-clés par
+   bot** (champ credentialName par bot, stockage multi-clés — la table
+   api_credentials le permet déjà —, sélecteur à la création, câblage
+   botManager ; ~1-2 j). Virements des parts = go explicite Mario, comme
+   toujours. Ne PAS toucher aux bots qui tournent avant ce moment.
+3. **UI unifiée « Stratégies » — un seul onglet, DEUX moteurs** (demande
+   explicite de Mario : tout voir/piloter au même endroit) :
+   - une seule liste : 3 bots spot + 2 sleeves, même langage visuel partout
+     (statut, équité, P&L, pause, colonne sous-compte) ;
+   - le détail s'adapte au type : bot → page classique (chandeliers, ordres,
+     logs) ; sleeve → page panier (jambes, état de la PORTE avec la valeur du
+     critère en clair, historique des ticks nocturnes, funding encaissé,
+     courbe d'équité du sous-compte) ;
+   - activer une sleeve = un formulaire façon « créer un bot » (choisir
+     clé/sous-compte, taille de sleeve, confirmation) — même geste, sans
+     prétendre que c'est le même moteur ;
+   - **INTERDIT de fusionner les moteurs** : une sleeve tient un PANIER
+     multi-instruments sélectionné par classement d'univers — le moteur
+     defineStrategy est mono-symbole par construction. Le faire rentrer au
+     chausse-pied = des semaines de chirurgie du moteur validé + re-validation
+     complète = exactement l'improvisation que ce document interdit. L'unité
+     est VISUELLE, pas mécanique.
+   - toujours pas de bouton « forcer un trade » ni d'édition des règles de
+     stratégie dans l'UI (changement de règle = retour recherche, §6.9).
+4. **Timing** : coder l'UI + le multi-clés PENDANT la phase lecture seule du
+   sous-compte (l'onglet s'alimente en vraies données sans pouvoir de
+   nuisance) ; Telegram reste le pouls en parallèle (l'UI contrôle, Telegram
+   notifie). Rappel séquence : revue marche à blanc → GO 1 (clé lecture
+   seule + code exécution + UI) → GO 2 (clé trade, tailles minuscules
+   ≥ 2 semaines) → revue → montée en taille éventuelle.
+
 ## 7. Le bêtisier (pièges VÉCUS — chacun a coûté une itération)
 
 1. **Jitter de millisecondes des fundingTime Binance** : les événements
