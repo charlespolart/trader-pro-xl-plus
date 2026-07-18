@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { LogEntry, TradeRecord } from '@tpx/shared'
+import { effectiveCredentialName, type LogEntry, type TradeRecord } from '@tpx/shared'
 import { api, type RefitConfigDTO } from '../lib/api'
 import { useBots, wsClient } from '../lib/ws'
 import { Check, ChevronLeft, Play } from 'lucide-react'
@@ -71,7 +71,11 @@ export function BotDetail() {
             <Badge value={info.status} />
           </span>
         }
-        subtitle={info.statusReason !== undefined ? info.statusReason : `${cfg.strategyId} · ${cfg.symbol}`}
+        subtitle={
+          info.statusReason !== undefined
+            ? info.statusReason
+            : `${cfg.strategyId} · ${cfg.symbol}${effectiveCredentialName(cfg.mode, cfg.credentialName) !== null ? ` · compte ${effectiveCredentialName(cfg.mode, cfg.credentialName)}` : ''}`
+        }
         actions={
           <Link to="/bots" className="btn-ghost">
             <ChevronLeft size={15} /> Bots

@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { MarketType } from '@tpx/shared'
 import { DEFAULT_FEES, FEE_TIER_PRESETS } from '@tpx/shared'
-import { OctagonAlert } from 'lucide-react'
-import { api } from '../lib/api'
-import { Badge, Card, Field, PageHeader } from '../components/ui'
+import { OctagonAlert, Pencil, Plus, Trash2 } from 'lucide-react'
+import { api, type CredentialWithEquity } from '../lib/api'
+import { fmtNum } from '../lib/format'
+import { Badge, Card, Empty, Field, PageHeader } from '../components/ui'
 import { alertDialog, confirmDialog } from '../components/dialog'
 
 export function Settings() {
@@ -17,16 +18,14 @@ export function Settings() {
     void qc.invalidateQueries({ queryKey: ['settings'] })
     void qc.invalidateQueries({ queryKey: ['risk'] })
     void qc.invalidateQueries({ queryKey: ['account'] })
+    void qc.invalidateQueries({ queryKey: ['credentials'] })
   }
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Réglages" subtitle="Clés API, risque global, frais de paper trading et état du système" />
+      <PageHeader title="Réglages" subtitle="Comptes OKX (clés API), risque global, frais de paper trading et état du système" />
 
-      <div className="grid grid-cols-2 gap-4">
-        <CredentialsCard name="live" title="Clés API OKX — LIVE" configured={settings?.credentials.live ?? false} onDone={invalidate} />
-        <CredentialsCard name="testnet" title="Clés API OKX — Démo" configured={settings?.credentials.testnet ?? false} onDone={invalidate} />
-      </div>
+      <AccountsCard onDone={invalidate} />
 
       {/* ne monter ces cartes qu'une fois les données chargées : leur état local
           est initialisé depuis les props (useState) — monté trop tôt, le
@@ -75,59 +74,169 @@ export function Settings() {
   )
 }
 
-function CredentialsCard({ name, title, configured, onDone }: { name: 'live' | 'testnet'; title: string; configured: boolean; onDone: () => void }) {
-  const [apiKey, setApiKey] = useState('')
-  const [secret, setSecret] = useState('')
-  const [passphrase, setPassphrase] = useState('')
+/** Comptes OKX : autant de comptes/sous-comptes qu'on veut, chacun avec son
+ *  label, ses clés (chiffrées) et son équité — les bots choisissent leur
+ *  compte à la création. 'live' et 'testnet' = comptes par défaut historiques. */
+function AccountsCard({ onDone }: { onDone: () => void }) {
+  const { data: creds, isLoading } = useQuery({
+    queryKey: ['credentials'],
+    queryFn: api.credentials,
+    refetchInterval: 30_000,
+  })
+  // formulaire d'ajout/mise à jour (editing = nom verrouillé, clés re-saisies)
+  const [form, setForm] = useState<{ name: string; apiKey: string; secret: string; passphrase: string; demo: boolean; editing: boolean } | null>(null)
+
   const save = useMutation({
-    mutationFn: () => api.setCredentials(name, apiKey, secret, passphrase),
+    mutationFn: (f: NonNullable<typeof form>) => api.setCredentials(f.name.trim(), f.apiKey, f.secret, f.passphrase, f.demo),
     onSuccess: () => {
-      setApiKey('')
-      setSecret('')
-      setPassphrase('')
+      setForm(null)
       onDone()
     },
     onError: (e) => void alertDialog({ title: 'Erreur', message: e instanceof Error ? e.message : String(e), tone: 'danger' }),
   })
-  const remove = useMutation({ mutationFn: () => api.deleteCredentials(name), onSuccess: onDone })
+  const remove = useMutation({
+    mutationFn: (name: string) => api.deleteCredentials(name),
+    onSuccess: onDone,
+    onError: (e) => void alertDialog({ title: 'Suppression impossible', message: e instanceof Error ? e.message : String(e), tone: 'danger' }),
+  })
+
+  const lockedDemo = form !== null && (form.name.trim() === 'live' || form.name.trim() === 'testnet')
 
   return (
     <Card
-      title={title}
-      actions={<Badge value={configured ? 'running' : 'stopped'} label={configured ? 'configurées' : 'absentes'} />}
-      className="flex flex-col"
-      bodyClassName="flex flex-1 flex-col gap-3 p-4"
+      title="Comptes OKX"
+      actions={
+        !form && (
+          <button className="btn-primary btn-sm" onClick={() => setForm({ name: '', apiKey: '', secret: '', passphrase: '', demo: false, editing: false })}>
+            <Plus size={15} /> Ajouter un compte
+          </button>
+        )
+      }
+      bodyClassName={creds?.length === 0 && !form ? 'p-4' : 'p-0'}
     >
-      <Field label="API Key">
-        <input className="input" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder={configured ? '••••••••' : ''} />
-      </Field>
-      <Field label="Secret">
-        <input className="input" type="password" value={secret} onChange={(e) => setSecret(e.target.value)} placeholder={configured ? '••••••••' : ''} />
-      </Field>
-      <Field label="Passphrase">
-        <input className="input" type="password" value={passphrase} onChange={(e) => setPassphrase(e.target.value)} placeholder={configured ? '••••••••' : ''} />
-      </Field>
-      {name === 'live' && (
-        <div className="text-[11px] text-zinc-500">
-          Conseil : créez une clé restreinte (trading uniquement, pas de retrait) avec whitelist IP de votre VPS.
+      {isLoading ? (
+        <div className="space-y-2 p-4">
+          <div className="skeleton h-8 w-full" />
+          <div className="skeleton h-8 w-full" />
+        </div>
+      ) : creds?.length === 0 && !form ? (
+        <Empty>Aucun compte configuré — ajoutez les clés API de votre compte principal ou d'un sous-compte.</Empty>
+      ) : (
+        <div>
+          {creds !== undefined && creds.length > 0 && (
+            <table>
+              <thead>
+                <tr>
+                  <th>Compte</th>
+                  <th>Type</th>
+                  <th className="text-right">Équité estimée</th>
+                  <th className="text-right">Clés mises à jour</th>
+                  <th className="text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {creds.map((cr) => (
+                  <AccountRow
+                    key={cr.name}
+                    cr={cr}
+                    onEdit={() => setForm({ name: cr.name, apiKey: '', secret: '', passphrase: '', demo: cr.demo, editing: true })}
+                    onDelete={async () => {
+                      if (
+                        await confirmDialog({
+                          title: 'Supprimer le compte',
+                          message: `Supprimer les clés API du compte « ${cr.name} » ? (refusé si un bot utilise ce compte)`,
+                          confirmLabel: 'Supprimer',
+                          tone: 'danger',
+                        })
+                      )
+                        remove.mutate(cr.name)
+                    }}
+                  />
+                ))}
+              </tbody>
+            </table>
+          )}
+          {form && (
+            <div className="space-y-3 border-t border-edge p-4">
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Label du compte" hint="Libre — ex. « tpxportfolio », « sous-compte accum ». 'live' et 'testnet' = comptes par défaut des bots historiques.">
+                  <input
+                    className="input"
+                    value={form.name}
+                    disabled={form.editing}
+                    placeholder="ex. tpxportfolio"
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  />
+                </Field>
+                <Field label="Type de clé">
+                  <label className="flex h-9 cursor-pointer items-center gap-2 text-[13px] text-zinc-300">
+                    <input
+                      type="checkbox"
+                      className="accent-accent"
+                      checked={lockedDemo ? form.name.trim() === 'testnet' : form.demo}
+                      disabled={lockedDemo}
+                      onChange={(e) => setForm({ ...form, demo: e.target.checked })}
+                    />
+                    Clé du bac à sable OKX (démo)
+                  </label>
+                </Field>
+                <Field label="API Key">
+                  <input className="input" value={form.apiKey} onChange={(e) => setForm({ ...form, apiKey: e.target.value })} />
+                </Field>
+                <Field label="Secret">
+                  <input className="input" type="password" value={form.secret} onChange={(e) => setForm({ ...form, secret: e.target.value })} />
+                </Field>
+                <Field label="Passphrase">
+                  <input className="input" type="password" value={form.passphrase} onChange={(e) => setForm({ ...form, passphrase: e.target.value })} />
+                </Field>
+              </div>
+              <div className="text-[11px] text-zinc-500">
+                Sous-compte : créez sa clé API depuis le compte PRINCIPAL (menu « Compte » → sous-compte → clé API). Conseil : clé
+                restreinte (lecture + trading, jamais de retrait) avec whitelist IP. Les clés sont chiffrées (AES-256-GCM) — jamais
+                affichées en clair.
+              </div>
+              <div className="flex justify-end gap-2">
+                <button className="btn-ghost" onClick={() => setForm(null)}>
+                  Annuler
+                </button>
+                <button
+                  className="btn-primary"
+                  onClick={() => save.mutate(form)}
+                  disabled={form.name.trim() === '' || form.apiKey === '' || form.secret === '' || form.passphrase === '' || save.isPending}
+                >
+                  {form.editing ? 'Remplacer les clés (chiffré)' : 'Enregistrer (chiffré)'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
-      <div className="mt-auto flex justify-end gap-2 pt-1">
-        {configured && (
-          <button
-            className="btn-danger"
-            onClick={async () => {
-              if (await confirmDialog({ title: 'Supprimer les clés', message: 'Supprimer ces clés API ?', confirmLabel: 'Supprimer', tone: 'danger' })) remove.mutate()
-            }}
-          >
-            Supprimer
-          </button>
-        )}
-        <button className="btn-primary" onClick={() => save.mutate()} disabled={apiKey === '' || secret === '' || passphrase === '' || save.isPending}>
-          Enregistrer (chiffré)
-        </button>
-      </div>
     </Card>
+  )
+}
+
+function AccountRow({ cr, onEdit, onDelete }: { cr: CredentialWithEquity; onEdit: () => void; onDelete: () => void }) {
+  return (
+    <tr>
+      <td className="font-medium text-zinc-200">{cr.name}</td>
+      <td>
+        <Badge value={cr.demo ? 'testnet' : 'live'} label={cr.demo ? 'démo' : 'réel'} />
+      </td>
+      <td className="num text-right">
+        {cr.equity !== null ? `${fmtNum(cr.equity, 2)} $` : <span className="text-down" title="Clés illisibles ou compte injoignable">indisponible</span>}
+      </td>
+      <td className="num text-right text-zinc-500">{new Date(cr.updatedAt).toLocaleDateString('fr-FR')}</td>
+      <td>
+        <div className="flex justify-end gap-1.5">
+          <button className="btn btn-sm btn-icon" title="Remplacer les clés" onClick={onEdit}>
+            <Pencil size={15} />
+          </button>
+          <button className="btn-danger btn-sm btn-icon" title="Supprimer le compte" onClick={onDelete}>
+            <Trash2 size={15} />
+          </button>
+        </div>
+      </td>
+    </tr>
   )
 }
 

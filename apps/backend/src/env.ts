@@ -9,7 +9,12 @@ export const env = {
   port: Number(process.env.PORT ?? 3001),
   databaseUrl: process.env.DATABASE_URL ?? 'postgres://tpx:tpx@localhost:5432/tpx',
   adminPassword: process.env.ADMIN_PASSWORD ?? '',
-  masterKey: process.env.MASTER_KEY ?? '',
+  // getter : lu à CHAQUE usage, pas capturé au chargement du module — sous
+  // `bun test`, un autre fichier de test peut charger env.ts avant que
+  // credentials.test.ts ait posé process.env.MASTER_KEY (flaky vécu)
+  get masterKey(): string {
+    return process.env.MASTER_KEY ?? ''
+  },
   dataDir: resolve(process.env.DATA_DIR ?? resolve(repoRoot(), 'data')),
   artifactsDir: resolve(process.env.ARTIFACTS_DIR ?? resolve(repoRoot(), 'artifacts')),
   strategiesDir: resolve(process.env.STRATEGIES_DIR ?? resolve(repoRoot(), 'strategies')),

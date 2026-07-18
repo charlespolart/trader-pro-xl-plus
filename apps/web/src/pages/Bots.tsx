@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { defaultParams, type BotConfig, type BotRiskConfig, type MarketType, type Order, type ParamValues } from '@tpx/shared'
+import { defaultParams, effectiveCredentialName, type BotConfig, type BotRiskConfig, type MarketType, type Order, type ParamValues } from '@tpx/shared'
 import { api, type StrategyDTO } from '../lib/api'
 import { useBots } from '../lib/ws'
 import { Pencil, Play, Plus, Square, Trash2 } from 'lucide-react'
@@ -35,6 +35,8 @@ interface BotDraft {
   market: MarketType
   symbol: string
   mode: BotConfig['mode']
+  /** compte OKX (label des clés API) — absent = compte historique du mode */
+  credentialName?: string
   allocation: number
   initialBaseQty?: number
   adoptAllBase?: boolean
@@ -92,6 +94,7 @@ export function Bots() {
       market: (s.markets?.[0] ?? 'spot') as MarketType,
       symbol: s.symbol ?? 'BTCUSDT',
       mode: 'paper',
+      credentialName: undefined,
       allocation: base ? 0 : 1000,
       initialBaseQty: base ? 1 : undefined,
       adoptAllBase: undefined,
@@ -109,6 +112,7 @@ export function Bots() {
       market: cfg.market,
       symbol: cfg.symbol,
       mode: cfg.mode,
+      credentialName: cfg.credentialName,
       allocation: cfg.allocation,
       initialBaseQty: cfg.initialBaseQty,
       adoptAllBase: cfg.adoptAllBase,
@@ -141,6 +145,7 @@ export function Bots() {
                 <th>Stratégie</th>
                 <th>Marché / Paire</th>
                 <th>Mode</th>
+                <th>Compte</th>
                 <th>Statut</th>
                 <th className="text-right">Équité</th>
                 <th className="text-right">PnL total</th>
@@ -163,6 +168,9 @@ export function Bots() {
                       {b.config.market === 'futures' && <span className="ml-1 text-xs text-zinc-500">×{b.config.leverage}</span>}
                     </td>
                     <td><Badge value={b.config.mode} /></td>
+                    <td className="text-zinc-400">
+                      {effectiveCredentialName(b.config.mode, b.config.credentialName) ?? '—'}
+                    </td>
                     <td>
                       <Badge value={b.status} />
                       {b.statusReason !== undefined && <div className="text-[11px] text-zinc-500">{b.statusReason}</div>}
@@ -302,11 +310,22 @@ function BotForm({
   // le DÉPART est imposé par la stratégie : base-denom (accumulateurs) = on
   // détient déjà les coins ; les autres = capital en quote. Pas de choix.
   const startsInBase = draft.market === 'spot' && strategy?.backtest?.denomination === 'base'
-  // solde base réel (live/testnet) pour la saisie en % — cache serveur 10 s
+  // comptes disponibles (label + équité) pour le sélecteur — filtrés par type
+  // de clé : un bot live ne peut tourner que sur une clé réelle, un bot démo
+  // que sur une clé bac à sable
+  const { data: creds } = useQuery({
+    queryKey: ['credentials'],
+    queryFn: api.credentials,
+    enabled: draft.mode !== 'paper',
+    staleTime: 15_000,
+  })
+  const accountName = effectiveCredentialName(draft.mode, draft.credentialName)
+  const matchingCreds = (creds ?? []).filter((cr) => cr.demo === (draft.mode === 'testnet'))
+  // solde base réel du COMPTE choisi pour la saisie en % — cache serveur 10 s
   const { data: account } = useQuery({
-    queryKey: ['account', draft.mode],
-    queryFn: () => api.account(draft.mode as 'live' | 'testnet'),
-    enabled: startsInBase && draft.mode !== 'paper',
+    queryKey: ['account', accountName],
+    queryFn: () => api.account(accountName!),
+    enabled: startsInBase && accountName !== null,
     staleTime: 10_000,
   })
   const baseFree = account?.spot?.find((b) => b.asset === baseAsset)?.free
@@ -357,15 +376,18 @@ function BotForm({
             value={draft.mode}
             onChange={(e) => {
               const mode = e.target.value as BotDraft['mode']
+              // changement de mode = famille de clés différente → le compte
+              // choisi n'est plus valable, retour au compte par défaut du mode
               if (startsInBase) {
                 onChange({
                   ...draft,
                   mode,
+                  credentialName: undefined,
                   adoptAllBase: mode === 'paper' ? undefined : true,
                   initialBaseQty: mode === 'paper' ? (draft.initialBaseQty ?? 1) : undefined,
                 })
               } else {
-                onChange({ ...draft, mode })
+                onChange({ ...draft, mode, credentialName: undefined })
               }
             }}
           >
@@ -374,6 +396,30 @@ function BotForm({
             <option value="live">LIVE (argent réel)</option>
           </select>
         </Field>
+        {draft.mode !== 'paper' && (
+          <Field
+            label="Compte d'exécution"
+            hint="Le compte OKX (ou sous-compte) sur lequel ce bot trade — l'équité affichée est la valeur spot estimée du compte."
+          >
+            <select
+              className="input"
+              value={accountName ?? ''}
+              onChange={(e) => onChange({ ...draft, credentialName: e.target.value })}
+            >
+              {accountName !== null && !matchingCreds.some((cr) => cr.name === accountName) && (
+                <option value={accountName} disabled>
+                  {accountName} (clés absentes — à configurer dans Réglages)
+                </option>
+              )}
+              {matchingCreds.map((cr) => (
+                <option key={cr.name} value={cr.name}>
+                  {cr.name}
+                  {cr.equity !== null ? ` — ${fmtNum(cr.equity, 2)} $` : ' — équité indisponible'}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
         <Field label="Marché">
           <select
             className="input"

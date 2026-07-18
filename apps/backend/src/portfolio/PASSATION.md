@@ -181,6 +181,29 @@ la spec §6 (elles ne remplacent rien d'autre) :
    bot, routeur WS par COMPTE et non par mode, siblingBaseClaims scopé par
    credential, page compte multi-credentials). La MIGRATION des fonds, elle,
    reste au go explicite.
+   **✅ CODÉ (2026-07-18, même jour) — livré sur master, PAS déployé sur le
+   VPS** (les 3 bots live tournent sur l'image précédente, intouchés) :
+   - DB : `api_credentials.demo` (bool, migration 0004 pose testnet→true) +
+     `bots.credential_name` (NULL = compat 'live'/'testnet' selon le mode) ;
+   - `effectiveCredentialName(mode, credentialName)` dans @tpx/shared = LA
+     clé de scoping (routeur WS privé par COMPTE, siblingBaseClaims par
+     compte, garde anti-doublon futures par compte, refus de suppression
+     d'un compte utilisé par un bot) ;
+   - gardes de sécurité : bot LIVE sur clé démo REFUSÉ, bot démo sur clé
+     réelle REFUSÉ (création, édition ET démarrage) ;
+   - API : `GET /credentials` (liste + équité par compte, `null` si clés
+     illisibles ≠ 0 $ d'un sous-compte vide), `/account?name=…`,
+     PUT/DELETE credentials généralisés ;
+   - UI : Réglages = carte « Comptes OKX » (CRUD, label, badge démo/réel,
+     équité, date des clés) ; création de bot = sélecteur « Compte
+     d'exécution » (label + équité, filtré par type de clé) ; liste des
+     bots = colonne Compte ; WalletCard cycle sur tous les comptes ;
+   - validé : typecheck 7/7, 174 tests verts, build web, smoke e2e local
+     (création compte → bot dessus → refus délétion/refus démo↔réel).
+   Prochaine étape (Mario) : créer les 3 sous-comptes + leurs clés API,
+   les saisir dans Réglages, puis recréer les 3 bots chacun sur son
+   sous-compte — la migration des FONDS reste un go explicite séparé,
+   et le déploiement VPS de cette version aussi.
 3. **UI unifiée « Stratégies » — un seul onglet, DEUX moteurs** (demande
    explicite de Mario : tout voir/piloter au même endroit) :
    - une seule liste : 3 bots spot + 2 sleeves, même langage visuel partout

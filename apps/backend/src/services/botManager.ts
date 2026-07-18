@@ -11,6 +11,7 @@ import {
 import {
   DEFAULT_FEES,
   INTERVAL_MS,
+  effectiveCredentialName,
   floorToStep,
   sleep,
   utcDayKey,
@@ -152,6 +153,8 @@ class BotRunner {
    *  checkpoint, PUIS le stop s'exécute — jamais les deux entrelacés. */
   private lifecycle: Promise<unknown> = Promise.resolve()
   private stopRequested = false
+  /** compte OKX résolu au démarrage (live/testnet) — clé du routeur WS privé */
+  private credName: string | null = null
   private counters = {
     pnlDay: utcDayKey(Date.now()),
     realizedPnlToday: 0,
@@ -241,8 +244,20 @@ class BotRunner {
       sim.setLastPrice(lastPrice)
       this.rawExec = sim
     } else {
-      const creds = await manager.credentials.get(config.mode === 'live' ? 'live' : 'testnet')
-      if (!creds) throw new Error(`Aucune clé API configurée pour le mode ${config.mode}`)
+      const credName = effectiveCredentialName(config.mode, config.credentialName)!
+      const cred = await manager.credentials.getRecord(credName)
+      if (!cred) throw new Error(`Aucune clé API configurée pour le compte « ${credName} »`)
+      // GARDE de cohérence compte↔mode : un bot LIVE sur une clé démo ne
+      // tradera jamais ; un bot démo sur une clé réelle engagerait de l'argent
+      // réel « pour un test » — les deux sens sont des erreurs de config.
+      if (config.mode === 'live' && cred.demo) {
+        throw new Error(`Le compte « ${credName} » est une clé DÉMO — impossible pour un bot LIVE`)
+      }
+      if (config.mode === 'testnet' && !cred.demo) {
+        throw new Error(`Le compte « ${credName} » est une clé RÉELLE — impossible pour un bot démo (testnet)`)
+      }
+      this.credName = credName
+      const creds = cred.creds
       // EU (EEA) accounts can't trade USDT — execute on the USDC pair instead while
       // the DATA symbol (config.symbol / candles) stays on Binance USDT. No-op
       // elsewhere, et EXEMPTÉ en démo (les paires USDC du bac à sable sont mortes).
@@ -297,23 +312,30 @@ class BotRunner {
           onOrderUpdate: (order) => this.enqueue(() => this.onOrderEvent(order)),
         },
         // somme des tranches revendiquées par les AUTRES bots spot de la même
-        // paire/mode (états persistés) — nourrit la garde anti-sur-revendication
+        // paire sur le MÊME COMPTE (états persistés) — nourrit la garde
+        // anti-sur-revendication. Scopé par compte effectif : des bots sur des
+        // sous-comptes séparés ne partagent PAS leurs soldes.
         siblingBaseClaims: async () => {
           const rows = await db
-            .select({ id: botsTable.id, state: botStateTable.state })
+            .select({
+              id: botsTable.id,
+              mode: botsTable.mode,
+              credentialName: botsTable.credentialName,
+              state: botStateTable.state,
+            })
             .from(botsTable)
             .innerJoin(botStateTable, eq(botStateTable.botId, botsTable.id))
             .where(
               and(
                 eq(botsTable.market, 'spot'),
                 eq(botsTable.symbol, config.symbol),
-                eq(botsTable.mode, config.mode),
                 eq(botsTable.desiredRunning, true),
               ),
             )
           let sum = 0
           for (const r of rows) {
             if (r.id === config.id) continue
+            if (effectiveCredentialName(r.mode as BotConfig['mode'], r.credentialName) !== credName) continue
             const st = (r.state ?? {}) as Record<string, unknown>
             const ad = st[ADAPTER_STATE_KEY] as { posQty?: number } | undefined
             sum += Math.max(0, ad?.posQty ?? 0)
@@ -323,7 +345,7 @@ class BotRunner {
       })
       adapter.setLastPrice(lastPrice)
       this.rawExec = adapter
-      const router = await manager.getRouter(config.mode, creds)
+      const router = await manager.getRouter(credName, creds, testnet)
       router.register(adapter)
     }
 
@@ -976,8 +998,8 @@ class BotRunner {
       await this.waitLiveFillsSettled(3_000)
     } finally {
       await this.saveState().catch(() => {})
-      if (this.rawExec instanceof OKXLiveAdapter) {
-        this.deps.manager.releaseAdapter(this.deps.config.mode, this.rawExec)
+      if (this.rawExec instanceof OKXLiveAdapter && this.credName !== null) {
+        this.deps.manager.releaseAdapter(this.credName, this.rawExec)
       }
       this.status = opts.killed ? 'killed' : 'stopped'
       this.statusReason = opts.reason
@@ -999,8 +1021,8 @@ class BotRunner {
     this.unsubs = []
     for (const t of this.timers) clearInterval(t)
     this.timers = []
-    if (this.rawExec instanceof OKXLiveAdapter) {
-      this.deps.manager.releaseAdapter(this.deps.config.mode, this.rawExec)
+    if (this.rawExec instanceof OKXLiveAdapter && this.credName !== null) {
+      this.deps.manager.releaseAdapter(this.credName, this.rawExec)
     }
   }
 
@@ -1168,6 +1190,7 @@ export class BotManager {
       market: row.market as MarketType,
       symbol: row.symbol,
       mode: row.mode as BotConfig['mode'],
+      credentialName: row.credentialName ?? undefined,
       params: row.params as BotConfig['params'],
       allocation: row.allocation,
       initialBaseQty: row.initialBaseQty ?? undefined,
@@ -1189,6 +1212,16 @@ export class BotManager {
     return rows.length > 0 ? this.rowToConfig(rows[0]!) : null
   }
 
+  /** compte cohérent avec le mode : existe, et demo↔mode alignés. paper → aucun. */
+  private async checkCredential(mode: BotConfig['mode'], credentialName: string | undefined): Promise<string | undefined> {
+    if (mode === 'paper' || credentialName === undefined) return undefined
+    const rec = await this.credentials.getRecord(credentialName)
+    if (!rec) throw new Error(`Compte inconnu : « ${credentialName} » — créez d'abord ses clés API dans Réglages`)
+    if (mode === 'live' && rec.demo) throw new Error(`Le compte « ${credentialName} » est une clé DÉMO — impossible pour un bot LIVE`)
+    if (mode === 'testnet' && !rec.demo) throw new Error(`Le compte « ${credentialName} » est une clé RÉELLE — impossible pour un bot démo (testnet)`)
+    return credentialName
+  }
+
   async create(input: Omit<BotConfig, 'id' | 'createdAt' | 'updatedAt'>): Promise<BotConfig> {
     const entry = registry.get(input.strategyId)
     // la stratégie impose sa paire et ses marchés quand elle les déclare
@@ -1196,6 +1229,7 @@ export class BotManager {
     if (!entry.def.markets.includes(input.market)) {
       throw new Error(`La stratégie '${entry.def.name}' ne supporte pas le marché ${input.market}`)
     }
+    input = { ...input, credentialName: await this.checkCredential(input.mode, input.credentialName) }
     const validation = validateParams(entry.def.schema, input.params)
     if (!validation.ok) throw new Error(`Paramètres invalides: ${validation.errors.join('; ')}`)
     if (((input.initialBaseQty ?? 0) > 0 || input.adoptAllBase === true) && input.market !== 'spot') {
@@ -1208,12 +1242,18 @@ export class BotManager {
       throw new Error('Départ vide : donnez une allocation (quote) OU une position initiale (coins) — sinon le bot n\'a rien à gérer')
     }
     if (input.market === 'futures' && input.mode !== 'paper') {
+      // doublon par COMPTE effectif : deux bots futures sur la même paire ne
+      // se mélangent que s'ils partagent le même compte OKX
+      const cred = effectiveCredentialName(input.mode, input.credentialName)
       const others = (await this.listConfigs()).filter(
-        (b) => b.market === 'futures' && b.symbol === input.symbol && b.mode === input.mode,
+        (b) =>
+          b.market === 'futures' &&
+          b.symbol === input.symbol &&
+          effectiveCredentialName(b.mode, b.credentialName) === cred,
       )
       if (others.length > 0) {
         throw new Error(
-          `Un bot futures ${input.mode} existe déjà sur ${input.symbol} — les positions seraient mélangées sur l'exchange`,
+          `Un bot futures existe déjà sur ${input.symbol} pour le compte « ${cred} » — les positions seraient mélangées sur l'exchange`,
         )
       }
     }
@@ -1231,6 +1271,7 @@ export class BotManager {
       market: config.market,
       symbol: config.symbol,
       mode: config.mode,
+      credentialName: config.credentialName ?? null,
       params: config.params,
       allocation: config.allocation,
       initialBaseQty: config.initialBaseQty ?? null,
@@ -1259,6 +1300,13 @@ export class BotManager {
       merged.initialBaseQty =
         typeof patch.initialBaseQty === 'number' && patch.initialBaseQty > 0 ? patch.initialBaseQty : undefined
     }
+    // même convention d'ABSENCE que ci-dessus : dès que le patch touche le mode
+    // ou le compte, l'absence de credentialName signifie « compte par défaut »
+    if ('mode' in patch || 'credentialName' in patch) {
+      merged.credentialName =
+        typeof patch.credentialName === 'string' && patch.credentialName !== '' ? patch.credentialName : undefined
+    }
+    merged.credentialName = await this.checkCredential(merged.mode, merged.credentialName)
     const entry = registry.get(merged.strategyId)
     if (entry.def.symbol !== undefined) merged.symbol = entry.def.symbol
     if (!entry.def.markets.includes(merged.market)) {
@@ -1284,6 +1332,7 @@ export class BotManager {
         market: merged.market,
         symbol: merged.symbol,
         mode: merged.mode,
+        credentialName: merged.credentialName ?? null,
         params: merged.params,
         allocation: merged.allocation,
         initialBaseQty: merged.initialBaseQty ?? null,
@@ -1414,23 +1463,25 @@ export class BotManager {
 
   // --------------------------------------------------- shared live plumbing
 
-  async getRouter(mode: BotConfig['mode'], creds: OkxCredentials): Promise<OkxUserStreamRouter> {
-    // One router per account: the OKX unified account carries spot + swap, so a
-    // single private socket fans out to every bot in that mode.
-    let router = this.routers.get(mode)
+  async getRouter(credName: string, creds: OkxCredentials, demo: boolean): Promise<OkxUserStreamRouter> {
+    // One router per ACCOUNT (credential) : chaque compte/sous-compte OKX a son
+    // propre flux privé — les fills d'un sous-compte n'arrivent QUE sur le
+    // socket loggé avec sa clé. Un seul socket fan-out pour tous les bots du
+    // même compte.
+    let router = this.routers.get(credName)
     if (!router) {
-      const onError = (err: Error) => console.error(`User stream ${mode} error:`, err.message)
-      const stream = new OkxPrivateStream(creds, mode === 'testnet', onError, () => {
-        void this.onStreamLoginDeath(mode)
+      const onError = (err: Error) => console.error(`User stream ${credName} error:`, err.message)
+      const stream = new OkxPrivateStream(creds, demo, onError, () => {
+        void this.onStreamLoginDeath(credName)
       })
       router = new OkxUserStreamRouter(stream, onError)
-      this.routers.set(mode, router)
+      this.routers.set(credName, router)
       try {
         // start() ne résout qu'au login réussi : un flux privé mort fait échouer
         // le démarrage du bot (retries) au lieu de le laisser trader en aveugle
         await router.start()
       } catch (err) {
-        this.routers.delete(mode)
+        this.routers.delete(credName)
         router.stop()
         throw err
       }
@@ -1442,18 +1493,20 @@ export class BotManager {
    * Le login du flux privé a été refusé EN PLEINE VIE (rotation de clés, IP
    * retirée de la whitelist, horloge) : les fills n'arrivent plus et ça ne
    * reviendra pas tout seul. Trader en aveugle est interdit → suspendre les
-   * bots du mode (ordres CONSERVÉS sur l'exchange, desiredRunning conservé),
+   * bots du COMPTE (ordres CONSERVÉS sur l'exchange, desiredRunning conservé),
    * alerter, retenter toutes les 5 min — le reconcile de la reprise rattrapera
    * les fills manqués pendant la coupure.
    */
-  private async onStreamLoginDeath(mode: BotConfig['mode']): Promise<void> {
-    const router = this.routers.get(mode)
+  private async onStreamLoginDeath(credName: string): Promise<void> {
+    const router = this.routers.get(credName)
     router?.stop()
-    this.routers.delete(mode)
-    const ids = [...this.runners.entries()].filter(([, r]) => r.config.mode === mode).map(([id]) => id)
+    this.routers.delete(credName)
+    const ids = [...this.runners.entries()]
+      .filter(([, r]) => effectiveCredentialName(r.config.mode, r.config.credentialName) === credName)
+      .map(([id]) => id)
     if (ids.length > 0) {
       sendTelegram(
-        `🚨 <b>Flux privé OKX (${mode}) mort</b> : login refusé (clés/IP/horloge ?) — ` +
+        `🚨 <b>Flux privé OKX (compte ${credName}) mort</b> : login refusé (clés/IP/horloge ?) — ` +
           `${ids.length} bot(s) suspendu(s), ordres conservés. Nouvelle tentative toutes les 5 min.`,
       )
     }
@@ -1465,24 +1518,29 @@ export class BotManager {
         reason: 'flux privé OKX mort (login refusé) — bot suspendu',
       }).catch(() => {})
     }
-    this.scheduleStreamRetry(mode)
+    this.scheduleStreamRetry(credName)
   }
 
-  private scheduleStreamRetry(mode: BotConfig['mode']): void {
-    if (this.streamRetryTimers.has(mode)) return
+  private scheduleStreamRetry(credName: string): void {
+    if (this.streamRetryTimers.has(credName)) return
     const t = setTimeout(() => {
-      this.streamRetryTimers.delete(mode)
-      void this.resumeSuspended(mode)
+      this.streamRetryTimers.delete(credName)
+      void this.resumeSuspended(credName)
     }, 300_000)
-    this.streamRetryTimers.set(mode, t)
+    this.streamRetryTimers.set(credName, t)
   }
 
   /** Reprise des bots suspendus par une mort du flux privé : start() recrée le
    *  routeur (login attendu) — s'il échoue encore, on re-planifie dans 5 min. */
-  private async resumeSuspended(mode: BotConfig['mode']): Promise<void> {
+  private async resumeSuspended(credName: string): Promise<void> {
     if (this.killSwitchActive) return
     const rows = await this.db.select().from(botsTable)
-    const candidates = rows.filter((r) => r.desiredRunning && r.mode === mode && !this.runners.has(r.id))
+    const candidates = rows.filter(
+      (r) =>
+        r.desiredRunning &&
+        effectiveCredentialName(r.mode as BotConfig['mode'], r.credentialName) === credName &&
+        !this.runners.has(r.id),
+    )
     if (candidates.length === 0) return
     let failed = 0
     for (const row of candidates) {
@@ -1490,20 +1548,20 @@ export class BotManager {
         await this.start(row.id)
       } catch (err) {
         failed++
-        console.error(`Reprise du bot ${row.id} (${mode}) échouée:`, err instanceof Error ? err.message : err)
+        console.error(`Reprise du bot ${row.id} (compte ${credName}) échouée:`, err instanceof Error ? err.message : err)
       }
     }
-    if (failed > 0) this.scheduleStreamRetry(mode)
-    else sendTelegram(`✅ Flux privé OKX (${mode}) rétabli — ${candidates.length} bot(s) relancé(s)`)
+    if (failed > 0) this.scheduleStreamRetry(credName)
+    else sendTelegram(`✅ Flux privé OKX (compte ${credName}) rétabli — ${candidates.length} bot(s) relancé(s)`)
   }
 
-  releaseAdapter(mode: BotConfig['mode'], adapter: OKXLiveAdapter): void {
-    const router = this.routers.get(mode)
+  releaseAdapter(credName: string, adapter: OKXLiveAdapter): void {
+    const router = this.routers.get(credName)
     if (!router) return
     router.unregister(adapter)
     if (router.size === 0) {
       router.stop()
-      this.routers.delete(mode)
+      this.routers.delete(credName)
     }
   }
 

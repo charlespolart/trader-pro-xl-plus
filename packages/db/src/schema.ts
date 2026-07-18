@@ -85,6 +85,9 @@ export const bots = pgTable('bots', {
   market: text('market').notNull(),
   symbol: text('symbol').notNull(),
   mode: text('mode').notNull(),
+  /** compte OKX (api_credentials.name) sur lequel ce bot exécute — NULL =
+   *  compat historique ('live'/'testnet' selon le mode) */
+  credentialName: text('credential_name'),
   params: jsonb('params').notNull(),
   allocation: doublePrecision('allocation').notNull(),
   /** position initiale en BASE (accumulateurs : « je détiens déjà X BTC ») —
@@ -241,13 +244,16 @@ export const settings = pgTable('settings', {
   updatedAt: ts('updated_at').notNull(),
 })
 
-/** AES-256-GCM encrypted OKX credentials (never stored in clear) */
+/** AES-256-GCM encrypted OKX credentials (never stored in clear) —
+ *  une ligne par COMPTE (principal ou sous-compte), le nom sert de label */
 export const apiCredentials = pgTable('api_credentials', {
-  /** 'live' | 'testnet' */
   name: text('name').primaryKey(),
   apiKeyEnc: text('api_key_enc').notNull(),
   secretEnc: text('secret_enc').notNull(),
   passphraseEnc: text('passphrase_enc'),
+  /** clé du bac à sable OKX (hosts démo) — porté par le credential, plus par
+   *  son nom ('testnet' historique migré à true) */
+  demo: boolean('demo').notNull().default(false),
   updatedAt: ts('updated_at').notNull(),
 })
 

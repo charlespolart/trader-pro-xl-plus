@@ -108,9 +108,24 @@ export interface WalletBalance {
   valueQuote?: number | null
 }
 
+export interface CredentialInfo {
+  /** nom LIBRE du compte — sert de label ('live'/'testnet' = comptes historiques) */
+  name: string
+  demo: boolean
+  updatedAt: number
+}
+
+export interface CredentialWithEquity extends CredentialInfo {
+  /** valeur totale spot estimée ($) — null si clés illisibles / compte injoignable */
+  equity: number | null
+}
+
 export interface AccountData {
   configured: boolean
-  mode: 'live' | 'testnet'
+  name: string
+  demo?: boolean
+  /** false = clés illisibles / compte injoignable (≠ compte vide) */
+  balancesOk?: boolean
   spot?: WalletBalance[]
   totalValueQuote?: number
   futures?: { asset: string; free: number; locked: number }[]
@@ -123,7 +138,7 @@ export interface AccountData {
 export interface SettingsData {
   authEnabled: boolean
   telegramConfigured: boolean
-  credentials: { live: boolean; testnet: boolean }
+  credentials: CredentialInfo[]
   paperFees: Record<MarketType, { makerRate: number; takerRate: number }>
   backtestWorkers: number
   dataDir: string
@@ -249,7 +264,8 @@ export const api = {
     ),
 
   // account / risk
-  account: (mode: 'live' | 'testnet') => get<AccountData>(`/account?mode=${mode}`),
+  account: (name: string) => get<AccountData>(`/account?name=${encodeURIComponent(name)}`),
+  credentials: () => get<CredentialWithEquity[]>('/credentials'),
   risk: () => get<GlobalRiskConfig>('/risk'),
   setRisk: (cfg: GlobalRiskConfig) => put<GlobalRiskConfig>('/risk', cfg),
   killSwitch: (active: boolean) => post<{ killSwitchActive: boolean }>('/risk/killswitch', { active }),
@@ -267,12 +283,14 @@ export const api = {
 
   // settings
   settings: () => get<SettingsData>('/settings'),
-  setCredentials: (name: 'live' | 'testnet', apiKey: string, secret: string, passphrase: string) =>
-    put<{ ok: boolean }>('/settings/credentials', { name, apiKey, secret, passphrase }),
-  deleteCredentials: (name: 'live' | 'testnet') => del<{ ok: boolean }>(`/settings/credentials/${name}`),
+  setCredentials: (name: string, apiKey: string, secret: string, passphrase: string, demo: boolean) =>
+    put<{ ok: boolean }>('/settings/credentials', { name, apiKey, secret, passphrase, demo }),
+  deleteCredentials: (name: string) => del<{ ok: boolean }>(`/settings/credentials/${encodeURIComponent(name)}`),
   setPaperFees: (market: MarketType, fees: unknown) => put<{ ok: boolean }>('/settings/paper-fees', { market, fees }),
 
   // live OKX maker/taker/level. null = pas de clés ; { error } = lecture impossible
-  getFees: (name: 'live' | 'testnet', market: MarketType, symbol: string) =>
-    get<{ maker: number; taker: number; level: string } | { error: string } | null>(`/fees/${name}/${market}/${symbol}`),
+  getFees: (name: string, market: MarketType, symbol: string) =>
+    get<{ maker: number; taker: number; level: string } | { error: string } | null>(
+      `/fees/${encodeURIComponent(name)}/${market}/${symbol}`,
+    ),
 }

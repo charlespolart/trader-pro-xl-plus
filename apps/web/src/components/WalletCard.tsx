@@ -32,10 +32,14 @@ const DUST_USD = 1
  * (₿/Ξ d'abord, dollars en second), la barre d'allocation, puis le détail.
  */
 export function WalletCard() {
-  const [mode, setMode] = useState<'live' | 'testnet'>('live')
+  // cycle entre TOUS les comptes configurés (principal + sous-comptes)
+  const { data: creds } = useQuery({ queryKey: ['credentials'], queryFn: api.credentials, staleTime: 30_000 })
+  const [selected, setSelected] = useState<string | null>(null)
+  const names = (creds ?? []).map((cr) => cr.name)
+  const name = selected !== null && names.includes(selected) ? selected : (names.includes('live') ? 'live' : (names[0] ?? 'live'))
   const { data: account, isLoading } = useQuery({
-    queryKey: ['account', mode],
-    queryFn: () => api.account(mode),
+    queryKey: ['account', name],
+    queryFn: () => api.account(name),
     refetchInterval: 15_000,
   })
 
@@ -52,10 +56,16 @@ export function WalletCard() {
       hint={
         <button
           className="cursor-pointer text-zinc-600 transition-colors hover:text-accent"
-          onClick={() => setMode(mode === 'live' ? 'testnet' : 'live')}
-          title="Basculer live / démo"
+          onClick={() => {
+            if (names.length === 0) return
+            const next = names[(names.indexOf(name) + 1) % names.length]!
+            setSelected(next)
+          }}
+          title="Compte suivant"
         >
-          {mode === 'live' ? 'live' : 'démo'} ⇥
+          {name}
+          {account?.demo === true ? ' (démo)' : ''}
+          {names.length > 1 ? ' ⇥' : ''}
         </button>
       }
       bodyClassName="p-0"
@@ -68,7 +78,7 @@ export function WalletCard() {
         </div>
       ) : !account?.configured ? (
         <Empty>
-          Aucune clé API {mode === 'live' ? 'live' : 'démo'} configurée.{' '}
+          Aucune clé API pour le compte « {name} ».{' '}
           <Link to="/settings" className="text-accent hover:underline">
             Configurer dans Réglages
           </Link>

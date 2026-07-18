@@ -37,6 +37,10 @@ export interface BotConfig {
   market: MarketType
   symbol: string
   mode: BotMode
+  /** compte OKX (api_credentials.name) sur lequel ce bot exécute — absent =
+   *  compat historique : 'live' ou 'testnet' selon le mode (cf.
+   *  effectiveCredentialName). Sans objet en paper. */
+  credentialName?: string
   params: ParamValues
   /** virtual budget allocated to this bot, in quote currency */
   allocation: number
@@ -53,6 +57,14 @@ export interface BotConfig {
   risk: BotRiskConfig
   createdAt: number
   updatedAt: number
+}
+
+/** Compte effectif d'un bot : son credentialName, sinon le compte historique
+ *  du mode ('live'/'testnet'). null = paper (aucun compte réel). C'est LA
+ *  clé de scoping du routeur WS privé et des gardes multi-bots. */
+export function effectiveCredentialName(mode: BotMode, credentialName?: string | null): string | null {
+  if (mode === 'paper') return null
+  return credentialName ?? (mode === 'live' ? 'live' : 'testnet')
 }
 
 export interface BotRuntimeInfo {

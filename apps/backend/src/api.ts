@@ -8,6 +8,7 @@ import {
   DEFAULT_BACKTEST_VALUES,
   DEFAULT_FEES,
   defaultParams,
+  effectiveCredentialName,
   isInterval,
   type BacktestConfig,
   type BotConfig,
@@ -129,6 +130,8 @@ export function buildApi(s: Services): Hono {
       market: asMarket(body.market),
       symbol: body.symbol.toUpperCase(),
       mode: body.mode,
+      credentialName:
+        typeof body.credentialName === 'string' && body.credentialName !== '' ? body.credentialName : undefined,
       params: body.params ?? defaultParams(entry.def.schema),
       allocation: body.allocation ?? 1000,
       initialBaseQty:
@@ -420,23 +423,28 @@ export function buildApi(s: Services): Hono {
 
   // --------------------------------------------------------------- account
 
-  api.get('/account', async (c) => {
-    const mode = (c.req.query('mode') ?? 'live') as 'live' | 'testnet'
-    const cacheKey = mode
-    const cached = accountCache.get(cacheKey)
-    if (cached && Date.now() - cached.at < 10_000) return c.json(cached.data)
-
-    const creds = await s.credentials.get(mode)
-    if (!creds) {
-      return c.json({ configured: false, mode, killSwitchActive: s.bots.killSwitchActive })
+  /** photo d'un compte (balances spot valorisées + positions), cache 10 s par
+   *  compte. Les tickers publics servent à tous les comptes (mêmes prix). */
+  const loadAccount = async (name: string) => {
+    const cached = accountCache.get(name)
+    if (cached && Date.now() - cached.at < 10_000) return cached.data
+    const rec = await s.credentials.getRecord(name)
+    if (!rec) {
+      return { configured: false, name, killSwitchActive: s.bots.killSwitchActive }
     }
-    const testnet = mode === 'testnet'
-    const account = new OkxAccount(new OkxRest({ demo: testnet, credentials: creds }))
+    const account = new OkxAccount(new OkxRest({ demo: rec.demo, credentials: rec.creds }))
+    // clé morte ≠ compte vide : un sous-compte neuf vaut légitimement 0 $, une
+    // clé illisible doit afficher « indisponible » — on trace l'échec au lieu
+    // de le confondre avec un solde nul
+    let balancesOk = true
     const [balances, positions, tickers] = await Promise.all([
-      account.balances('spot').catch(() => []),
+      account.balances('spot').catch(() => {
+        balancesOk = false
+        return []
+      }),
       account.allPositions().catch(() => []),
       // valorisation : tous les tickers spot en 1 appel public (prix last)
-      new OkxRest({ demo: testnet })
+      new OkxRest({ demo: rec.demo })
         .public<{ instId: string; last: string }>('/api/v5/market/tickers', { instType: 'SPOT' })
         .catch(() => []),
     ])
@@ -453,11 +461,13 @@ export function buildApi(s: Services): Hono {
         const price = STABLES.has(b.asset) ? 1 : (px.get(`${b.asset}-USDT`) ?? px.get(`${b.asset}-USDC`) ?? null)
         return { ...b, price, valueQuote: price !== null ? qty * price : null }
       })
-      .sort((a, c) => (c.valueQuote ?? 0) - (a.valueQuote ?? 0))
+      .sort((a, c2) => (c2.valueQuote ?? 0) - (a.valueQuote ?? 0))
     const totalValueQuote = spot.reduce((s2, b) => s2 + (b.valueQuote ?? 0), 0)
     const data = {
       configured: true,
-      mode,
+      name,
+      demo: rec.demo,
+      balancesOk,
       spot,
       totalValueQuote,
       futures: [],
@@ -471,26 +481,45 @@ export function buildApi(s: Services): Hono {
           liquidationPrice: p.liquidationPrice ?? 0,
           unRealizedProfit: p.unrealizedPnl,
         })),
-      totalExposureQuote: s.bots.totalExposureQuote([mode]),
+      totalExposureQuote: s.bots.totalExposureQuote([rec.demo ? 'testnet' : 'live']),
       killSwitchActive: s.bots.killSwitchActive,
       globalRisk: s.bots.globalRisk,
     }
-    accountCache.set(cacheKey, { at: Date.now(), data })
-    return c.json(data)
+    accountCache.set(name, { at: Date.now(), data })
+    return data
+  }
+
+  api.get('/account', async (c) => {
+    // ?name=<compte> — compat : ?mode=live|testnet résout les comptes historiques
+    const name = c.req.query('name') ?? (c.req.query('mode') === 'testnet' ? 'testnet' : 'live')
+    return c.json(await loadAccount(name))
+  })
+
+  /** tous les comptes configurés + leur équité (label + équité du sélecteur) */
+  api.get('/credentials', async (c) => {
+    const list = await s.credentials.list()
+    const rows = await Promise.all(
+      list.map(async (info) => {
+        const acct = (await loadAccount(info.name).catch(() => null)) as
+          | { totalValueQuote?: number; balancesOk?: boolean }
+          | null
+        return { ...info, equity: acct?.balancesOk === true ? (acct.totalValueQuote ?? 0) : null }
+      }),
+    )
+    return c.json(rows)
   })
 
   // live OKX maker/taker/level for a symbol. null = PAS DE CLÉS ;
   // { error } = clés présentes mais lecture impossible (à afficher tel quel).
   api.get('/fees/:name/:market/:symbol', async (c) => {
-    const name = c.req.param('name') as 'live' | 'testnet'
-    const creds = await s.credentials.get(name)
-    if (!creds) return c.json(null)
+    const rec = await s.credentials.getRecord(c.req.param('name'))
+    if (!rec) return c.json(null)
     const market = asMarket(c.req.param('market'))
     const symbol = c.req.param('symbol').toUpperCase()
     const si = await new BinanceMarketData(new BinanceRest({ market })).symbolInfo(symbol)
     if (!si) return c.json({ error: `symbole inconnu : ${symbol}` })
-    const instId = toInstId(si.baseAsset, execQuoteAsset(si.quoteAsset, name === 'testnet'), market)
-    const account = new OkxAccount(new OkxRest({ demo: name === 'testnet', credentials: creds }))
+    const instId = toInstId(si.baseAsset, execQuoteAsset(si.quoteAsset, rec.demo), market)
+    const account = new OkxAccount(new OkxRest({ demo: rec.demo, credentials: rec.creds }))
     const fee = await account.tradeFee(instType(market), instId)
     return c.json(fee ?? { error: 'lecture des frais impossible côté OKX' })
   })
@@ -546,7 +575,7 @@ export function buildApi(s: Services): Hono {
     return c.json({
       authEnabled,
       telegramConfigured: env.telegramToken.length > 0 && env.telegramChatId.length > 0,
-      credentials: await s.credentials.status(),
+      credentials: await s.credentials.list(),
       paperFees: {
         spot: await s.bots.paperFees('spot'),
         futures: await s.bots.paperFees('futures'),
@@ -558,18 +587,38 @@ export function buildApi(s: Services): Hono {
 
   api.put('/settings/credentials', async (c) => {
     const body = (await c.req.json()) as {
-      name?: 'live' | 'testnet'
+      name?: string
       apiKey?: string
       secret?: string
       passphrase?: string
+      demo?: boolean
     }
-    if (!body.name || !body.apiKey || !body.secret) return c.json({ error: 'name, apiKey, secret requis' }, 400)
-    await s.credentials.set(body.name, body.apiKey, body.secret, body.passphrase ?? '')
+    const name = body.name?.trim() ?? ''
+    if (name === '' || !body.apiKey || !body.secret) return c.json({ error: 'name, apiKey, secret requis' }, 400)
+    if (name.length > 40) return c.json({ error: 'nom de compte trop long (40 caractères max)' }, 400)
+    // le flag demo des comptes historiques est imposé par leur rôle (compat
+    // des bots existants sans credentialName)
+    const demo = name === 'testnet' ? true : name === 'live' ? false : body.demo === true
+    await s.credentials.set(name, body.apiKey, body.secret, body.passphrase ?? '', demo)
+    accountCache.delete(name)
     return c.json({ ok: true })
   })
 
   api.delete('/settings/credentials/:name', async (c) => {
-    await s.credentials.delete(c.req.param('name') as 'live' | 'testnet')
+    const name = c.req.param('name')
+    // jamais de compte supprimé sous les pieds d'un bot (même arrêté : il ne
+    // pourrait plus redémarrer sans qu'on comprenne pourquoi)
+    const users = (await s.bots.listConfigs()).filter(
+      (b) => effectiveCredentialName(b.mode, b.credentialName) === name,
+    )
+    if (users.length > 0) {
+      return c.json(
+        { error: `Compte utilisé par ${users.length} bot(s) : ${users.map((b) => b.name).join(', ')} — supprimez ou réaffectez ces bots d'abord` },
+        400,
+      )
+    }
+    await s.credentials.delete(name)
+    accountCache.delete(name)
     return c.json({ ok: true })
   })
 
