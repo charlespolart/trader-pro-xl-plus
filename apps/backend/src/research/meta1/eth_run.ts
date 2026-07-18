@@ -15,6 +15,7 @@ const base = new PgDataProvider(db, { dataDir: resolve(import.meta.dir, '../../.
 const PINNED: SymbolInfo = {
   market: 'spot', symbol: 'ETHUSDT', baseAsset: 'ETH', quoteAsset: 'USDT',
   tickSize: 0.01, stepSize: 0.0001, minQty: 0.0001, minNotional: 5,
+  pricePrecision: 2, qtyPrecision: 8, status: 'TRADING',
 }
 const provider: BacktestDataProvider = {
   getCandles: (m, s, i, a, b) => base.getCandles(m, s, i, a, b),
