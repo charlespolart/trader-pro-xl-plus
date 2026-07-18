@@ -167,14 +167,20 @@ la spec §6 (elles ne remplacent rien d'autre) :
    retraits impossibles par nature) et sa clé API (rangée chez lui ; OKX purge
    les clés inactives → la recréer au besoin le jour J, 2 min). Nom de
    sous-compte : 6-20 caractères, lettres+chiffres, pas de spéciaux.
-2. **Migration des 3 bots spot vers un sous-compte chacun** — même passe
-   Phase C : fait disparaître STRUCTURELLEMENT le risque « bots qui se
-   marchent dessus » (l'arithmétique de sur-revendication née de l'incident
-   2026-07-14 devient sans objet). Prérequis plateforme : **multi-clés par
-   bot** (champ credentialName par bot, stockage multi-clés — la table
-   api_credentials le permet déjà —, sélecteur à la création, câblage
-   botManager ; ~1-2 j). Virements des parts = go explicite Mario, comme
-   toujours. Ne PAS toucher aux bots qui tournent avant ce moment.
+2. **Migration des 3 bots spot vers un sous-compte chacun** : fait
+   disparaître STRUCTURELLEMENT le risque « bots qui se marchent dessus »
+   (l'arithmétique de sur-revendication née de l'incident 2026-07-14 devient
+   sans objet). Virements des parts = go explicite Mario, comme toujours.
+   Ne PAS toucher aux bots qui tournent avant ce moment.
+   **⚡ AVANCÉ (décision Mario 2026-07-18) : la FONCTIONNALITÉ multi-comptes
+   se code MAINTENANT, sans attendre la revue** (utile quel que soit le
+   verdict des 2 semaines) : comptes/clés API illimités avec LABEL, choix du
+   compte au lancement d'une stratégie, affichage par compte du label et de
+   l'ÉQUITÉ. Spec de reprise détaillée : mémoire
+   `next_multicomptes_2026-07-18` (pointeurs techniques : credentialName par
+   bot, routeur WS par COMPTE et non par mode, siblingBaseClaims scopé par
+   credential, page compte multi-credentials). La MIGRATION des fonds, elle,
+   reste au go explicite.
 3. **UI unifiée « Stratégies » — un seul onglet, DEUX moteurs** (demande
    explicite de Mario : tout voir/piloter au même endroit) :
    - une seule liste : 3 bots spot + 2 sleeves, même langage visuel partout
