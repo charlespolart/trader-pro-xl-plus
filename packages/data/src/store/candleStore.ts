@@ -34,6 +34,26 @@ export interface EnsureProgress {
 export class CandleStore {
   private readonly mkt: Record<MarketType, BinanceMarketData>
 
+  /** Symboles dont le REST Binance répond -1121 (« Invalid symbol » = délisté) :
+   *  leurs appels REST sont sautés SILENCIEUSEMENT (les archives Vision, elles,
+   *  restent tentées — c'est la source des historiques délistés). Peuplable au
+   *  démarrage pour persister la connaissance entre process (cf. onRestDead). */
+  readonly restDead = new Set<string>()
+  /** Notifié UNE fois par symbole à la première détection -1121 (persistance externe). */
+  onRestDead?: (key: string) => void
+
+  /** true si l'erreur est un -1121 (symbole délisté) — loggé une seule fois. */
+  private markRestDead(market: MarketType, symbol: string, err: unknown): boolean {
+    if (!/-1121|Invalid symbol/i.test(String(err))) return false
+    const key = `${market}:${symbol}`
+    if (!this.restDead.has(key)) {
+      this.restDead.add(key)
+      this.onRestDead?.(key)
+      console.warn(`symbole délisté (REST -1121) : ${key} — appels REST ignorés désormais`)
+    }
+    return true
+  }
+
   constructor(private readonly db: Db) {
     this.mkt = {
       spot: new BinanceMarketData(new BinanceRest({ market: 'spot' })),
@@ -190,6 +210,8 @@ export class CandleStore {
         const csv = await fetchVisionCsv(visionKlinesUrl(market, symbol, interval, 'daily', stamp))
         if (csv) {
           await this.commitChunk(market, symbol, interval, parseVisionKlinesCsv(csv), cursor, dayEnd)
+        } else if (this.restDead.has(`${market}:${symbol}`)) {
+          // délisté connu : jour ignoré en silence, pas d'appel REST
         } else {
           try {
             const rows = await this.mkt[market].klinesRange(symbol, interval, cursor, dayEnd)
@@ -197,9 +219,11 @@ export class CandleStore {
           } catch (err) {
             // jour absent de Vision + REST géo-bloqué (souvent: avant le
             // début des archives) — on continue sans marquer la couverture
-            console.warn(
-              `REST fallback ${market}:${symbol}:${interval} ${stamp} indisponible (${err instanceof Error ? err.message.slice(0, 80) : err}) — jour ignoré`,
-            )
+            if (!this.markRestDead(market, symbol, err)) {
+              console.warn(
+                `REST fallback ${market}:${symbol}:${interval} ${stamp} indisponible (${err instanceof Error ? err.message.slice(0, 80) : err}) — jour ignoré`,
+              )
+            }
           }
         }
         cursor = dayEnd
@@ -209,6 +233,12 @@ export class CandleStore {
           gapEnd,
           cursor === dayStart ? gapEnd : dayEnd, // re-enter the zip path at the next day boundary
         )
+        if (this.restDead.has(`${market}:${symbol}`)) {
+          // délisté connu : tail sautée en silence, pas d'appel REST
+          cursor = sliceEnd
+          progress(cursor - gapStart)
+          continue
+        }
         try {
           const rows = await this.mkt[market].klinesRange(symbol, interval, cursor, sliceEnd)
           const itv = INTERVAL_MS[interval]
@@ -221,9 +251,11 @@ export class CandleStore {
         } catch (err) {
           // geo-blocked REST (futures tail without mirror): leave the gap
           // uncovered — it will fill on a later attempt from an allowed IP
-          console.warn(
-            `REST klines ${market}:${symbol}:${interval} unavailable (${err instanceof Error ? err.message : err}) — tail [${new Date(cursor).toISOString()}, ${new Date(sliceEnd).toISOString()}) skipped`,
-          )
+          if (!this.markRestDead(market, symbol, err)) {
+            console.warn(
+              `REST klines ${market}:${symbol}:${interval} unavailable (${err instanceof Error ? err.message : err}) — tail [${new Date(cursor).toISOString()}, ${new Date(sliceEnd).toISOString()}) skipped`,
+            )
+          }
         }
         cursor = sliceEnd
       }

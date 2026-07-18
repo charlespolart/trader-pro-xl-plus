@@ -11,6 +11,8 @@
  * des événements) — compareFundingSources() vérifie l'égalité des deux sur
  * les jours communs (à exécuter en Phase B avant toute confiance).
  */
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import postgres from 'postgres'
 import { CandleStore, FundingStore } from '@tpx/data'
 import type { Db } from '@tpx/db'
@@ -30,10 +32,30 @@ export interface FeedConfig {
 export class PortfolioDataFeed {
   private readonly candles: CandleStore
   private readonly funding: FundingStore
+  private readonly deadPath: string
 
   constructor(private readonly cfg: FeedConfig) {
     this.candles = new CandleStore(cfg.db)
     this.funding = new FundingStore(cfg.db)
+    // Denylist REST persistée : les symboles délistés (-1121) ne génèrent plus
+    // ni bruit de log ni ~2 appels REST/symbole/nuit. Même convention de state
+    // dir que defaultPaths() (portfolioRunner).
+    const stateDir = process.env.PORTFOLIO_STATE_DIR ?? resolve(import.meta.dir)
+    this.deadPath = resolve(stateDir, '.rest-dead.json')
+    try {
+      if (existsSync(this.deadPath)) {
+        for (const k of JSON.parse(readFileSync(this.deadPath, 'utf8')) as string[]) this.candles.restDead.add(k)
+      }
+    } catch {
+      // denylist illisible : on repart de zéro, elle se reconstruira
+    }
+    this.candles.onRestDead = () => {
+      try {
+        writeFileSync(this.deadPath, JSON.stringify([...this.candles.restDead].sort(), null, 1))
+      } catch {
+        // best-effort : la connaissance se reconstruira au prochain run
+      }
+    }
   }
 
   /** univers de sélection : mêmes clauses que la recherche (spot USDT ≥ 180 j) */
@@ -63,6 +85,9 @@ export class PortfolioDataFeed {
       } catch (err) {
         errors.push(`${symbol}: ${err instanceof Error ? err.message.slice(0, 60) : err}`)
       }
+    }
+    if (this.candles.restDead.size > 0) {
+      console.log(`symboles délistés sautés (REST, denylist persistée) : ${this.candles.restDead.size}`)
     }
     return { ok, errors }
   }
