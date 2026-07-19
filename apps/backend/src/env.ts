@@ -20,8 +20,14 @@ export const env = {
   strategiesDir: resolve(process.env.STRATEGIES_DIR ?? resolve(repoRoot(), 'strategies')),
   webDistDir: resolve(repoRoot(), 'apps/web/dist'),
   backtestWorkers: Number(process.env.BACKTEST_WORKERS ?? Math.max(1, (navigator.hardwareConcurrency ?? 4) - 2)),
-  telegramToken: process.env.TELEGRAM_BOT_TOKEN ?? '',
-  telegramChatId: process.env.TELEGRAM_CHAT_ID ?? '',
+  // getters (même raison que masterKey) : lisibles après le chargement du
+  // module — indispensable aux tests, inchangé au runtime
+  get telegramToken(): string {
+    return process.env.TELEGRAM_BOT_TOKEN ?? ''
+  },
+  get telegramChatId(): string {
+    return process.env.TELEGRAM_CHAT_ID ?? ''
+  },
 }
 
 export const authEnabled = env.adminPassword.length > 0

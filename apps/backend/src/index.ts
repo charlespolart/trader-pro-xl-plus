@@ -17,6 +17,7 @@ import { BacktestRunner } from './services/backtestRunner'
 import { OptimizerService } from './services/optimizer'
 import { DownloadService } from './services/downloads'
 import { liveFeeds } from './services/liveFeeds'
+import { flushTelegram } from './services/telegram'
 
 async function main(): Promise<void> {
   const db = createDb(env.databaseUrl)
@@ -147,6 +148,9 @@ async function main(): Promise<void> {
   const shutdown = async (): Promise<void> => {
     console.log('Arrêt en cours — arrêt des bots…')
     await bots.stopAll()
+    // les ⏹️ ARRÊTÉ de stopAll partent en fire-and-forget : sans ce flush,
+    // process.exit les tue en vol et l'arrêt paraît silencieux sur Telegram
+    await flushTelegram()
     process.exit(0)
   }
   process.on('SIGINT', () => void shutdown())

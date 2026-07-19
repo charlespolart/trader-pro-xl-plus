@@ -13,7 +13,7 @@ const mode = process.argv.includes('dry') ? 'dry' : 'paper'
 const sql = postgres(DB_URL, { max: 4, prepare: false })
 const db = createDb(DB_URL)
 const feed = new PortfolioDataFeed({ sql, db, fundingCsv: fundingCsvPath() })
-const { sendTelegram } = await import('../services/telegram')
+const { sendTelegram, flushTelegram } = await import('../services/telegram')
 const runner = new PortfolioRunner(feed, {
   sleeveR1Usd: Number(process.env.PORTFOLIO_SLEEVE_R1_USD ?? 6000),
   sleeveL2Usd: Number(process.env.PORTFOLIO_SLEEVE_L2_USD ?? 6000),
@@ -23,4 +23,7 @@ const runner = new PortfolioRunner(feed, {
 })
 await runner.tick(source)
 await sql.end()
+// le résumé part en fire-and-forget : sans ce flush, process.exit tue la
+// requête en vol (nuit du 2026-07-19 : tick parfait, message jamais reçu)
+await flushTelegram()
 process.exit(0)

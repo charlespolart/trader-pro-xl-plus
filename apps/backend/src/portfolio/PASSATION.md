@@ -262,6 +262,16 @@ la spec §6 (elles ne remplacent rien d'autre) :
 10. Les scripts de recherche `research/**` sont des PIÈCES DE VALIDATION :
     ne pas les « nettoyer », « moderniser » ni corriger leurs erreurs de
     typecheck cosmétiques — ils re-produisent les chiffres publiés.
+11. **`sendTelegram` est fire-and-forget + `process.exit` = message perdu
+    en silence** (vécu 2026-07-19 : tick nocturne parfait, résumé jamais
+    reçu — course gagnée la 1re nuit, perdue la 2e). Corrigé par
+    `flushTelegram()` (services/telegram.ts), appelé avant l'exit de
+    `tick.ts` ET dans le shutdown du backend. Tout NOUVEAU script court
+    qui envoie du Telegram doit flusher avant de sortir. Au passage :
+    même une mort BRUTALE du VPS (reset hyperviseur 2026-07-18 16:34 UTC,
+    journal coupé net sans séquence d'arrêt) est encaissée proprement —
+    desiredRunning persiste, auto-start + reconcile au boot ; seuls les
+    messages d'arrêt ne peuvent physiquement pas partir dans ce cas.
 
 ## 8. État exact à la passation (2026-07-17)
 
