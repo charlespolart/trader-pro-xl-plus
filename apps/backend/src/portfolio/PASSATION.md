@@ -200,10 +200,18 @@ la spec §6 (elles ne remplacent rien d'autre) :
      bots = colonne Compte ; WalletCard cycle sur tous les comptes ;
    - validé : typecheck 7/7, 174 tests verts, build web, smoke e2e local
      (création compte → bot dessus → refus délétion/refus démo↔réel).
-   Prochaine étape (Mario) : créer les 3 sous-comptes + leurs clés API,
-   les saisir dans Réglages, puis recréer les 3 bots chacun sur son
-   sous-compte — la migration des FONDS reste un go explicite séparé,
-   et le déploiement VPS de cette version aussi.
+   **✅ DÉPLOYÉ VPS le 2026-07-19 (GO Mario)** : backend `b45a768` (08:06
+   UTC, migration 0004 appliquée — live=réel/testnet=démo, colonne
+   credential_name posée) + front (11:29 UTC). AVANT le deploy, Mario a
+   LUI-MÊME : arrêté et SUPPRIMÉ les 3 bots live (tables bots/bot_state
+   vides, vérifié), créé les 3 sous-comptes OKX + une clé API chacun, et
+   VIRÉ les fonds dessus (ses virements à lui — la règle absolue vise les
+   virements par l'assistant). Reste côté Mario : saisir les 3 clés dans
+   Réglages → Comptes OKX puis recréer les 3 bots (mode LIVE + sélecteur
+   « Compte d'exécution » + adopt-all lira le solde DU sous-compte).
+   ⚠ pièges clés API sous-comptes : permission trading + whitelist IP du
+   VPS (45.32.123.66) comme l'ancienne clé, et OKX purge les clés
+   inactives ~30 j.
 3. **UI unifiée « Stratégies » — un seul onglet, DEUX moteurs** (demande
    explicite de Mario : tout voir/piloter au même endroit) :
    - une seule liste : 3 bots spot + 2 sleeves, même langage visuel partout
