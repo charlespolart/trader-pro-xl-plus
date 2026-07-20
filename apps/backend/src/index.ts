@@ -148,9 +148,10 @@ async function main(): Promise<void> {
   const shutdown = async (): Promise<void> => {
     console.log('Arrêt en cours — arrêt des bots…')
     await bots.stopAll()
-    // les ⏹️ ARRÊTÉ de stopAll partent en fire-and-forget : sans ce flush,
-    // process.exit les tue en vol et l'arrêt paraît silencieux sur Telegram
-    await flushTelegram()
+    // les ⏹️ ARRÊTÉ de stopAll passent par la file Telegram : sans ce flush,
+    // process.exit les tue en vol et l'arrêt paraît silencieux. Cap court —
+    // docker SIGKILL à ~10 s, et stopAll a déjà consommé du budget.
+    await flushTelegram(4_000)
     process.exit(0)
   }
   process.on('SIGINT', () => void shutdown())

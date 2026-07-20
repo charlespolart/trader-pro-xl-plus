@@ -23,7 +23,9 @@ const runner = new PortfolioRunner(feed, {
 })
 await runner.tick(source)
 await sql.end()
-// le résumé part en fire-and-forget : sans ce flush, process.exit tue la
-// requête en vol (nuit du 2026-07-19 : tick parfait, message jamais reçu)
-await flushTelegram()
+// le résumé (5 messages) passe par la file sérialisée : sans ce flush,
+// process.exit tue les envois en vol (nuit du 2026-07-19 : tick parfait,
+// messages perdus/désordonnés). Cap généreux : pas de deadline de kill ici
+// (conteneur éphémère qui sort de lui-même).
+await flushTelegram(15_000)
 process.exit(0)
