@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api, type WalletBalance } from '../lib/api'
@@ -28,23 +27,22 @@ const UNIT: Record<string, string> = { BTC: '₿', ETH: 'Ξ' }
 const DUST_USD = 1
 
 /**
- * Pane Patrimoine : tout le portefeuille OKX — les avoirs majeurs en héros
- * (₿/Ξ d'abord, dollars en second), la barre d'allocation, puis le détail.
+ * Pane Patrimoine : le portefeuille OKX CONSOLIDÉ sur tous les comptes réels
+ * (compte principal + sous-comptes). Avoirs fusionnés par asset en héros
+ * (₿/Ξ d'abord, dollars en second), barre d'allocation, répartition PAR
+ * COMPTE, puis détail des assets. Les fonds vivent désormais sur plusieurs
+ * sous-comptes — cette carte les additionne.
  */
 export function WalletCard() {
-  // cycle entre TOUS les comptes configurés (principal + sous-comptes)
-  const { data: creds } = useQuery({ queryKey: ['credentials'], queryFn: api.credentials, staleTime: 30_000 })
-  const [selected, setSelected] = useState<string | null>(null)
-  const names = (creds ?? []).map((cr) => cr.name)
-  const name = selected !== null && names.includes(selected) ? selected : (names.includes('live') ? 'live' : (names[0] ?? 'live'))
-  const { data: account, isLoading } = useQuery({
-    queryKey: ['account', name],
-    queryFn: () => api.account(name),
+  const { data: p, isLoading } = useQuery({
+    queryKey: ['patrimoine'],
+    queryFn: api.patrimoine,
     refetchInterval: 15_000,
   })
 
-  const balances = account?.spot ?? []
-  const total = account?.totalValueQuote ?? 0
+  const balances = p?.spot ?? []
+  const total = p?.totalValueQuote ?? 0
+  const accounts = p?.accounts ?? []
   const valued = balances.filter((b) => (b.valueQuote ?? 0) >= DUST_USD)
   const dust = balances.filter((b) => (b.valueQuote ?? 0) < DUST_USD)
   const dustValue = dust.reduce((s, b) => s + (b.valueQuote ?? 0), 0)
@@ -53,21 +51,7 @@ export function WalletCard() {
   return (
     <Card
       title="Patrimoine OKX"
-      hint={
-        <button
-          className="cursor-pointer text-zinc-600 transition-colors hover:text-accent"
-          onClick={() => {
-            if (names.length === 0) return
-            const next = names[(names.indexOf(name) + 1) % names.length]!
-            setSelected(next)
-          }}
-          title="Compte suivant"
-        >
-          {name}
-          {account?.demo === true ? ' (démo)' : ''}
-          {names.length > 1 ? ' ⇥' : ''}
-        </button>
-      }
+      hint={accounts.length > 0 ? `${accounts.length} compte${accounts.length > 1 ? 's' : ''}` : undefined}
       bodyClassName="p-0"
     >
       {isLoading ? (
@@ -76,18 +60,18 @@ export function WalletCard() {
           <div className="skeleton h-2.5 w-full" />
           <div className="skeleton h-20 w-full" />
         </div>
-      ) : !account?.configured ? (
+      ) : !p?.configured ? (
         <Empty>
-          Aucune clé API pour le compte « {name} ».{' '}
+          Aucun compte réel configuré.{' '}
           <Link to="/settings" className="text-accent hover:underline">
             Configurer dans Réglages
           </Link>
         </Empty>
       ) : balances.length === 0 ? (
-        <Empty>Compte vide — aucun asset détenu.</Empty>
+        <Empty>Comptes vides — aucun asset détenu.</Empty>
       ) : (
         <div>
-          {/* héros : les avoirs, en unités d'abord */}
+          {/* héros : les avoirs fusionnés, en unités d'abord */}
           <div className="flex flex-wrap items-end gap-x-10 gap-y-4 p-5 pb-0">
             {heroes.map((b) => (
               <div key={b.asset}>
@@ -105,11 +89,11 @@ export function WalletCard() {
             <div className="ml-auto text-right">
               <div className="text-[11px] uppercase tracking-[0.12em] text-zinc-600">Total estimé</div>
               <div className="num mt-1 text-[24px] font-medium leading-tight text-zinc-100">{fmtNum(total, 0)} $</div>
-              <div className="mt-0.5 text-xs text-zinc-500">prix spot OKX</div>
+              <div className="mt-0.5 text-xs text-zinc-500">tous comptes · prix spot OKX</div>
             </div>
           </div>
 
-          {/* barre d'allocation */}
+          {/* barre d'allocation par asset */}
           {total > 0 && (
             <div className="px-5 pt-4">
               <div className="flex h-2.5 w-full bg-panel2" role="img" aria-label="Répartition du portefeuille">
@@ -134,6 +118,30 @@ export function WalletCard() {
             </div>
           )}
 
+          {/* répartition PAR COMPTE (le cœur de la demande : voir chaque compte) */}
+          {accounts.length > 0 && (
+            <div className="mt-4 border-t border-edge px-5 pt-3.5">
+              <div className="mb-2 text-[10.5px] uppercase tracking-[0.12em] text-zinc-600">Par compte</div>
+              <div className="flex flex-wrap gap-x-6 gap-y-2.5">
+                {accounts.map((a) => (
+                  <div key={a.name} className="min-w-[132px]">
+                    <div className="flex items-center gap-1.5 text-[12.5px] text-zinc-300">
+                      <span className="truncate font-medium">{a.name}</span>
+                      {!a.ok && <span className="text-[10px] text-down" title="Clés illisibles / compte injoignable">⚠</span>}
+                    </div>
+                    <div className="num text-[15px] text-zinc-100">
+                      {a.ok ? `${fmtNum(a.totalValueQuote, 0)} $` : '—'}
+                      {a.ok && total > 0 && (
+                        <span className="ml-1.5 text-[11px] text-zinc-600">{((a.totalValueQuote / total) * 100).toFixed(0)} %</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* détail des assets (fusionnés) */}
           <div className="mt-3 overflow-x-auto">
             <table>
               <thead>

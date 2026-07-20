@@ -509,6 +509,62 @@ export function buildApi(s: Services): Hono {
     return c.json(rows)
   })
 
+  /**
+   * Patrimoine CONSOLIDÉ : somme des comptes RÉELS (hors démo) — total,
+   * détail par compte, avoirs fusionnés par asset, et carte des prix. C'est
+   * la vue « tout mon argent » du Dashboard : les fonds vivent désormais sur
+   * plusieurs sous-comptes, plus sur le seul compte `live`. Les prix servent
+   * aussi aux cycles et à la statusline, indépendamment du compte détenteur.
+   */
+  api.get('/patrimoine', async (c) => {
+    type Bal = { asset: string; free: number; locked: number; price: number | null; valueQuote: number | null }
+    const real = (await s.credentials.list()).filter((cr) => !cr.demo)
+    const loaded = await Promise.all(
+      real.map(async (cr) => {
+        const a = (await loadAccount(cr.name).catch(() => null)) as
+          | { configured?: boolean; balancesOk?: boolean; spot?: Bal[]; totalValueQuote?: number }
+          | null
+        return {
+          name: cr.name,
+          ok: a?.configured === true && a.balancesOk === true,
+          spot: a?.spot ?? [],
+          totalValueQuote: a?.totalValueQuote ?? 0,
+        }
+      }),
+    )
+    // fusion des avoirs par asset (BTC de 3 sous-comptes = un seul total) +
+    // carte des prix (identiques partout : le 1er compte qui cote suffit)
+    const byAsset = new Map<string, Bal>()
+    const prices: Record<string, number> = {}
+    for (const acct of loaded) {
+      for (const b of acct.spot) {
+        const cur = byAsset.get(b.asset) ?? { asset: b.asset, free: 0, locked: 0, price: b.price ?? null, valueQuote: 0 }
+        cur.free += b.free
+        cur.locked += b.locked
+        if (b.price != null) {
+          cur.price = b.price
+          prices[b.asset] = b.price
+        }
+        cur.valueQuote = (cur.valueQuote ?? 0) + (b.valueQuote ?? 0)
+        byAsset.set(b.asset, cur)
+      }
+    }
+    const spot = [...byAsset.values()].sort((x, y) => (y.valueQuote ?? 0) - (x.valueQuote ?? 0))
+    const totalValueQuote = loaded.reduce((sum, a) => sum + a.totalValueQuote, 0)
+    return c.json({
+      configured: real.length > 0,
+      totalValueQuote,
+      accounts: loaded
+        .map((a) => ({ name: a.name, totalValueQuote: a.totalValueQuote, ok: a.ok }))
+        .sort((x, y) => y.totalValueQuote - x.totalValueQuote),
+      spot,
+      prices,
+      totalExposureQuote: s.bots.totalExposureQuote(['live']),
+      killSwitchActive: s.bots.killSwitchActive,
+      globalRisk: s.bots.globalRisk,
+    })
+  })
+
   // live OKX maker/taker/level for a symbol. null = PAS DE CLÉS ;
   // { error } = clés présentes mais lecture impossible (à afficher tel quel).
   api.get('/fees/:name/:market/:symbol', async (c) => {

@@ -51,15 +51,20 @@ export function Layout() {
     return unsub
   }, [setAll])
 
-  const { data: account } = useQuery({
-    queryKey: ['account', 'live'],
-    queryFn: () => api.account('live'),
+  // patrimoine consolidé : prix ₿ de la statusline + état du kill switch —
+  // indépendant du compte 'live' (désormais quasi vide, fonds sur sous-comptes)
+  const { data: patrimoine } = useQuery({
+    queryKey: ['patrimoine'],
+    queryFn: api.patrimoine,
     refetchInterval: 15_000,
   })
 
   const kill = useMutation({
     mutationFn: (active: boolean) => api.killSwitch(active),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ['account'] }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['patrimoine'] })
+      void qc.invalidateQueries({ queryKey: ['account'] })
+    },
   })
 
   const askKill = async (): Promise<void> => {
@@ -103,7 +108,7 @@ export function Layout() {
   }, [navigate])
 
   const running = Object.values(botInfos).filter((b) => b.status === 'running').length
-  const btcPrice = account?.spot?.find((b) => b.asset === 'BTC')?.price
+  const btcPrice = patrimoine?.prices['BTC']
 
   const paletteActions: PaletteAction[] = [
     ...WINDOWS.map((w) => ({ label: `Aller à ${w.label}`, hint: w.key, run: () => navigate(w.to) })),
@@ -146,7 +151,7 @@ export function Layout() {
         </div>
       </header>
 
-      {account?.killSwitchActive && (
+      {patrimoine?.killSwitchActive && (
         <div className="flex items-center justify-between gap-4 border-b border-down/30 bg-down/10 px-4 py-2 text-[13px] text-down">
           <span className="flex items-center gap-2 font-semibold">
             <OctagonAlert size={15} /> Kill switch actif — tous les bots sont arrêtés

@@ -135,6 +135,22 @@ export interface AccountData {
   globalRisk?: GlobalRiskConfig
 }
 
+export interface PatrimoineData {
+  /** au moins un compte réel (hors démo) configuré */
+  configured: boolean
+  /** somme des équités des comptes réels ($) */
+  totalValueQuote: number
+  /** détail par compte (label + équité + lecture OK) */
+  accounts: { name: string; totalValueQuote: number; ok: boolean }[]
+  /** avoirs FUSIONNÉS par asset (tous comptes réels confondus) */
+  spot: WalletBalance[]
+  /** prix spot par asset ($) — indépendant du compte détenteur */
+  prices: Record<string, number>
+  totalExposureQuote: number
+  killSwitchActive: boolean
+  globalRisk?: GlobalRiskConfig
+}
+
 export interface SettingsData {
   authEnabled: boolean
   telegramConfigured: boolean
@@ -266,6 +282,7 @@ export const api = {
   // account / risk
   account: (name: string) => get<AccountData>(`/account?name=${encodeURIComponent(name)}`),
   credentials: () => get<CredentialWithEquity[]>('/credentials'),
+  patrimoine: () => get<PatrimoineData>('/patrimoine'),
   risk: () => get<GlobalRiskConfig>('/risk'),
   setRisk: (cfg: GlobalRiskConfig) => put<GlobalRiskConfig>('/risk', cfg),
   killSwitch: (active: boolean) => post<{ killSwitchActive: boolean }>('/risk/killswitch', { active }),

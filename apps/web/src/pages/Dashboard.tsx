@@ -9,13 +9,15 @@ import { CyclePane, baseUnitOf } from '../components/CyclePane'
 
 export function Dashboard() {
   const bots = Object.values(useBots((s) => s.infos))
-  const { data: account } = useQuery({ queryKey: ['account', 'live'], queryFn: () => api.account('live'), refetchInterval: 15_000 })
+  // patrimoine consolidé (tous comptes) : prix globaux + exposition — les
+  // fonds ne sont plus sur le seul compte 'live'
+  const { data: patrimoine } = useQuery({ queryKey: ['patrimoine'], queryFn: api.patrimoine, refetchInterval: 15_000 })
   const { data: backtests } = useQuery({ queryKey: ['backtests'], queryFn: api.backtests, refetchInterval: 10_000 })
 
   const active = bots.filter((b) => b.status !== 'stopped')
   const priceOf = (info: (typeof bots)[number]): number | null => {
     const base = info.config.symbol.replace(/(USDT|USDC|FDUSD|BUSD|EUR|USD)$/, '')
-    return account?.spot?.find((s) => s.asset === base)?.price ?? null
+    return patrimoine?.prices[base] ?? null
   }
 
   // récolte par unité de base (accumulateurs) + PnL du jour toutes stratégies
@@ -62,7 +64,7 @@ export function Dashboard() {
               </div>
               <div>
                 <div className="text-[10.5px] uppercase tracking-[0.12em] text-zinc-600">Exposition live</div>
-                <div className="num mt-1 text-[16px] text-zinc-200">{fmtNum(account?.totalExposureQuote ?? 0, 0)}</div>
+                <div className="num mt-1 text-[16px] text-zinc-200">{fmtNum(patrimoine?.totalExposureQuote ?? 0, 0)}</div>
               </div>
             </div>
           </div>
