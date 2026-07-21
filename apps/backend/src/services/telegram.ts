@@ -29,24 +29,43 @@ let draining: Promise<void> | null = null
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
 
-/** envoie UN message, avec retry borné sur 429. Ne jette jamais. */
+/** un POST sendMessage — html=false envoie en TEXTE BRUT (repli parse).
+ *  Renvoie null sur réseau/timeout (les alertes ne bloquent jamais le trading). */
+async function post(text: string, html: boolean): Promise<Response | null> {
+  try {
+    return await fetch(`https://api.telegram.org/bot${env.telegramToken}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: env.telegramChatId, text, ...(html ? { parse_mode: 'HTML' } : {}) }),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    })
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Envoie UN message : retry borné sur 429, et REPLI en texte brut sur 400.
+ * Le 400 = parse HTML échoué — typiquement un `<` brut dans le texte (l'en-tête
+ * regime1 « médiane 2.25 bps/j < 2.5 »). Sans repli, ce 400 est avalé et le
+ * message disparaît en silence (vécu 2026-07-19→21 : seul l'en-tête, le seul
+ * avec un `<`, manquait). Le renvoi sans parse_mode affiche le texte littéral —
+ * correct pour ces messages sans balises. Ne jette jamais.
+ */
 async function deliver(text: string): Promise<void> {
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    try {
-      const res = await fetch(`https://api.telegram.org/bot${env.telegramToken}/sendMessage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: env.telegramChatId, text, parse_mode: 'HTML' }),
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-      })
-      if (res.status !== 429) return // livré (ou erreur non récupérable : on n'insiste pas)
+    const res = await post(text, true)
+    if (!res) return // réseau/timeout
+    if (res.ok) return
+    if (res.status === 429) {
       // throttling : respecter retry_after (borné), puis réessayer
       const body = (await res.json().catch(() => null)) as { parameters?: { retry_after?: number } } | null
       const ra = body?.parameters?.retry_after ?? 1
       await sleep(Math.min(MAX_RETRY_WAIT_MS, Math.max(0, ra) * 1000))
-    } catch {
-      return // réseau/timeout : les alertes ne doivent jamais bloquer le trading
+      continue
     }
+    if (res.status === 400) await post(text, false) // repli texte brut, une fois
+    return // 400 replié, ou autre erreur non récupérable
   }
 }
 

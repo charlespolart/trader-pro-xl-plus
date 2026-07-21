@@ -73,7 +73,13 @@ export function gateValue(ctx: DayContext): number {
  * convention que le backtest qui ancre sur le début de fenêtre).
  */
 export function regime1Targets(ctx: DayContext, isRebalanceDay: boolean, previous: TargetWeights | null): TargetWeights {
-  if (!isRebalanceDay && previous) return { ...previous, note: `${previous.note} (hors rebal, positions tenues)` }
+  if (!isRebalanceDay && previous) {
+    // suffixe IDEMPOTENT : previous.note est persisté et déjà suffixé les jours
+    // hors-rebal précédents — ré-append aveugle = note qui gonfle d'un « (hors
+    // rebal…) » par nuit (vécu : ×4 au 2026-07-21). N'ajouter qu'une fois.
+    const suffix = ' (hors rebal, positions tenues)'
+    return { ...previous, note: previous.note.endsWith(suffix) ? previous.note : previous.note + suffix }
+  }
   const g = gateValue(ctx)
   const on = Number.isFinite(g) && g >= GATE_BPS / 1e4
   if (!on) return { weights: new Map(), btc: 0, note: `porte OFF (médiane ${(g * 1e4).toFixed(2)} bps/j < ${GATE_BPS})` }

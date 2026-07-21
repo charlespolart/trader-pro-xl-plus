@@ -288,6 +288,15 @@ la spec §6 (elles ne remplacent rien d'autre) :
     coupé net) est encaissée proprement — desiredRunning persiste,
     auto-start + reconcile au boot ; seuls les messages d'arrêt ne peuvent
     physiquement pas partir dans ce cas.
+    (c) TROISIÈME couche (2026-07-21) : la file corrige l'ordre, mais
+    l'en-tête 📊 regime1 manquait TOUJOURS — il contient `médiane X bps/j <
+    2.5`, et ce `<` brut en `parse_mode=HTML` fait un 400 « can't parse
+    entities » (le SEUL message avec un `<`, donc le seul perdu). `deliver()`
+    se replie désormais en TEXTE BRUT (sans parse_mode) sur un 400 — filet
+    général : plus aucun message perdu sur parse HTML. Corollaire trouvé au
+    passage : la note regime1 gonflait d'un « (hors rebal, positions tenues) »
+    par nuit (ré-append aveugle sur une note persistée déjà suffixée,
+    targets.ts) → suffixe rendu idempotent (auto-guéri au prochain rebal).
 
 ## 8. État exact à la passation (2026-07-17)
 

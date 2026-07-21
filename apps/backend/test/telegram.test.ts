@@ -66,6 +66,26 @@ describe('telegram — file d’envoi sérialisée', () => {
     expect(delivered).toEqual(['à-livrer'])
   })
 
+  it('repli en TEXTE BRUT sur 400 (parse HTML échoué : un « < » brut) — plus jamais perdu', async () => {
+    process.env.TELEGRAM_BOT_TOKEN = 'tok'
+    process.env.TELEGRAM_CHAT_ID = 'chat'
+    const { sendTelegram, flushTelegram } = await import('../src/services/telegram')
+    const posts: { text: string; html: boolean }[] = []
+    globalThis.fetch = (async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string) as { text: string; parse_mode?: string }
+      const html = body.parse_mode === 'HTML'
+      posts.push({ text: body.text, html })
+      // 1er envoi (HTML) rejeté comme l'en-tête regime1 « médiane < 2.5 »
+      if (html) return new Response(JSON.stringify({ ok: false, description: "can't parse entities" }), { status: 400 })
+      return new Response('{}', { status: 200 }) // repli texte brut : accepté
+    }) as unknown as typeof fetch
+    sendTelegram('📊 regime1 — médiane 2.25 bps/j < 2.5')
+    await flushTelegram(5_000)
+    // exactement 2 POST : HTML (400) puis brut (200), même texte
+    expect(posts.map((p) => p.html)).toEqual([true, false])
+    expect(posts[1]!.text).toContain('< 2.5')
+  })
+
   it('flush BORNÉ ne bloque pas l’arrêt si Telegram est lent', async () => {
     process.env.TELEGRAM_BOT_TOKEN = 'tok'
     process.env.TELEGRAM_CHAT_ID = 'chat'
