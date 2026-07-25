@@ -2,9 +2,13 @@ import { Link } from 'react-router-dom'
 import type { BotRuntimeInfo } from '@tpx/shared'
 import { fmtNum, fmtPrice, fmtQty } from '../lib/format'
 
-/** Unité base des stratégies d'accumulation (récolte affichée en ₿/Ξ). */
+/** Unité base des stratégies d'accumulation (récolte affichée en ₿/Ξ).
+ *  btc-vrx est base-denom AUSSI : son id ne contient pas « accumulator »
+ *  (récolte « 0,00 » sans unité à côté d'un « +0 ₿ », vécu) — liste
+ *  explicite faute de denomination exposée dans BotRuntimeInfo. */
 export function baseUnitOf(info: BotRuntimeInfo): string | null {
-  if (!info.config.strategyId.includes('accumulator')) return null
+  const id = info.config.strategyId
+  if (!id.includes('accumulator') && !id.includes('vrx')) return null
   const s = info.config.symbol
   if (s.startsWith('BTC')) return '₿'
   if (s.startsWith('ETH')) return 'Ξ'
@@ -122,7 +126,7 @@ export function CyclePane({ info, price }: { info: BotRuntimeInfo; price: number
           )}
           <div>
             <div className="text-[10px] uppercase tracking-[0.1em] text-zinc-600">Équité</div>
-            <div className="num mt-0.5 text-[16px] font-medium text-zinc-200">{fmtNum(info.equity, 0)}</div>
+            <div className="num mt-0.5 text-[16px] font-medium text-zinc-200">{fmtNum(info.equity, 0)} $</div>
           </div>
           <div>
             <div className="text-[10px] uppercase tracking-[0.1em] text-zinc-600">Récolte totale</div>
