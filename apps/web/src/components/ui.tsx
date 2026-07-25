@@ -30,13 +30,17 @@ export function Card({
   bodyClassName?: string
 }) {
   return (
-    <div className={`card ${title !== undefined ? 'mt-2.5' : ''} ${className}`}>
+    // min-w-0 : dans une grille/flex, une card au contenu large (table) force
+    // sinon la colonne à s'élargir → scroll horizontal de toute la page.
+    // overflow-x-auto sur le BODY : le contenu large scrolle DANS le bloc
+    // (mobile) — systémique, plus de wrapper à poser table par table.
+    <div className={`card min-w-0 ${title !== undefined ? 'mt-2.5' : ''} ${className}`}>
       {title !== undefined && <div className="pane-title">{title}</div>}
       {hint !== undefined && <div className="pane-hint">{hint}</div>}
       {actions !== undefined && (
         <div className="flex flex-wrap items-center justify-end gap-2 border-b border-edge/60 px-3 py-2">{actions}</div>
       )}
-      <div className={bodyClassName}>{children}</div>
+      <div className={`overflow-x-auto ${bodyClassName}`}>{children}</div>
     </div>
   )
 }

@@ -31,7 +31,7 @@ export function Strategies() {
       {!strategies || strategies.length === 0 ? (
         <Empty>Aucune stratégie trouvée</Empty>
       ) : (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {strategies.map((s) => (
             <Card key={s.id} className="transition-colors hover:border-zinc-600">
               {s.error !== undefined ? (

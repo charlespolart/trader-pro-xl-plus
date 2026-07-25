@@ -41,14 +41,14 @@ export function Settings() {
       )}
 
       {settings !== undefined && (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <PaperFeesCard market="spot" fees={settings.paperFees.spot} onDone={invalidate} />
           <PaperFeesCard market="futures" fees={settings.paperFees.futures} onDone={invalidate} />
         </div>
       )}
 
       <Card title="Système">
-        <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
+        <div className="grid grid-cols-1 gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
           <div className="flex justify-between">
             <span className="text-zinc-400">Auth UI</span>
             <Badge value={settings?.authEnabled ? 'running' : 'stopped'} label={settings?.authEnabled ? 'activée' : 'désactivée (ADMIN_PASSWORD vide)'} />
@@ -158,7 +158,7 @@ function AccountsCard({ onDone }: { onDone: () => void }) {
           )}
           {form && (
             <div className="space-y-3 border-t border-edge p-4">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field label="Label du compte" hint="Libre — ex. « tpxportfolio », « sous-compte accum ». 'live' et 'testnet' = comptes par défaut des bots historiques.">
                   <input
                     className="input"

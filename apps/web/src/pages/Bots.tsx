@@ -357,7 +357,7 @@ function BotForm({
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <Field label="Nom">
           <input className="input" value={draft.name} placeholder="auto" onChange={(e) => onChange({ ...draft, name: e.target.value })} />
         </Field>
@@ -567,7 +567,7 @@ function BotForm({
 
       <div>
         <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">Gestion du risque (vide = désactivé)</div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <Field label="Position max (quote)">
             <input className="input" type="number" step="any" value={draft.risk.maxPositionQuote ?? ''} onChange={(e) => setRisk('maxPositionQuote', e.target.value)} />
           </Field>

@@ -5,7 +5,7 @@ import { effectiveCredentialName, type LogEntry, type TradeRecord } from '@tpx/s
 import { api, type RefitConfigDTO } from '../lib/api'
 import { useBots, wsClient } from '../lib/ws'
 import { Check, ChevronLeft, Play } from 'lucide-react'
-import { fmtDate, fmtNum, fmtPrice, pnlClass } from '../lib/format'
+import { fmtDate, fmtNum, fmtPrice, fmtQty, pnlClass } from '../lib/format'
 import { Badge, Card, Empty, Field, PageHeader, Stat } from '../components/ui'
 import { alertDialog } from '../components/dialog'
 import { TradingChart } from '../components/TradingChart'
@@ -83,21 +83,25 @@ export function BotDetail() {
         }
       />
 
-      <div className="grid grid-cols-5 gap-4">
+      {/* responsive : 5 colonnes écrasées sur mobile = illisible → 2/3/5.
+          hasPosition filtre la POUSSIÈRE flottante : après une vente, la qty
+          résiduelle vaut ~2.8e-17 (arith. flottante) — ce n'est PAS une
+          position, l'afficher (« LONG 2.775…e-17 ») cassait aussi le layout. */}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
         <Stat label="Équité" value={fmtNum(info.equity)} />
         <Stat
           label="Position"
           value={
-            info.position && info.position.qty !== 0 ? (
+            info.position && Math.abs(info.position.qty) > 1e-6 ? (
               <span className={info.position.qty > 0 ? 'text-up' : 'text-down'}>
-                {info.position.qty > 0 ? 'LONG' : 'SHORT'} {Math.abs(info.position.qty)}
+                {info.position.qty > 0 ? 'LONG' : 'SHORT'} {fmtQty(Math.abs(info.position.qty))}
               </span>
             ) : (
               <span className="text-zinc-500">flat</span>
             )
           }
           sub={
-            info.position && info.position.qty !== 0 ? (
+            info.position && Math.abs(info.position.qty) > 1e-6 ? (
               <>
                 @ {fmtPrice(info.position.entryPrice)} · uPnL <span className={pnlClass(info.position.unrealizedPnl)}>{fmtNum(info.position.unrealizedPnl)}</span>
               </>

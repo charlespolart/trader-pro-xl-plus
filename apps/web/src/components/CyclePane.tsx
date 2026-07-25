@@ -41,9 +41,20 @@ function railLevels(rows: { key: string; lab: string; px: number | null; cls: 's
   const min = sorted[sorted.length - 1]!.px
   const span = Math.max(max - min, max * 0.001)
   const raw = sorted.map((r) => ({ ...r, top: 12 + ((max - r.px) / span) * 74 }))
-  // écart minimal de 16 % entre étiquettes
+  // écart minimal de 16 % entre étiquettes (passe descendante)…
+  const GAP = 16
   for (let i = 1; i < raw.length; i++) {
-    if (raw[i]!.top - raw[i - 1]!.top < 16) raw[i]!.top = raw[i - 1]!.top + 16
+    if (raw[i]!.top - raw[i - 1]!.top < GAP) raw[i]!.top = raw[i - 1]!.top + GAP
+  }
+  // …qui peut pousser la dernière étiquette HORS du bloc (deux niveaux serrés
+  // en bas : vente ~86 % → prix poussé à 102 %, vécu). Borne basse + cascade
+  // REMONTANTE en gardant l'écart — 3 étiquettes tiennent toujours (86−2×16 ≥ 12).
+  const MAX_TOP = 86
+  if (raw[raw.length - 1]!.top > MAX_TOP) {
+    raw[raw.length - 1]!.top = MAX_TOP
+    for (let i = raw.length - 2; i >= 0; i--) {
+      if (raw[i + 1]!.top - raw[i]!.top < GAP) raw[i]!.top = raw[i + 1]!.top - GAP
+    }
   }
   return raw
 }

@@ -162,7 +162,9 @@ export function Layout() {
         </div>
       )}
 
-      <main className="min-h-0 flex-1 overflow-y-auto px-4 pb-16 pt-5 md:px-6">
+      {/* overflow-x-hidden = filet : la PAGE ne scrolle jamais horizontalement,
+          le contenu large scrolle dans sa card (overflow-x-auto du Card) */}
+      <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 pb-16 pt-5 md:px-6">
         <div className="mx-auto max-w-[1340px]">
           <Outlet />
         </div>

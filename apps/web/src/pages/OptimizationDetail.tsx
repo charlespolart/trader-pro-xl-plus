@@ -87,7 +87,7 @@ export function OptimizationDetail() {
 
       {artifact?.kind === 'walkforward' && artifact.summary && (
         <>
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             <Stat label="Fenêtres OOS positives" value={`${artifact.summary.positiveOos}/${artifact.summary.windows}`} />
             <Stat
               label="Profit OOS moyen / fenêtre"

@@ -93,7 +93,7 @@ export function DataManager() {
         </div>
       </Card>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card title={`Couverture bougies — ${symbol} ${interval} (${market})`}>
           {!coverage || coverage.length === 0 ? (
             <Empty>Aucune donnée locale</Empty>
