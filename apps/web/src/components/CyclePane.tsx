@@ -64,9 +64,9 @@ function railLevels(rows: { key: string; lab: string; px: number | null; cls: 's
   return raw
 }
 
-/** graduations (traits pleine largeur) — le prix est un CURSEUR fléché rendu à
- *  part, dans le même gabarit w-3 pour que tous les libellés s'alignent */
-const TICK_BG: Record<string, string> = { stop: 'bg-down', sell: 'bg-zinc-600', ema: 'bg-accent' }
+/** graduations : tous les niveaux ont le MÊME trait traversant l'axe (gabarit
+ *  w-3) — le prix se distingue par sa couleur + une petite flèche devant */
+const TICK_BG: Record<string, string> = { stop: 'bg-down', sell: 'bg-zinc-600', ema: 'bg-accent', price: 'bg-info' }
 const LAB: Record<string, string> = { stop: 'text-down', sell: 'text-zinc-500', ema: 'text-accent', price: 'text-info' }
 
 /** Pane de cycle : où en est la machine d'accumulation de ce bot. */
@@ -149,16 +149,13 @@ export function CyclePane({ info, price }: { info: BotRuntimeInfo; price: number
         <div className="absolute bottom-2 top-2 left-6 w-[2px] bg-[#1a1f2a]" />
         {levels.map((l) => (
           <div key={l.key} className="absolute left-0 right-3 flex -translate-y-1/2 items-center gap-2" style={{ top: `${l.top}%` }}>
-            {/* gabarit commun w-3 (libellés alignés). Traits = graduations qui
-                TRAVERSENT l'axe symétriquement ; prix = curseur dont la POINTE
-                touche le bord gauche de l'axe sans jamais le recouvrir
-                (axe : left-6 = 24px ; gabarit 19→31 ; corps 16→24). */}
+            {/* gabarit commun w-3 : même trait traversant pour tous ; le prix
+                a en plus une petite flèche ▸ juste devant son trait */}
             <span className="relative ml-[19px] flex w-3 shrink-0 items-center">
-              {l.cls === 'price' ? (
-                <span className="absolute -left-[3px] top-1/2 h-0 w-0 -translate-y-1/2 border-y-[5px] border-l-[8px] border-y-transparent border-l-info" />
-              ) : (
-                <span className={`h-[3px] w-full ${TICK_BG[l.cls]}`} />
+              {l.cls === 'price' && (
+                <span className="absolute right-full top-1/2 mr-[3px] h-0 w-0 -translate-y-1/2 border-y-[4px] border-l-[6px] border-y-transparent border-l-info" />
               )}
+              <span className={`h-[3px] w-full ${TICK_BG[l.cls]}`} />
             </span>
             <span className={`text-[9.5px] uppercase tracking-[0.09em] ${LAB[l.cls]}`}>{l.lab}</span>
             <span className={`num ml-auto text-[12px] ${l.cls === 'price' ? 'font-semibold text-info' : 'text-zinc-200'}`}>{fmtPrice(l.px)}</span>
