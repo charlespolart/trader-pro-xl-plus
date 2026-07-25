@@ -88,7 +88,7 @@ export function BotDetail() {
           résiduelle vaut ~2.8e-17 (arith. flottante) — ce n'est PAS une
           position, l'afficher (« LONG 2.775…e-17 ») cassait aussi le layout. */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
-        <Stat label="Équité" value={fmtNum(info.equity)} />
+        <Stat label="Équité" value={`${fmtNum(info.equity)} $`} />
         <Stat
           label="Position"
           value={

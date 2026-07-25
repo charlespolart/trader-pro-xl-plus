@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api, type WalletBalance } from '../lib/api'
 import { fmtNum, fmtQty } from '../lib/format'
-import { Card, Empty, EthGlyph } from './ui'
+import { Card, Empty, EthGlyph, UsdcGlyph } from './ui'
 
 /** Couleurs d'identité des principaux assets (fallback : teinte dérivée du nom). */
 const ASSET_COLORS: Record<string, string> = {
@@ -24,7 +24,7 @@ function assetColor(asset: string): string {
   for (const c of asset) h = (h * 31 + c.charCodeAt(0)) % 360
   return `hsl(${h} 45% 55%)`
 }
-const UNIT: Record<string, ReactNode> = { BTC: '₿', ETH: <EthGlyph /> }
+const UNIT: Record<string, ReactNode> = { BTC: '₿', ETH: <EthGlyph />, USDC: <UsdcGlyph />, USDT: <UsdcGlyph /> }
 const DUST_USD = 1
 
 /**

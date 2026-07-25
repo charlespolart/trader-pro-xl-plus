@@ -64,6 +64,18 @@ export function CoinUnit({ unit }: { unit: string }) {
   return unit === 'Ξ' ? <EthGlyph /> : <>{unit}</>
 }
 
+/** $ cerclé façon logo USDC — hérite couleur/corps du texte comme EthGlyph. */
+export function UsdcGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" className="inline-block h-[0.85em] w-auto -translate-y-[0.05em]" aria-label="USDC">
+      <circle cx="12" cy="12" r="10.4" fill="none" stroke="currentColor" strokeWidth="2.4" />
+      <text x="12" y="16.8" textAnchor="middle" fontSize="13" fontWeight="700" fill="currentColor">
+        $
+      </text>
+    </svg>
+  )
+}
+
 export function Stat({ label, value, sub, tone = 'default' }: { label: ReactNode; value: ReactNode; sub?: ReactNode; tone?: 'up' | 'down' | 'default' }) {
   const toneCls = tone === 'up' ? 'text-up' : tone === 'down' ? 'text-down' : 'text-zinc-100'
   return (
