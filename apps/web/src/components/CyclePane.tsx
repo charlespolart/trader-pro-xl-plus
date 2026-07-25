@@ -137,11 +137,13 @@ export function CyclePane({ info, price }: { info: BotRuntimeInfo; price: number
         <div className="absolute bottom-2 top-2 left-6 w-[2px] bg-[#1a1f2a]" />
         {levels.map((l) => (
           <div key={l.key} className="absolute left-0 right-3 flex -translate-y-1/2 items-center gap-2" style={{ top: `${l.top}%` }}>
-            {/* gabarit commun w-3 : la pointe de la flèche prix termine au même
-                x que les traits → libellés et terminaisons alignés */}
-            <span className="ml-[19px] flex w-3 shrink-0 items-center justify-end">
+            {/* gabarit commun w-3 (libellés alignés). Traits = graduations qui
+                TRAVERSENT l'axe symétriquement ; prix = curseur dont la POINTE
+                touche le bord gauche de l'axe sans jamais le recouvrir
+                (axe : left-6 = 24px ; gabarit 19→31 ; corps 16→24). */}
+            <span className="relative ml-[19px] flex w-3 shrink-0 items-center">
               {l.cls === 'price' ? (
-                <span className="h-0 w-0 border-y-[5px] border-l-[8px] border-y-transparent border-l-info" />
+                <span className="absolute -left-[3px] top-1/2 h-0 w-0 -translate-y-1/2 border-y-[5px] border-l-[8px] border-y-transparent border-l-info" />
               ) : (
                 <span className={`h-[3px] w-full ${TICK_BG[l.cls]}`} />
               )}
