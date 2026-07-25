@@ -59,12 +59,9 @@ function railLevels(rows: { key: string; lab: string; px: number | null; cls: 's
   return raw
 }
 
-const TICK: Record<string, string> = {
-  stop: 'h-[3px] w-3 bg-down',
-  sell: 'h-[3px] w-3 bg-zinc-600',
-  ema: 'h-[3px] w-3 bg-accent',
-  price: 'h-0 w-0 border-y-[5px] border-l-[8px] border-y-transparent border-l-info',
-}
+/** graduations (traits pleine largeur) — le prix est un CURSEUR fléché rendu à
+ *  part, dans le même gabarit w-3 pour que tous les libellés s'alignent */
+const TICK_BG: Record<string, string> = { stop: 'bg-down', sell: 'bg-zinc-600', ema: 'bg-accent' }
 const LAB: Record<string, string> = { stop: 'text-down', sell: 'text-zinc-500', ema: 'text-accent', price: 'text-info' }
 
 /** Pane de cycle : où en est la machine d'accumulation de ce bot. */
@@ -140,7 +137,15 @@ export function CyclePane({ info, price }: { info: BotRuntimeInfo; price: number
         <div className="absolute bottom-2 top-2 left-6 w-[2px] bg-[#1a1f2a]" />
         {levels.map((l) => (
           <div key={l.key} className="absolute left-0 right-3 flex -translate-y-1/2 items-center gap-2" style={{ top: `${l.top}%` }}>
-            <span className={`ml-[19px] shrink-0 ${TICK[l.cls]}`} />
+            {/* gabarit commun w-3 : la pointe de la flèche prix termine au même
+                x que les traits → libellés et terminaisons alignés */}
+            <span className="ml-[19px] flex w-3 shrink-0 items-center justify-end">
+              {l.cls === 'price' ? (
+                <span className="h-0 w-0 border-y-[5px] border-l-[8px] border-y-transparent border-l-info" />
+              ) : (
+                <span className={`h-[3px] w-full ${TICK_BG[l.cls]}`} />
+              )}
+            </span>
             <span className={`text-[9.5px] uppercase tracking-[0.09em] ${LAB[l.cls]}`}>{l.lab}</span>
             <span className={`num ml-auto text-[12px] ${l.cls === 'price' ? 'font-semibold text-info' : 'text-zinc-200'}`}>{fmtPrice(l.px)}</span>
           </div>
