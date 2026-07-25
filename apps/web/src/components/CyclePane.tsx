@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import type { BotRuntimeInfo } from '@tpx/shared'
 import { fmtNum, fmtPrice, fmtQty } from '../lib/format'
+import { CoinUnit } from './ui'
 
 /** Unité base des stratégies d'accumulation (récolte affichée en ₿/Ξ).
  *  btc-vrx est base-denom AUSSI : son id ne contient pas « accumulator »
@@ -131,7 +132,14 @@ export function CyclePane({ info, price }: { info: BotRuntimeInfo; price: number
           <div>
             <div className="text-[10px] uppercase tracking-[0.1em] text-zinc-600">Récolte totale</div>
             <div className={`num mt-0.5 text-[16px] font-medium ${info.realizedPnlTotal >= 0 ? 'text-up' : 'text-down'}`}>
-              {unit !== null ? `${info.realizedPnlTotal >= 0 ? '+' : ''}${fmtQty(info.realizedPnlTotal)} ${unit}` : fmtNum(info.realizedPnlTotal)}
+              {unit !== null ? (
+                <>
+                  {info.realizedPnlTotal >= 0 ? '+' : ''}
+                  {fmtQty(info.realizedPnlTotal)} <CoinUnit unit={unit} />
+                </>
+              ) : (
+                fmtNum(info.realizedPnlTotal)
+              )}
             </div>
           </div>
         </div>

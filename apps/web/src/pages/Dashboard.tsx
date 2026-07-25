@@ -3,7 +3,7 @@ import { useQueries, useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { useBots } from '../lib/ws'
 import { fmtNum, fmtPct, fmtQty, pnlClass } from '../lib/format'
-import { Badge, Card, Empty } from '../components/ui'
+import { Badge, Card, CoinUnit, Empty } from '../components/ui'
 import { WalletCard } from '../components/WalletCard'
 import { CyclePane, baseUnitOf } from '../components/CyclePane'
 
@@ -52,7 +52,7 @@ export function Dashboard() {
               <div key={unit}>
                 <div className={`num text-[26px] font-medium leading-tight ${v >= 0 ? 'text-up' : 'text-down'}`}>
                   {v >= 0 ? '+' : ''}
-                  {fmtQty(v)} {unit}
+                  {fmtQty(v)} <CoinUnit unit={unit} />
                 </div>
                 <div className="mt-1 text-xs text-zinc-500">accumulés en plus du simple hold</div>
               </div>

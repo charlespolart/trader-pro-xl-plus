@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api, type WalletBalance } from '../lib/api'
 import { fmtNum, fmtQty } from '../lib/format'
-import { Card, Empty } from './ui'
+import { Card, Empty, EthGlyph } from './ui'
 
 /** Couleurs d'identité des principaux assets (fallback : teinte dérivée du nom). */
 const ASSET_COLORS: Record<string, string> = {
@@ -23,17 +23,6 @@ function assetColor(asset: string): string {
   let h = 0
   for (const c of asset) h = (h * 31 + c.charCodeAt(0)) % 360
   return `hsl(${h} 45% 55%)`
-}
-/** losange Ethereum (le « Ξ » textuel rend comme 3 barres en police mono) */
-function EthGlyph() {
-  return (
-    <svg viewBox="0 0 256 417" className="inline-block h-[19px] w-auto -translate-y-[2px] fill-accent" aria-label="ETH">
-      <path d="M127.9 0 125 9.8v272.6l2.9 2.9 127.9-75.6L127.9 0z" opacity=".65" />
-      <path d="M127.9 0 0 209.7l127.9 75.6V0z" />
-      <path d="m127.9 312.2-1.6 2v97.1l1.6 4.7 128-180.3-128 76.5z" opacity=".65" />
-      <path d="M127.9 416V312.2L0 235.7 127.9 416z" />
-    </svg>
-  )
 }
 const UNIT: Record<string, ReactNode> = { BTC: '₿', ETH: <EthGlyph /> }
 const DUST_USD = 1

@@ -45,6 +45,25 @@ export function Card({
   )
 }
 
+/** Losange Ethereum en SVG — le « Ξ » textuel rend comme 3 barres illisibles
+ *  en police mono. fill-current + taille en em : hérite couleur et corps du
+ *  texte environnant (récolte verte, héros accent…). */
+export function EthGlyph() {
+  return (
+    <svg viewBox="0 0 256 417" className="inline-block h-[0.9em] w-auto -translate-y-[0.05em] fill-current" aria-label="ETH">
+      <path d="M127.9 0 125 9.8v272.6l2.9 2.9 127.9-75.6L127.9 0z" opacity=".65" />
+      <path d="M127.9 0 0 209.7l127.9 75.6V0z" />
+      <path d="m127.9 312.2-1.6 2v97.1l1.6 4.7 128-180.3-128 76.5z" opacity=".65" />
+      <path d="M127.9 416V312.2L0 235.7 127.9 416z" />
+    </svg>
+  )
+}
+
+/** Unité de coin en contexte texte : Ξ → losange SVG, le reste tel quel. */
+export function CoinUnit({ unit }: { unit: string }) {
+  return unit === 'Ξ' ? <EthGlyph /> : <>{unit}</>
+}
+
 export function Stat({ label, value, sub, tone = 'default' }: { label: ReactNode; value: ReactNode; sub?: ReactNode; tone?: 'up' | 'down' | 'default' }) {
   const toneCls = tone === 'up' ? 'text-up' : tone === 'down' ? 'text-down' : 'text-zinc-100'
   return (
