@@ -103,7 +103,7 @@ export function CyclePane({ info, price }: { info: BotRuntimeInfo; price: number
 
   return (
     <div className="card mt-2.5 grid grid-cols-1 sm:grid-cols-[1fr_168px]">
-      <div className="pane-title">cycle · {info.config.name.toLowerCase()}</div>
+      <div className="pane-title">cycle · {(info.config.name || info.config.strategyId).toLowerCase()}</div>
       <div className="pane-hint">{info.config.mode === 'live' ? 'live' : info.config.mode === 'testnet' ? 'démo' : 'paper'} · 4 h</div>
       <div className="flex flex-col p-5 pb-4">
         <div className="flex flex-wrap items-center gap-3">

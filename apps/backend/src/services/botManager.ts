@@ -1309,6 +1309,8 @@ export class BotManager {
     merged.credentialName = await this.checkCredential(merged.mode, merged.credentialName)
     const entry = registry.get(merged.strategyId)
     if (entry.def.symbol !== undefined) merged.symbol = entry.def.symbol
+    // nom vidé à l'édition → auto-nom (même règle qu'à la création)
+    if (!merged.name.trim()) merged.name = `${entry.def.name} ${merged.symbol}`
     if (!entry.def.markets.includes(merged.market)) {
       throw new Error(`La stratégie '${entry.def.name}' ne supporte pas le marché ${merged.market}`)
     }

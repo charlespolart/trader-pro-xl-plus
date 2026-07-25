@@ -65,7 +65,7 @@ export function BotDetail() {
       <PageHeader
         title={
           <span className="inline-flex items-center gap-2.5">
-            {cfg.name}
+            {cfg.name || cfg.strategyId}
             <Badge value={cfg.market} />
             <Badge value={cfg.mode} />
             <Badge value={info.status} />

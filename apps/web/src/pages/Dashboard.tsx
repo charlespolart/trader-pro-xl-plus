@@ -170,7 +170,7 @@ export function Dashboard() {
                 <tr key={b.config.id}>
                   <td>
                     <Link to={`/bots/${b.config.id}`} className="font-medium text-accent hover:underline">
-                      {b.config.name}
+                      {b.config.name || b.config.strategyId}
                     </Link>
                   </td>
                   <td className="num text-[12px]">{b.config.symbol}</td>

@@ -159,7 +159,7 @@ export function Bots() {
                   <tr key={b.config.id}>
                     <td>
                       <Link to={`/bots/${b.config.id}`} className="text-accent hover:underline">
-                        {b.config.name}
+                        {b.config.name || b.config.strategyId}
                       </Link>
                     </td>
                     <td className="text-zinc-400">{b.config.strategyId}</td>

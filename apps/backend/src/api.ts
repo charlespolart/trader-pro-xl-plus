@@ -125,7 +125,9 @@ export function buildApi(s: Services): Hono {
     }
     const entry = registry.get(body.strategyId)
     const config = await s.bots.create({
-      name: body.name ?? `${entry.def.name} ${body.symbol}`,
+      // ?? ne couvre pas la chaîne VIDE : un champ nom laissé vide créait un
+      // bot sans nom → lien de détail invisible (vécu avec les 3 bots live)
+      name: body.name?.trim() ? body.name.trim() : `${entry.def.name} ${body.symbol}`,
       strategyId: body.strategyId,
       market: asMarket(body.market),
       symbol: body.symbol.toUpperCase(),
