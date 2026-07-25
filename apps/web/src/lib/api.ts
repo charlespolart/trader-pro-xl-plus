@@ -187,6 +187,22 @@ export interface DownloadJobRow {
   createdAt: number
 }
 
+/** exécution persistée (table fills) — l'historique VRAI des achats/ventes */
+export interface FillRow {
+  id: string
+  orderId: string
+  side: 'BUY' | 'SELL'
+  price: number
+  qty: number
+  quoteQty: number
+  fee: number
+  feeAsset: string
+  maker: boolean
+  time: number
+  reason: string | null
+  tag: string | null
+}
+
 export interface LiveTradeRow {
   id: string
   botId: string
@@ -230,6 +246,7 @@ export const api = {
   resumeBot: (id: string) => post<{ ok: boolean }>(`/bots/${id}/resume`),
   botChart: (id: string) => get<BotChartData>(`/bots/${id}/chart`),
   botLogs: (id: string) => get<LogEntry[]>(`/bots/${id}/logs`),
+  botFills: (id: string) => get<FillRow[]>(`/bots/${id}/fills`),
 
   // refit
   refitState: (id: string) => get<RefitStateDTO>(`/bots/${id}/refit`),

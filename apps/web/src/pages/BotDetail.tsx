@@ -163,6 +163,11 @@ export function BotDetail() {
         </Card>
       )}
 
+      {/* l'historique VRAI des achats/ventes (persisté en base) — la table
+          Trades ne montre que les cycles FERMÉS : une vente en cours de cycle
+          n'apparaissait NULLE PART avec sa date (vécu : vente du 24/07) */}
+      <FillsCard botId={id} />
+
       <Card title="Trades" bodyClassName="p-0">
         <TradesTable trades={tradeRecords} />
       </Card>
@@ -192,6 +197,48 @@ export function BotDetail() {
         )}
       </Card>
     </div>
+  )
+}
+
+/** Exécutions (fills) du bot : date, sens, quantité, prix, total, frais. */
+function FillsCard({ botId }: { botId: string }) {
+  const { data: fills } = useQuery({
+    queryKey: ['botfills', botId],
+    queryFn: () => api.botFills(botId),
+    refetchInterval: 30_000,
+  })
+  if (!fills || fills.length === 0) return null
+  return (
+    <Card title="Exécutions" hint="achats / ventes réellement exécutés" bodyClassName="p-0">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Sens</th>
+            <th className="text-right">Qté</th>
+            <th className="text-right">Prix</th>
+            <th className="text-right">Total</th>
+            <th className="text-right">Frais</th>
+            <th>Raison</th>
+          </tr>
+        </thead>
+        <tbody>
+          {fills.map((f) => (
+            <tr key={f.id}>
+              <td className="num whitespace-nowrap text-zinc-400">{fmtDate(f.time)}</td>
+              <td className={f.side === 'BUY' ? 'text-up' : 'text-down'}>{f.side === 'BUY' ? 'ACHAT' : 'VENTE'}</td>
+              <td className="num text-right">{f.qty}</td>
+              <td className="num text-right">{fmtPrice(f.price)}</td>
+              <td className="num text-right">{fmtNum(f.quoteQty)} $</td>
+              <td className="num text-right text-zinc-500">{f.fee > 0 ? `${fmtNum(f.fee, 4)} ${f.feeAsset}` : '—'}</td>
+              <td className="max-w-72 truncate text-zinc-400" title={f.reason ?? undefined}>
+                {f.reason ?? '—'}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </Card>
   )
 }
 
