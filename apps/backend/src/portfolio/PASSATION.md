@@ -313,6 +313,13 @@ la spec §6 (elles ne remplacent rien d'autre) :
     chrono de marche à blanc de listing2 REPART au 2026-09-12 (6-8 sem.).
     Divergence résiduelle assumée : le runtime ouvre au 1er funding vu même
     au-delà de J+7 (le backtest exige te ≤ first+7) — rare, à surveiller.
+    MESURE TERRAIN (perp_funding 16/07→31/08) : 52 nouveaux perps Binance,
+    mais 51 sont PERP-ONLY (actions/ETF tokenisés : TENCENT, PYPL, KODEX200…)
+    sans paire spot → hors périmètre listing2 (spot d'abord, perp ≤ J+7).
+    Un seul vrai événement : 牛来USDT (perp 30/08, spot 09/09 → te=first,
+    valide au sens du backtest) — 1er cas réel attendu au tick du 12/09.
+    Base rate backtest ≈ 207 évts/7 ans ≈ 0,6/sem : le flux 2026 a changé
+    de nature — si ~0 événement valide en 6-8 sem, listing2 se retire.
 
 ## 8. État exact à la passation (2026-07-17)
 
