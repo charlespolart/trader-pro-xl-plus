@@ -14,7 +14,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import postgres from 'postgres'
-import { CandleStore, FundingStore } from '@tpx/data'
+import { BinanceMarketData, BinanceRest, CandleStore, FundingStore } from '@tpx/data'
 import type { Db } from '@tpx/db'
 import { DAY, loadBtcReturns, loadPanel, loadFunding, type FundingPanel, type Panel } from '../research/portfolio-bt/data'
 import { histFinite } from '../research/portfolio-bt/regime1'
@@ -28,6 +28,9 @@ export interface FeedConfig {
   /** chemin du CSV canonique (parité recherche) — optionnel au runtime */
   fundingCsv?: string
 }
+
+/** âge maximal (jours) d'un symbole « récent » suivi pour listing2 */
+export const FRESH_MAX_AGE_DAYS = 45
 
 export class PortfolioDataFeed {
   private readonly candles: CandleStore
@@ -92,6 +95,55 @@ export class PortfolioDataFeed {
     return { ok, errors }
   }
 
+  /**
+   * DÉCOUVERTE des nouveaux listings spot Binance (bêtisier n°12 : 57 nuits
+   * de marche à blanc avec un univers FIGÉ à 445 symboles — listing2 ne
+   * pouvait rien voir). Compare exchangeInfo (TRADING, quote USDT) aux
+   * symboles déjà en base ; charge les 1d spot+perp+funding des inconnus sur
+   * FRESH_MAX_AGE_DAYS. Un symbole ancien simplement absent de la base est
+   * chargé aussi mais reste inoffensif : sa 1re bougie tombe hors de la
+   * fenêtre J-10 du détecteur. Réseau → l'appelant tolère l'échec.
+   */
+  async discoverNewSpotSymbols(): Promise<string[]> {
+    const all = await new BinanceMarketData(new BinanceRest({ market: 'spot' })).allSymbols()
+    const known = new Set(
+      (await this.cfg.sql.unsafe(`SELECT DISTINCT symbol FROM candles WHERE market='spot' AND interval='1d'`))
+        .map((r) => r.symbol as string),
+    )
+    const candidates = all
+      .filter((si) => si.quoteAsset === 'USDT' && si.status === 'TRADING' && !known.has(si.symbol))
+      .map((si) => si.symbol)
+      .filter((sym) => sym !== 'BTCUSDT' && sym !== 'ETHUSDT')
+    const start = Date.now() - FRESH_MAX_AGE_DAYS * DAY
+    const end = Date.now()
+    const loaded: string[] = []
+    for (const symbol of candidates) {
+      try {
+        await this.candles.ensureRange('spot', symbol, '1d', start, end, {})
+        await this.candles.ensureRange('futures', symbol, '1d', start, end, {}).catch(() => {})
+        await this.funding.ensureRange(symbol, start, end).catch(() => {})
+        loaded.push(symbol)
+      } catch {
+        // symbole sans archive/REST exploitable : on réessaiera la nuit suivante
+      }
+    }
+    return loaded
+  }
+
+  /**
+   * Symboles RÉCENTS (1re bougie 1d ≤ FRESH_MAX_AGE_DAYS) — base seulement.
+   * Ajoutés au panel pour que listing2Step voie les listings ; regime1 les
+   * ignore de lui-même (éligibilité : historique ≥ WARMUP + 21 fundings).
+   */
+  async freshSymbols(): Promise<string[]> {
+    const rows = await this.cfg.sql.unsafe(
+      `SELECT symbol FROM candles WHERE market='spot' AND interval='1d'
+       AND symbol LIKE '%USDT' GROUP BY 1 HAVING min(open_time) >= $1 ORDER BY 1`,
+      [Date.now() - FRESH_MAX_AGE_DAYS * DAY],
+    )
+    return rows.map((r) => r.symbol as string).filter((s) => s !== 'BTCUSDT' && s !== 'ETHUSDT')
+  }
+
   /** funding quotidien agrégé depuis la table runtime (Σ des événements du jour UTC) */
   async loadFundingFromTable(syms: string[], ts: Float64Array): Promise<FundingPanel> {
     const rows = await this.cfg.sql.unsafe(
@@ -134,7 +186,9 @@ export class PortfolioDataFeed {
 
   /** panels alignés + contexte du DERNIER jour disponible */
   async loadContext(source: 'csv' | 'table'): Promise<{ ctx: DayContext; syms: string[]; perp: Panel; btcR: Float64Array }> {
-    const syms = await this.universe()
+    // univers validé (≥ 180 j) + symboles récents : sans les seconds, le
+    // détecteur de listings est aveugle par construction (bêtisier n°12)
+    const syms = [...new Set([...(await this.universe()), ...(await this.freshSymbols())])]
     const spot = await loadPanel(this.cfg.sql, syms, 'spot')
     const perp = await loadPanel(this.cfg.sql, syms, 'futures', spot.ts)
     const fund = source === 'csv' && this.cfg.fundingCsv

@@ -297,6 +297,22 @@ la spec §6 (elles ne remplacent rien d'autre) :
     passage : la note regime1 gonflait d'un « (hors rebal, positions tenues) »
     par nuit (ré-append aveugle sur une note persistée déjà suffixée,
     targets.ts) → suffixe rendu idempotent (auto-guéri au prochain rebal).
+12. **listing2 AVEUGLE par construction pendant 57 nuits** (revue du
+    2026-09-11) : 0 tenu/0 ouvert/0 fermé du 16/07 au 10/09 — pas parce
+    qu'il n'y avait pas de listings, mais parce que (a) `universe()` exige
+    ≥ 180 j d'historique (un coin listé la semaine dernière est exclu), (b)
+    le refresh nocturne ne télécharge QUE cet univers (figé à 445 symboles
+    de la 1re à la 57e nuit), (c) `listing2Step` cherche « 1re bougie dans
+    les 10 derniers jours » parmi les symboles DU PANEL. Le backtest voit les
+    événements parce que son panel couvre des années. Corrigé (GO Mario,
+    option B « réparer puis retester ») : `discoverNewSpotSymbols()`
+    (exchangeInfo spot TRADING/USDT vs base → chargement 1d spot+perp+
+    funding sur 45 j) au refresh, + `freshSymbols()` (1re bougie ≤ 45 j)
+    ajoutés au panel de `loadContext` ; regime1 les ignore de lui-même
+    (éligibilité WARMUP/21 fundings). Test : listing2Detect.test.ts. Le
+    chrono de marche à blanc de listing2 REPART au 2026-09-12 (6-8 sem.).
+    Divergence résiduelle assumée : le runtime ouvre au 1er funding vu même
+    au-delà de J+7 (le backtest exige te ≤ first+7) — rare, à surveiller.
 
 ## 8. État exact à la passation (2026-07-17)
 
