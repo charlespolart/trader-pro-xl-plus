@@ -320,6 +320,31 @@ la spec §6 (elles ne remplacent rien d'autre) :
     valide au sens du backtest) — 1er cas réel attendu au tick du 12/09.
     Base rate backtest ≈ 207 évts/7 ans ≈ 0,6/sem : le flux 2026 a changé
     de nature — si ~0 événement valide en 6-8 sem, listing2 se retire.
+    SUITE (revue 2026-09-18, 7 nuits après la réparation) : la découverte
+    tourne (0 échec, 23 symboles récents suivis, 牛来 chargé et ouvert au
+    tick prévu) et listing2 a ouvert 10 slots — MAIS 9/10 sont des ACTIONS
+    TOKENISÉES Binance (CRMB, CRWDB, MRNAB, HIMSB, RDDTB, GPROB… + MARSCOIN)
+    et **0/10 ont un perp OKX** (« 10 sautés ») → régime hors distribution
+    du backtest (207 événements crypto) et inexécutable. Corollaire du
+    finding hedge (§ regime1) poussé à 100 % : le plan pose quand même le
+    long BTC (1 ordre) → le book paper l2 = long BTC 6 000 $ SEUL, son P&L
+    (-80 $) n'est que de l'exposition BTC, zéro alpha listing2. DÉCISION
+    ATTENDUE de Mario : (a) retirer listing2 (flux 2026 = stocks tokenisés,
+    non couverts OKX), ou (b) filtrer les slots à l'exécutabilité OKX AVANT
+    d'ouvrir (et dimensionner le hedge sur les shorts exécutés) — changement
+    de règle = spec, pas retouche.
+13. **Jours de funding PARTIELS jamais recomplétés (runtime)** — parité
+    §5.3 (2026-09-18) : CSV canonique (archives Vision, 865 perps, régénéré =
+    SUM(rate)/jour UTC, certifié 0 écart vs l'original) vs table PROD sur
+    16/07→31/08 : 16 072 jours-symboles communs, **28 divergences, toutes
+    sur 2 jours** — 17/07 (22 symboles, jour du bootstrap : 1 événement sur 3
+    chargé) et 29/07 (6). Un jour chargé partiel est marqué couvert et n'est
+    jamais complété. Impact négligeable (porte OFF ces jours-là) ; correction
+    = re-ensureRange ciblé sur ces 2 jours en prod (écriture prod → GO).
+    Leçon pour le rejeu §5.2 : un pipeline local « 62 j de refresh » ne
+    suffit pas — vérifier la couverture PAR SYMBOLE (candles spot 232 vs
+    458 en prod le 15/08 !) avant toute comparaison ; les portes ne se
+    comparent qu'à univers identique.
 
 ## 8. État exact à la passation (2026-07-17)
 

@@ -11,7 +11,7 @@
  *    bun apps/backend/src/research/portfolio-bt/replay_mab.ts \
  *      [fenetre_debut=2026-07-16] [fenetre_fin=2026-09-02]
  *
- *  Entrée VPS attendue dans /tmp/mab-review.txt (lignes « 📊 regime1 … »
+ *  Entrée VPS : $MAB_REVIEW (défaut /tmp/mab-review.txt) (lignes « 📊 regime1 … »
  *  + state JSON) — produite par la session de revue (lecture seule VPS).
  */
 import { connect, loadPanel, universeSymbols, DAY } from './data'
@@ -37,7 +37,7 @@ const hist = histFinite(spot)
 console.log(`univers ${syms.length} · panel n=${spot.n} (${new Date(spot.ts[0]!).toISOString().slice(0, 10)} → ${new Date(spot.ts[spot.n - 1]!).toISOString().slice(0, 10)})`)
 
 // ---- décisions VPS (log + state récoltés en lecture seule)
-const vps = readFileSync('/tmp/mab-review.txt', 'utf8')
+const vps = readFileSync(process.env.MAB_REVIEW ?? '/tmp/mab-review.txt', 'utf8')
 const vpsGates = new Map<string, { g: number; rebal: boolean; on: boolean }>()
 for (const m of vps.matchAll(/regime1 (\d{4}-\d\d-\d\d) — porte ([\d.]+) bps\/j.*?· (REBAL|tenue) · porte (ON|OFF)/g)) {
   vpsGates.set(m[1]!, { g: Number(m[2]), rebal: m[3] === 'REBAL', on: m[4] === 'ON' })
