@@ -1,9 +1,9 @@
 /**
  * PortfolioRunner — le runner quotidien (Phase A/B).
  *
- * Porte les DEUX stratégies validées avec états et positions SÉPARÉS
- * (regime1 = sleeve régimée K7 ; listing2 = slots événementiels K30) —
- * elles peuvent shorter le même instrument, l'attribution reste propre.
+ * Porte la stratégie validée regime1 (sleeve régimée K7). listing2 a été
+ * RETIRÉE le 2026-09-18 (décision Mario : le flux de listings 2026 = actions
+ * tokenisées sans perp OKX, 0/10 slots exécutables — bêtisier n°12).
  *
  * MODES : 'paper' (défaut) · 'dry'. Le mode LIVE n'existe volontairement
  * PAS avant la Phase C (GO explicite). RIEN n'est branché à index.ts, et
@@ -18,10 +18,7 @@ import { resolve } from 'node:path'
 import { DAY } from '../research/portfolio-bt/data'
 import { GATE_BPS, K as K_REGIME } from '../research/portfolio-bt/regime1'
 import type { PortfolioDataFeed } from './dataFeed'
-import {
-  gateValue, listing2Step, regime1Targets,
-  type DayContext, type Listing2State, type TargetWeights,
-} from './targets'
+import { gateValue, regime1Targets, type DayContext, type TargetWeights } from './targets'
 import {
   fetchSwapInstruments, planRebalance, OkxPortfolioAdapter, toOkxInstId,
   type OkxInstrument, type RebalancePlan,
@@ -34,24 +31,18 @@ interface StratBook {
 }
 
 export interface RunnerState {
-  version: 2
+  version: 3
   regime1: {
     anchorTs: number | null
     lastTargets: { weights: Array<[string, number]>; btc: number; note: string } | null
     book: StratBook
   }
-  listing2: {
-    slots: Array<{ symbol: string; a: number; entryT: number; entryCum: number }>
-    seenSymbols: string[]
-    book: StratBook
-  }
-  history: Array<{ day: string; equity: number; r1: number; l2: number; note: string }>
+  history: Array<{ day: string; equity: number; r1: number; note: string }>
   lastTickDay: string | null
 }
 
 export interface RunnerConfig {
   sleeveR1Usd: number
-  sleeveL2Usd: number
   mode: 'paper' | 'dry'
   statePath: string
   killPath: string
@@ -63,13 +54,25 @@ const MAX_STALE_MS = 36 * 3_600_000
 
 export function loadState(path: string): RunnerState {
   if (existsSync(path)) {
-    const raw = JSON.parse(readFileSync(path, 'utf8')) as RunnerState
-    if (raw.version === 2) return raw
+    const raw = JSON.parse(readFileSync(path, 'utf8')) as RunnerState & { version: number; listing2?: unknown }
+    if (raw.version === 3) return raw
+    if (raw.version === 2) {
+      // migration v2→v3 : listing2 retirée (état et book paper abandonnés —
+      // aucune position réelle n'a jamais existé), l'historique garde r1
+      const { listing2: _l2, ...rest } = raw
+      void _l2
+      return {
+        ...rest,
+        version: 3,
+        history: (raw.history as Array<{ day: string; equity: number; r1: number; note: string }>).map((h) => ({
+          day: h.day, equity: h.r1, r1: h.r1, note: h.note,
+        })),
+      }
+    }
   }
   return {
-    version: 2,
+    version: 3,
     regime1: { anchorTs: null, lastTargets: null, book: { positions: [], equityUsd: 0 } },
-    listing2: { slots: [], seenSymbols: [], book: { positions: [], equityUsd: 0 } },
     history: [],
     lastTickDay: null,
   }
@@ -135,36 +138,16 @@ export class PortfolioRunner {
       state.regime1.lastTargets = { weights: [...tg.weights.entries()], btc: tg.btc, note: tg.note }
     }
 
-    // ---------- LISTING2 (slots événementiels)
-    const l2state: Listing2State = {
-      slots: state.listing2.slots.map((s) => ({ ...s })),
-      seen: new Set(state.listing2.seenSymbols.map((s) => ctx.spot.syms.indexOf(s)).filter((i) => i >= 0)),
-    }
-    const dec = listing2Step(ctx, l2state, rExecRow)
-    this.say(`🏷️ listing2 ${day} — ${dec.note}`)
-    const slotUsd = this.cfg.sleeveL2Usd / 10
-    const l2weights = new Map<string, number>()
-    for (const s of [...dec.hold, ...dec.open]) l2weights.set(s.symbol, (l2weights.get(s.symbol) ?? 0) - slotUsd / this.cfg.sleeveL2Usd)
-    const l2btc = ([...dec.hold, ...dec.open].length * slotUsd) / this.cfg.sleeveL2Usd
-    const posL2 = new Map(state.listing2.book.positions)
-    const planL2 = planRebalance(l2weights, l2btc, this.cfg.sleeveL2Usd, posL2, instruments)
-    const adapter2 = new OkxPortfolioAdapter()
-    await adapter2.execute(planL2, (m) => this.say(`[l2] ${m}`))
-    if (this.cfg.mode === 'paper') this.markBook(state.listing2.book, ctx, btcR, planL2, rExecRow)
-    state.listing2.slots = [...dec.hold, ...dec.open].map((s) => ({ symbol: s.symbol, a: s.a, entryT: s.entryT, entryCum: s.entryCum }))
-    state.listing2.seenSymbols = [...new Set([...state.listing2.seenSymbols, ...[...l2state.seen].map((i) => ctx.spot.syms[i]).filter(Boolean)])]
-
     // ---------- consolidation
-    const total = state.regime1.book.equityUsd + state.listing2.book.equityUsd
+    const total = state.regime1.book.equityUsd
     state.history.push({
       day, equity: Math.round(total * 100) / 100,
       r1: Math.round(state.regime1.book.equityUsd * 100) / 100,
-      l2: Math.round(state.listing2.book.equityUsd * 100) / 100,
-      note: `${state.regime1.book.positions.length}+${state.listing2.book.positions.length} positions`,
+      note: `${state.regime1.book.positions.length} positions`,
     })
     state.lastTickDay = day
     saveState(this.cfg.statePath, state)
-    this.say(`💼 paper total ${total.toFixed(2)} USDT (r1 ${state.regime1.book.equityUsd.toFixed(2)} · l2 ${state.listing2.book.equityUsd.toFixed(2)})`)
+    this.say(`💼 paper regime1 ${total.toFixed(2)} USDT (${state.regime1.book.positions.length} positions)`)
   }
 
   /** mark-to-close du book + application du plan (coûts provisionnés) */

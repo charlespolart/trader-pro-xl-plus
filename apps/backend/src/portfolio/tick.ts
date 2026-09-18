@@ -16,7 +16,6 @@ const feed = new PortfolioDataFeed({ sql, db, fundingCsv: fundingCsvPath() })
 const { sendTelegram, flushTelegram } = await import('../services/telegram')
 const runner = new PortfolioRunner(feed, {
   sleeveR1Usd: Number(process.env.PORTFOLIO_SLEEVE_R1_USD ?? 6000),
-  sleeveL2Usd: Number(process.env.PORTFOLIO_SLEEVE_L2_USD ?? 6000),
   mode,
   ...defaultPaths(),
   telegram: process.env.PORTFOLIO_TELEGRAM === '1' ? sendTelegram : undefined,

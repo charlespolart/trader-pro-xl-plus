@@ -8,14 +8,11 @@
  *
  * regime1 : porte médiane funding ≥ 2,5 bps/j → short quintile funding-max
  * (FLEVEL 3 j) + long BTC 1:1, rebalancement K = 7 j.
- * listing2 : short des nouveaux listings Binance ayant un perp (entrée au
- * 1er funding observé), + long BTC 1:1 par slot, K = 30 j, stop close
- * +50 %, M = 10 slots.
+ * (listing2 retirée du runtime le 2026-09-18 — bêtisier PASSATION n°12.)
  */
 import { MIN_ALIVE, TOPQ, WARMUP, type FundingPanel, type Panel } from '../research/portfolio-bt/data'
 import { argsortAsc, median } from '../research/portfolio-bt/engine'
 import { GATE_BPS, FLEVEL_L, K as K_REGIME } from '../research/portfolio-bt/regime1'
-import { K_HOLD, M_SLOTS, STOP_LOG } from '../research/portfolio-bt/listing2'
 
 export interface DayContext {
   /** index du jour courant dans les panels (dernier close disponible) */
@@ -97,64 +94,4 @@ export function regime1Targets(ctx: DayContext, isRebalanceDay: boolean, previou
     weights, btc: 1,
     note: `porte ON (${(g * 1e4).toFixed(2)} bps/j) — short ${ntop}/${idx.length} éligibles + long BTC 1:1`,
   }
-}
-
-export interface ListingSlot {
-  symbol: string
-  a: number
-  entryT: number
-  entryCum: number             // cumul de log-returns depuis l'entrée (pour le stop)
-}
-
-export interface Listing2State {
-  slots: ListingSlot[]
-  /** index spot déjà traités (événements consommés ou sautés) */
-  seen: Set<number>
-}
-
-export interface Listing2Decision {
-  open: ListingSlot[]
-  close: ListingSlot[]
-  hold: ListingSlot[]
-  note: string
-}
-
-/**
- * Décisions listing2 au jour t : ouvre les nouveaux événements (listing
- * Binance dont le funding du perp vient d'apparaître, ≤ J+7 du listing),
- * ferme sur K30/stop. La disponibilité du perp OKX est vérifiée par
- * l'ADAPTATEUR (pas ici) : un événement sans instrument OKX est sauté au
- * moment de l'exécution — même convention que la validation (55 % couverts).
- */
-export function listing2Step(ctx: DayContext, state: Listing2State, rExecRow: (a: number, j: number) => number): Listing2Decision {
-  const { t, spot, fund } = ctx
-  const { na } = spot
-  const open: ListingSlot[] = []
-  const close: ListingSlot[] = []
-  const hold: ListingSlot[] = []
-  for (const slot of state.slots) {
-    const held = t - slot.entryT
-    slot.entryCum += rExecRow(slot.a, t)
-    if (held >= K_HOLD || slot.entryCum >= STOP_LOG) close.push(slot)
-    else hold.push(slot)
-  }
-  for (let a = 0; a < na; a++) {
-    if (state.seen.has(a)) continue
-    let first = -1
-    for (let i = Math.max(0, t - 10); i <= t; i++) {
-      if (Number.isFinite(spot.px[i * na + a]) && (i === 0 || !Number.isFinite(spot.px[(i - 1) * na + a]))) {
-        first = i
-        break
-      }
-    }
-    if (first === -1) continue
-    if (fund.F[t * na + a] === 0) {
-      if (t - first > 7) state.seen.add(a)     // fenêtre J+7 expirée sans perp
-      continue
-    }
-    state.seen.add(a)
-    if (hold.length + open.length >= M_SLOTS) continue        // slots pleins → sauté
-    open.push({ symbol: spot.syms[a], a, entryT: t, entryCum: 0 })
-  }
-  return { open, close, hold, note: `${hold.length} tenus, ${open.length} ouverts, ${close.length} fermés` }
 }

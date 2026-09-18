@@ -1,9 +1,9 @@
 /** PortfolioRunner — refresh nocturne des données (Phase B, LOCAL).
- *  0) DÉCOUVERTE des nouveaux listings spot Binance (exchangeInfo vs base) —
- *     sans elle l'univers est figé et listing2 est aveugle (bêtisier n°12) ;
- *  1) closes 1d spot+perp de l'univers + des symboles récents (Vision) ;
+ *  1) closes 1d spot+perp de l'univers (candleStore/Vision, incrémental) ;
  *  2) funding frais Coinalyze (jours pré-archivage) + purge des pseudo-
- *     événements couverts par Vision.  bun apps/backend/src/portfolio/refresh.ts */
+ *     événements couverts par Vision.  bun apps/backend/src/portfolio/refresh.ts
+ *  (La découverte des nouveaux listings a été retirée avec listing2 le
+ *  2026-09-18 — bêtisier PASSATION n°12.) */
 import { readFileSync } from 'node:fs'
 import postgres from 'postgres'
 import { createDb } from '@tpx/db'
@@ -15,20 +15,8 @@ const db = createDb(DB_URL)
 const feed = new PortfolioDataFeed({ sql, db })
 
 const t0 = Date.now()
-const universe = await feed.universe()
-// la découverte est RÉSEAU : son échec ne doit jamais faire sauter le tick
-let discovered: string[] = []
-try {
-  discovered = await feed.discoverNewSpotSymbols()
-} catch (err) {
-  console.log(`⚠ découverte des nouveaux listings en échec (ignorée) : ${err instanceof Error ? err.message.slice(0, 80) : err}`)
-}
-const fresh = await feed.freshSymbols()
-const syms = [...new Set([...universe, ...fresh])]
-console.log(
-  `refresh — univers ${universe.length} symboles + ${fresh.length} récents` +
-    (discovered.length ? ` (découverts cette nuit : ${discovered.slice(0, 8).join(', ')}${discovered.length > 8 ? '…' : ''})` : ''),
-)
+const syms = await feed.universe()
+console.log(`refresh — univers ${syms.length} symboles`)
 const c = await feed.ensureFresh(syms)
 console.log(`candles+funding Vision : ${c.ok} ok, ${c.errors.length} erreurs${c.errors.length ? ` (ex: ${c.errors[0]})` : ''}`)
 

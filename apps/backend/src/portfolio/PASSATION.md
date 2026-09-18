@@ -37,15 +37,16 @@ improviser sur ce système.**
 
 ## 1. Contexte en bref
 
-Deux stratégies validées par une chaîne complète (protocoles pré-enregistrés,
+Une stratégie validée par une chaîne complète (protocoles pré-enregistrés,
 placebos, OOS une passe, réplication perps réels, exécutabilité OKX,
 robustesse venue Bybit) :
 - **regime1** : sleeve dormante ; si la médiane du funding des perps
   éligibles ≥ 2,5 bps/j → short quintile funding-max + long BTC 1:1, K=7 j.
-- **listing2** : short des nouveaux listings **Binance** (pas OKX-only,
-  testé sans drift) ayant un perp ≤ J+7 ; S2 K30, stop close +50 %,
-  10 slots, **marge isolée par position obligatoire** (8 % des événements
-  dépassent +100 % adverse).
+- ~~**listing2**~~ : **RETIRÉE du runtime le 2026-09-18** (décision Mario
+  après revue : le flux de listings Binance 2026 = actions tokenisées sans
+  perp OKX, 1 seul événement crypto en 8 sem, 0/10 slots exécutables —
+  bêtisier n°12). La recherche (`research/listing2/`, `docs/listing2.html`)
+  reste comme pièce de validation, ne pas la supprimer (règle n°10).
 Fiches complètes : `docs/regime1.html`, `docs/listing2.html`,
 `research/regime1/PROPOSITION.md`. Étude d'architecture :
 `research/moteur-multi/ETUDE.md`.
@@ -54,7 +55,7 @@ Fiches complètes : `docs/regime1.html`, `docs/listing2.html`,
 
 | Fichier | Rôle | Ce qu'il ne faut pas casser |
 |---|---|---|
-| `targets.ts` | cibles du jour des 2 stratégies | PARITÉ BIT-IDENTIQUE avec `research/portfolio-bt/` (check_targets : 313/313). Toute modification ⇒ relancer `check_targets.ts` ET `run.ts` |
+| `targets.ts` | cibles du jour de regime1 | PARITÉ BIT-IDENTIQUE avec `research/portfolio-bt/` (check_targets : 313/313). Toute modification ⇒ relancer `check_targets.ts` ET `run.ts` |
 | `dataFeed.ts` | données quotidiennes runtime | la source funding runtime = table `funding_rates` agrégée ; les jours récents viennent de Coinalyze en PSEUDO-ÉVÉNEMENTS à **12:30:00 UTC** (§7.1) |
 | `okxPortfolioAdapter.ts` | plan d'ordres pur + exécution | DRY par défaut ; `arm('LIVE')` lève une erreur exprès |
 | `portfolioRunner.ts` | le tick quotidien | gardes (fraîcheur 36 h, kill, plafond brut 2,2×), état v2 par stratégie, idempotent par jour |
@@ -92,8 +93,7 @@ et l'état `/srv/tpx-portfolio/state/.paper-state.json`.
 **NORMAL** : porte OFF des jours/semaines durant (marché calme = sleeve
 dormante — au 2026-07-17 la porte est à 1,50 bps/j, OFF) ; « abstention —
 données périmées » un jour isolé (rattrapé le lendemain) ; skips
-« instrument OKX indisponible » (couverture 26-55 % documentée) ; 0 slot
-listing2 pendant des jours (le flux réel ≈ 1-2 listings/semaine).
+« instrument OKX indisponible » (couverture 26-55 % documentée).
 
 **ANORMAL → investiguer, et pinger Mario si matériel** : exceptions/stack
 traces ; plafond brut déclenché ; équité paper qui saute sans position ;
@@ -113,8 +113,7 @@ recherche) après l'archivage Vision du mois → la parité doit rester à
    state (mêmes portes, mêmes sélections aux rebals, pnl paper ≈ backtest
    à la tolérance du slippage provisionné).
 3. Parité funding toujours 0 divergence au re-check mensuel.
-4. Si des listings sont survenus : chaque événement tracé proprement
-   (détection → slot → sortie K30/stop).
+4. ~~listings~~ (listing2 retirée le 2026-09-18).
 5. Aucun incident de garde non expliqué.
 → Présenter le bilan à Mario. C'est LUI qui décide du passage en Phase C.
 
@@ -328,11 +327,10 @@ la spec §6 (elles ne remplacent rien d'autre) :
     du backtest (207 événements crypto) et inexécutable. Corollaire du
     finding hedge (§ regime1) poussé à 100 % : le plan pose quand même le
     long BTC (1 ordre) → le book paper l2 = long BTC 6 000 $ SEUL, son P&L
-    (-80 $) n'est que de l'exposition BTC, zéro alpha listing2. DÉCISION
-    ATTENDUE de Mario : (a) retirer listing2 (flux 2026 = stocks tokenisés,
-    non couverts OKX), ou (b) filtrer les slots à l'exécutabilité OKX AVANT
-    d'ouvrir (et dimensionner le hedge sur les shorts exécutés) — changement
-    de règle = spec, pas retouche.
+    (-80 $) n'est que de l'exposition BTC, zéro alpha listing2. **DÉCISION Mario 2026-09-18 : listing2 RETIRÉE** (« cette strat a l'air
+    nulle, on arrête les tests ») — code runtime supprimé (runner state
+    v2→v3 avec migration, targets.ts, tick.ts, découverte des listings dans
+    dataFeed/refresh retirée avec elle) ; recherche et doc HTML conservées.
 13. **Jours de funding PARTIELS jamais recomplétés (runtime)** — parité
     §5.3 (2026-09-18) : CSV canonique (archives Vision, 865 perps, régénéré =
     SUM(rate)/jour UTC, certifié 0 écart vs l'original) vs table PROD sur
