@@ -97,3 +97,37 @@ prior (accum2 : rien à l'entrée ne prédit le tirage ; dé-levier tardif).
 **Régime (bull EMA200-1d → vrx seul, sinon 50/50)** : IS Δ +0,04 (bruit),
 OOS Δ −0,08 (jours bull 60 %) → ⛔. H14 « vol-target global » : réfuté pour
 le duo. Ledger : 10 essais, 0 survivant.
+
+### A3 ⛔ H5 lead-lag au grain 4h (a3_leadlag.ts, 2026-10-07, IS 2020→2024, 8 764 barres)
+
+| Test | IC | IC médian/an | spread Q5−Q1 | barre 2×coûts |
+|---|---|---|---|---|
+| BTC→ETH (r_BTC[t]→r_ETH[t+1]) | −0,063 | −0,057 | −0,17 % | 0,60 % ⛔ |
+| ETH→BTC | −0,067 | −0,067 | −0,02 % | ⛔ |
+| BTC auto 4h | −0,073 | −0,069 | −0,07 % | ⛔ |
+| basis perp/spot → r_spot[t+1] | −0,000 | −0,014 | −0,09 % | ⛔ |
+| r_perp − r_spot → r_spot[t+1] | −0,018 | −0,016 | −0,08 % | ⛔ |
+
+Pas de lead-lag directionnel : le seul signal = micro-RÉVERSION 4h (IC ≈ −0,06,
+cohérente BTC/ETH/auto) dont le spread est **4-30× sous 2× les coûts taker**.
+Même verdict que H11/accum4 (« réel, broyé par les coûts »). ⛔ H5 au grain 4h ;
+OOS jamais regardé. **Angle MAKER noté une 5e fois** (H3, H8, H11, carry, H5).
+
+## 3. Synthèse revalid1 (2026-10-07)
+
+- Non-régression : baselines 8/8 ; parité moteur ↔ bots live EXACTE sur les
+  cycles réels de l'été (24-26/07) — le moteur et les données sont sains.
+- Fenêtre vierge 07→10/2026 (rallye +25 %) : accum −4,2 %, vrx −7,7 %, eth 0 tr,
+  duo −5,9 % — coût normal d'un moteur de bear en bull-grind, DD ≤ −9 %.
+- **Depuis 2024-01 (33 mois) : hold (0 %) > duo (+2,2 %) > accum (−3,4 %) ; vrx
+  +7,9 %.** Les 3 stratégies ne « rapportent » que dans les bears (2018, 2022).
+- Améliorations pré-enregistrées : A1 vol-target/régime ⛔ (IS dégradé), A3
+  lead-lag ⛔ (sous coûts). Les défauts produit restent l'optimum local
+  (confirme accum2/accum3 sur 3 mois de données neuves).
+- Carte (ROADMAP 14 horizons + extension + revalid1) : épuisée AUX COÛTS TAKER.
+  Gisement restant identifié, jamais ouvert : **exécution MAKER** (0,02 % OKX vs
+  0,15 %/côté taker) — ré-juge mécaniquement les familles « réelles sous les
+  coûts » (réversion 1j accum3, REV cross-section H1, micro-réversion 4h ici,
+  saisonnalités H3) ; exige un modèle de fill passif (ratio, non-exécution) =
+  chantier recherche + produit. Et regime1 = seul survivant chaîne complète,
+  ρ≈0 avec le bloc bêta (contribution composite OOS Sharpe 0,66→1,30).
