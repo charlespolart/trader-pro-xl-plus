@@ -343,6 +343,21 @@ la spec §6 (elles ne remplacent rien d'autre) :
     suffit pas — vérifier la couverture PAR SYMBOLE (candles spot 232 vs
     458 en prod le 15/08 !) avant toute comparaison ; les portes ne se
     comparent qu'à univers identique.
+14. **RÉSIDUS DE CLÔTURE dans le book** (point du 2026-10-07) : après
+    chaque fermeture de porte (10/09 : 9 positions restantes ; 01/10 : 14,
+    de 1 à 9 $, total 49 $), le plan de clôture ignore les deltas sous
+    `minTradeUsd` (15 $) / sous minSz, et `markBook` ne purge que |v| < 1 $
+    → micro-positions fantômes qui survivent au cycle. En paper = poussière
+    marquée chaque jour ; **en LIVE ce seraient de vraies micro-positions
+    OKX ouvertes (marge isolée + funding) jamais fermées**. Spec Phase C :
+    une clôture ferme la position RÉELLE entière (close/reduce-only sur la
+    taille détenue), jamais un delta de notional ; et le book paper doit
+    refléter la même règle. À traiter AVEC le finding hedge (n°12/§regime1 :
+    long BTC dimensionné sur la cible, 39/85 jambes sautées le 24/09 → net
+    long ~3 000 $). Bilan paper au 06/10 : 2 cycles ON joués (27/08→10/09 :
+    -198 $ ; 24/09→01/10 : -170 $), cumul -372 $ = -6,2 % de la sleeve —
+    NON représentatif de regime1 tant que ces deux biais ne sont pas
+    corrigés (le paper valide la plomberie : 83/83 ticks, pas l'edge).
 
 ## 8. État exact à la passation (2026-07-17)
 
