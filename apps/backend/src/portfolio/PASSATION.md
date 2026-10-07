@@ -57,7 +57,7 @@ Fiches complètes : `docs/regime1.html`, `docs/listing2.html`,
 |---|---|---|
 | `targets.ts` | cibles du jour de regime1 | PARITÉ BIT-IDENTIQUE avec `research/portfolio-bt/` (check_targets : 313/313). Toute modification ⇒ relancer `check_targets.ts` ET `run.ts` |
 | `dataFeed.ts` | données quotidiennes runtime | la source funding runtime = table `funding_rates` agrégée ; les jours récents viennent de Coinalyze en PSEUDO-ÉVÉNEMENTS à **12:30:00 UTC** (§7.1) |
-| `okxPortfolioAdapter.ts` | plan d'ordres pur + exécution | DRY par défaut ; `arm('LIVE')` lève une erreur exprès |
+| `okxPortfolioAdapter.ts` | plan d'ordres pur + exécution | DRY par défaut ; `arm('LIVE')` lève une erreur exprès ; **hedge BTC au prorata des jambes tenues + clôture totale (`closeAll`) — règles 2026-10-08, tests portfolioPlan.test.ts** |
 | `portfolioRunner.ts` | le tick quotidien | gardes (fraîcheur 36 h, kill, plafond brut 2,2×), état v2 par stratégie, idempotent par jour |
 | `tick.ts` / `refresh.ts` / `bootstrap.ts` | CLI | `tick.ts table` = le vrai chemin runtime ; `csv` = parité recherche |
 | `check_targets.ts` / `backfill_check.ts` | contrôles | à relancer après TOUT changement de data/targets |
@@ -126,7 +126,11 @@ Principes : le moins de code neuf possible, réutiliser la plomberie OKX
    SEULE (reconcile réel pendant quelques jours), puis clés trade au GO.
    Jamais les clés du compte principal.
 2. **Envoi d'ordres** : étendre `OkxPortfolioAdapter.execute` (le point
-   prévu). Réutiliser `packages/data/src/okx/orders.ts` (`buildOrderBody` —
+   prévu). **Deux règles déjà dans le plan (2026-10-08, GO Mario)** : un
+   ordre `closeAll` s'envoie sur la TAILLE RÉELLEMENT DÉTENUE (reduce-only,
+   lue au reconcile), jamais sur `contracts` calculé ; et le long BTC est
+   dimensionné par `planRebalance` au prorata des shorts tenus — ne pas
+   « corriger » en 1:1 de la cible. Réutiliser `packages/data/src/okx/orders.ts` (`buildOrderBody` —
    market, `tdMode` **isolated**) et la couche REST privée signée
    existante (voir `okxLiveAdapter.ts` / `okx/rest` pour le client signé —
    NE PAS réécrire une signature HMAC à la main).
@@ -358,6 +362,14 @@ la spec §6 (elles ne remplacent rien d'autre) :
     -198 $ ; 24/09→01/10 : -170 $), cumul -372 $ = -6,2 % de la sleeve —
     NON représentatif de regime1 tant que ces deux biais ne sont pas
     corrigés (le paper valide la plomberie : 83/83 ticks, pas l'edge).
+    **✅ CORRIGÉ le 2026-10-08 (GO Mario « fixe regime1, remets le paper à
+    0 ») — dans `planRebalance` (couche exécution, targets.ts INTACT donc
+    parité backtest préservée) : (1) hedge BTC = btcWeight × sleeve ×
+    (jambes tenues / jambes cibles) ; (2) cible 0 → ordre `closeAll` au
+    notional exact. 6 tests unitaires. Paper REMIS À ZÉRO (state v3 vierge,
+    ancien state archivé `.paper-state.v3-biased-2026-10-08.json`) : la
+    marche à blanc repart au 2026-10-09, nouvelle ancre K7, à laisser
+    tourner « un bon moment » (≥ 2-3 épisodes ON) avant toute décision.**
 
 ## 8. État exact à la passation (2026-07-17)
 

@@ -22,6 +22,10 @@ export interface PlannedOrder {
   contracts: number
   notionalUsd: number
   reason: string
+  /** clôture TOTALE de la position détenue : en LIVE, envoyer la taille
+   *  réellement détenue (reduce-only), jamais un delta arrondi au lot
+   *  (bêtisier PASSATION n°14 : les arrondis laissaient des miettes) */
+  closeAll?: boolean
 }
 
 export interface RebalancePlan {
@@ -59,6 +63,16 @@ export async function fetchSwapInstruments(): Promise<Map<string, OkxInstrument>
 /**
  * Plan de rebalancement PUR : cibles (poids × sleeve) vs positions
  * actuelles (notional USD signé par instId) → ordres en contrats.
+ *
+ * Deux règles issues de la marche à blanc (PASSATION n°12 / n°14) :
+ *  1. HEDGE AU PRORATA — le long BTC (btcWeight) est dimensionné sur les
+ *     jambes RÉELLEMENT tenues après exécutabilité (instrument OKX présent,
+ *     ≥ minSz), pas sur la cible : c'est la construction validée du backtest
+ *     (« BTC = Σ shorts », toutes jambes exécutées). Sans ça, 50 % de jambes
+ *     sautées = panier net long de moitié.
+ *  2. CLÔTURE TOTALE — une position dont la cible est 0 est fermée EN ENTIER
+ *     (notional exact, closeAll), jamais via un delta arrondi au lot qui
+ *     laisse 1-9 $ de miette par jambe (en live = micro-positions ouvertes).
  * Un symbole sans instrument OKX est SAUTÉ (compté) — même convention que
  * la validation (couverture 26-55 % selon la stratégie).
  */
@@ -70,42 +84,66 @@ export function planRebalance(
   instruments: Map<string, OkxInstrument>,
   minTradeUsd = 15,
 ): RebalancePlan {
+  const BTC = 'BTC-USDT-SWAP'
   const orders: PlannedOrder[] = []
   const skipped: Array<{ instId: string; why: string }> = []
   const targetsUsd = new Map<string, number>()
   for (const [sym, w] of weights) targetsUsd.set(toOkxInstId(sym), w * sleeveUsd)
-  if (btcWeight !== 0) targetsUsd.set('BTC-USDT-SWAP', (targetsUsd.get('BTC-USDT-SWAP') ?? 0) + btcWeight * sleeveUsd)
-  let gross = 0
-  for (const v of targetsUsd.values()) gross += Math.abs(v)
 
-  const allIds = new Set([...targetsUsd.keys(), ...positionsUsd.keys()])
-  for (const instId of allIds) {
-    const target = targetsUsd.get(instId) ?? 0
-    const current = positionsUsd.get(instId) ?? 0
+  /** planifie UNE jambe ; renvoie le notional signé qui sera TENU après exécution */
+  const planLeg = (instId: string, target: number, current: number): number => {
     const inst = instruments.get(instId)
     if (!inst || !Number.isFinite(inst.last) || inst.last <= 0) {
-      if (target !== 0) skipped.push({ instId, why: 'instrument OKX indisponible' })
-      continue
+      if (target !== 0 || current !== 0) skipped.push({ instId, why: 'instrument OKX indisponible' })
+      return current
+    }
+    if (target === 0 && current !== 0) {
+      // clôture totale : notional EXACT de la position, taille réelle en live
+      orders.push({
+        instId, side: current > 0 ? 'sell' : 'buy',
+        contracts: Number((Math.abs(current) / inst.last / inst.ctVal).toFixed(8)),
+        notionalUsd: Math.round(Math.abs(current) * 100) / 100,
+        reason: 'clôture', closeAll: true,
+      })
+      return 0
     }
     const deltaUsd = target - current
-    if (Math.abs(deltaUsd) < minTradeUsd) continue
+    if (Math.abs(deltaUsd) < minTradeUsd) {
+      if (current === 0 && target !== 0) skipped.push({ instId, why: `sous minTradeUsd (${Math.abs(target).toFixed(2)} USDT)` })
+      return current
+    }
     const qtyBase = Math.abs(deltaUsd) / inst.last
     const rawContracts = qtyBase / inst.ctVal
     const contracts = Math.floor(rawContracts / inst.lotSz) * inst.lotSz
     if (contracts < inst.minSz) {
       skipped.push({ instId, why: `sous minSz (${rawContracts.toFixed(4)} < ${inst.minSz})` })
-      continue
+      return current
     }
+    const notionalUsd = Math.round(contracts * inst.ctVal * inst.last * 100) / 100
     orders.push({
-      instId,
-      side: deltaUsd > 0 ? 'buy' : 'sell',
-      contracts: Number(contracts.toFixed(8)),
-      notionalUsd: Math.round(contracts * inst.ctVal * inst.last * 100) / 100,
-      reason: current === 0 ? 'ouverture' : target === 0 ? 'clôture' : 'ajustement',
+      instId, side: deltaUsd > 0 ? 'buy' : 'sell',
+      contracts: Number(contracts.toFixed(8)), notionalUsd,
+      reason: current === 0 ? 'ouverture' : 'ajustement',
     })
+    return current + Math.sign(deltaUsd) * notionalUsd
   }
+
+  // ---- 1) jambes hors BTC : l'exécutabilité se décide AVANT le hedge
+  let plannedLegsUsd = 0
+  let heldLegsUsd = 0
+  const legIds = new Set([...targetsUsd.keys(), ...positionsUsd.keys()].filter((id) => id !== BTC))
+  for (const instId of legIds) {
+    const target = targetsUsd.get(instId) ?? 0
+    plannedLegsUsd += Math.abs(target)
+    heldLegsUsd += Math.abs(planLeg(instId, target, positionsUsd.get(instId) ?? 0))
+  }
+  // ---- 2) hedge BTC au prorata des jambes réellement tenues
+  const scale = plannedLegsUsd > 0 ? heldLegsUsd / plannedLegsUsd : 0
+  const btcTarget = ((targetsUsd.get(BTC) ?? 0) + btcWeight * sleeveUsd) * scale
+  const heldBtc = planLeg(BTC, Math.abs(btcTarget) < minTradeUsd ? 0 : btcTarget, positionsUsd.get(BTC) ?? 0)
+
   orders.sort((a, b) => b.notionalUsd - a.notionalUsd)
-  return { orders, skipped, grossTargetUsd: gross }
+  return { orders, skipped, grossTargetUsd: heldLegsUsd + Math.abs(heldBtc) }
 }
 
 export class OkxPortfolioAdapter {
