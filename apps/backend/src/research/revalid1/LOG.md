@@ -83,3 +83,17 @@ signal que le bot live a RATÉ (gelé par la garde de sur-revendication le 21/08
 réelle à 77 222, cycle −2,4 %) : écart expliqué par l'incident, pas par le
 moteur. Trade accum 13-14/07 (stop −2,8 %) antérieur à la recréation du bot
 (19/07). ⇒ A2 non déclenchée (aucune contradiction forte), parité confirmée.
+
+### A1 ⛔ H14 vol-target / allocation dynamique du duo (a1_voltarget.ts, 2026-10-07)
+
+Duo fixe 50/50 : IS CAGR +19,6 %/DD −19,4 %/Calmar 1,01 ; OOS +0,8 %/−18,1 %/0,04.
+**Vol-target (9 cellules figées, coût 0,15 %/bascule) : IS — Calmar DÉGRADÉ ou
+égal partout (Δ −0,17…+0,01), percentile null 0-28 (pire ou égal au hasard de
+séquence) ; OOS — Δ +0,01…+0,20, pct null 98-100.** Incohérence IS/OOS =
+pas un edge : sur une fenêtre à +0,8 %/an, toute réduction d'exposition pendant
+les pertes « aide » mécaniquement. Barre pré-enregistrée (Calmar > fixe sur IS
+ET OOS) : ÉCHEC sur IS → ⛔, OOS non consommé pour la décision. Conforme au
+prior (accum2 : rien à l'entrée ne prédit le tirage ; dé-levier tardif).
+**Régime (bull EMA200-1d → vrx seul, sinon 50/50)** : IS Δ +0,04 (bruit),
+OOS Δ −0,08 (jours bull 60 %) → ⛔. H14 « vol-target global » : réfuté pour
+le duo. Ledger : 10 essais, 0 survivant.
